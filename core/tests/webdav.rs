@@ -13,7 +13,7 @@ async fn dav(State(remote):State<Arc<Mutex<Remote>>>,req:Request)->Response{
     if method==Method::HEAD{return StatusCode::OK.into_response();}(StatusCode::OK,Bytes::copy_from_slice(bytes)).into_response()
 }
 #[tokio::test]async fn two_devices_sync_files_folders_tags_and_tombstones(){
-    let remote=Arc::new(Mutex::new(Remote::default()));let listener=tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();let addr=listener.local_addr().unwrap();let app=Router::new().fallback(dav).with_state(remote.clone());let task=tokio::spawn(async move{axum::serve(listener,app).await.unwrap()});
+    let remote=Arc::new(Mutex::new(Remote::default()));remote.lock().unwrap().files.insert("/glassmark/events/old.json".into(),b"unsupported format".to_vec());let listener=tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();let addr=listener.local_addr().unwrap();let app=Router::new().fallback(dav).with_state(remote.clone());let task=tokio::spawn(async move{axum::serve(listener,app).await.unwrap()});
     let dir_a=tempfile::tempdir().unwrap();let dir_b=tempfile::tempdir().unwrap();let a=Store::open(dir_a.path().to_path_buf()).unwrap();let b=Store::open(dir_b.path().to_path_buf()).unwrap();let config=SyncConfig{enabled:true,url:format!("http://{addr}/"),username:"test".into(),password:"test".into()};
     let folder=a.event("folder",json!({"name":"Research"})).unwrap();
     let item=a.capture(json!({"version":2,"title":"Diffusion","text":"InSb research","url":"https://example.com","platform":"web","content":"<h1>Original UI</h1>","resources":[],"posts":[]})).unwrap();let id=item["id"].as_str().unwrap();
@@ -23,6 +23,6 @@ async fn dav(State(remote):State<Arc<Mutex<Remote>>>,req:Request)->Response{
     let mut update=b.get(id).unwrap();update["tags"]=json!(["DFT"]);update["folderId"]=folder["id"].clone();b.event("item",update).unwrap();run(&b,config.clone()).await.unwrap();run(&a,config.clone()).await.unwrap();assert_eq!(a.get(id).unwrap()["tags"],json!(["DFT"]));
     let mut deleted=a.get(id).unwrap();deleted["deleted"]=json!(true);a.event("item",deleted).unwrap();run(&a,config.clone()).await.unwrap();run(&b,config.clone()).await.unwrap();assert!(b.list("item","").unwrap().is_empty());
     // Switching servers/directories must not inherit the previous endpoint's sent set.
-    let mut other=config.clone();other.url=format!("http://{addr}/another/");run(&a,other).await.unwrap();assert!(remote.lock().unwrap().files.keys().any(|key|key.starts_with("/another/glassmark/events/")));
+    let mut other=config.clone();other.url=format!("http://{addr}/another/");run(&a,other).await.unwrap();assert!(remote.lock().unwrap().files.keys().any(|key|key.starts_with("/another/glassmark/content-v2/events/")));
     task.abort();
 }

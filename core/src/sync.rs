@@ -62,8 +62,8 @@ pub async fn run(store:&Store,config:SyncConfig)->Result<usize> {
     let mut base=url::Url::parse(&(config.url.trim_end_matches('/').to_owned()+"/")).map_err(|e|e.to_string())?;
     // Dedicated subdirectory leaves the user's other WebDAV files untouched.
     base=base.join("glassmark/").map_err(|e|e.to_string())?;
-    let dav=Dav{client:Client::builder().redirect(reqwest::redirect::Policy::none()).timeout(std::time::Duration::from_secs(300)).build().map_err(|e|e.to_string())?,base,config};
-    dav.mkdir("").await?;dav.mkdir("events/").await?;dav.mkdir("archives/").await?;
+    let mut dav=Dav{client:Client::builder().redirect(reqwest::redirect::Policy::none()).timeout(std::time::Duration::from_secs(300)).build().map_err(|e|e.to_string())?,base,config};
+    dav.mkdir("").await?;dav.base=dav.base.join("content-v2/").map_err(|e|e.to_string())?;dav.mkdir("").await?;dav.mkdir("events/").await?;dav.mkdir("archives/").await?;
     let namespace=format!("{}|{}|",dav.base,dav.config.username);
     let synced:HashSet<String>={let db=store.db.lock().map_err(|e|e.to_string())?;let mut stmt=db.prepare("SELECT event FROM synced").map_err(|e|e.to_string())?;let result=stmt.query_map([],|r|r.get(0)).map_err(|e|e.to_string())?.collect::<std::result::Result<_,_>>().map_err(|e|e.to_string())?;result};
     let mut count=0;

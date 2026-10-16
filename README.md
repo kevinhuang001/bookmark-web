@@ -59,10 +59,10 @@ v0.5 使用内容格式 2，数据位于应用目录的 `content-v2/`，不提�
 
 在「设置 → WebDAV」配置 HTTPS 目录、用户名和应用密码。启用后，启动时、内容变更后及每分钟自动同步。
 
-仅使用目标目录下的 `glassmark/` 子目录。远端保存普通文件和不可变 revision 事件，未进行端到端加密，便于其他工具读取。相同内容反复收藏始终生成独立 ID。
+仅使用目标目录下的 `glassmark/content-v2/` 子目录。远端保存普通文件和不可变 revision 事件，未进行端到端加密，便于其他工具读取。相同内容反复收藏始终生成独立 ID。
 
 ```
-glassmark/
+glassmark/content-v2/
   events/<revision>.json
   archives/<id>/
     manifest.json
