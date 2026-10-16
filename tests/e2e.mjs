@@ -510,12 +510,14 @@ try {
   await page.getByText("# 灵感", { exact: true }).first().waitFor();
   pass("tag editing updates the library and filters");
   await page.locator("#settings").click();
+  await page.getByLabel("显示保存时间", { exact: true }).uncheck();
   await page.locator('[data-settings-category="media"]').click();
   await page.getByLabel("单次下载上限（MB）", { exact: true }).fill("750");
   await page.getByLabel("并发下载数", { exact: true }).fill("4");
   await page.locator('[data-settings-category="capture"]').click();
   await page.getByLabel("自动加载时长（秒）", { exact: true }).fill("12");
   await page.getByRole("button", { name: "保存设置", exact: true }).click();
+  await expect(page.locator("#page-metadata > span").last()).toBeHidden();
   const prefs = await get("/api/preferences");
   assert.equal(prefs.downloadLimitMb, 750);
   assert.equal(prefs.downloadConcurrency, 4);

@@ -359,7 +359,8 @@ async function renderReader() {
   const key =
     state.view +
     "|content|" +
-    (item ? item.id + "|" + item.modifiedAt : "empty");
+    (item ? item.id + "|" + item.modifiedAt : "empty") +
+    JSON.stringify(state.preferences);
   if (state.viewKey === key) return;
   state.viewKey = key;
   webMedia?.release();
