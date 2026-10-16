@@ -1,7 +1,7 @@
 /** Real installed Chromium MV3 extension against the native Rust bridge (CI).
  * This is separate from the collector/UI tests, which can run on headless_shell.
  */
-import { chromium } from "@playwright/test";
+import { chromium, expect } from "@playwright/test";
 import assert from "node:assert/strict";
 import { readFile, mkdir, rm, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
@@ -120,8 +120,9 @@ try {
   child.kill();
   await new Promise((r) => setTimeout(r, 700));
   await popup.reload();
-  await popup.locator("#actions").waitFor({ state: "hidden" });
-  assert.match(await popup.locator("#status").textContent(), /未连接/);
+  await expect(popup.locator("#status")).toHaveText(/未连接/);
+  await expect(popup.locator("#actions")).toBeHidden();
+  assert.equal(await popup.locator("html").getAttribute("lang"), "zh-CN");
   await writeFile(
     "artifacts/extension-report.json",
     JSON.stringify(
