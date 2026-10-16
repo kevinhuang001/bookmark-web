@@ -15,7 +15,12 @@ export function pageContext(value) {
             ? u.pathname.match(
                 /^\/(?:explore|discovery\/item)\/([a-z\d]+)(?:\/|$)/i,
               )
-            : null;
+            : site === "zhihu"
+              ? u.pathname.match(/^\/question\/\d+\/answer\/(\d+)(?:\/|$)/) ||
+                (u.hostname === "zhuanlan.zhihu.com"
+                  ? u.pathname.match(/^\/p\/(\d+)(?:\/|$)/)
+                  : null)
+              : null;
     return {
       supported: true,
       platform: site,

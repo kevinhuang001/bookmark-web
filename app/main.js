@@ -12,7 +12,7 @@ const $ = (id) => document.getElementById(id);
 const state = {
   items: [],
   allItems: [],
-  view: ["web", "x", "reddit", "xiaohongshu"].includes(
+  view: ["web", "x", "reddit", "xiaohongshu", "zhihu"].includes(
     localStorage.getItem("glassmark-view"),
   )
     ? localStorage.getItem("glassmark-view")
@@ -22,14 +22,14 @@ const state = {
   folderTreeMarkup: null,
   filters: { threads: false, sort: "recent", author: "", community: "" },
   collapsed: new Set(),
-  feedScroll: { x: 0, reddit: 0, xiaohongshu: 0 },
+  feedScroll: { x: 0, reddit: 0, xiaohongshu: 0, zhihu: 0 },
   folders: [],
   folder: null,
   tag: null,
   selected: null,
   query: "",
   globalMode: false,
-  siteQueries: { x: "", reddit: "", xiaohongshu: "" },
+  siteQueries: { x: "", reddit: "", xiaohongshu: "", zhihu: "" },
   tagCatalog: [],
   preferences: {},
   generation: 0,
@@ -50,6 +50,7 @@ const platformLabel = {
   reddit: "Reddit",
   web: tr("网页"),
   xiaohongshu: tr("小红书"),
+  zhihu: tr("知乎"),
 };
 const fmt = (bytes) =>
   bytes >= 1024 ** 2
@@ -129,6 +130,7 @@ function renderPlatforms() {
     ["x", "X", "Twitter"],
     ["reddit", "Reddit", ""],
     ["xiaohongshu", tr("小红书"), ""],
+    ["zhihu", tr("知乎"), ""],
   ]
     .filter(([view]) =>
       (
@@ -137,6 +139,7 @@ function renderPlatforms() {
           "x",
           "reddit",
           "xiaohongshu",
+          "zhihu",
         ]
       ).includes(view),
     )
@@ -481,7 +484,7 @@ async function socialAction(action, data = {}) {
   if (action === "open" && item) {
     if (state.selected === item.id) {
       $("reader")
-        .querySelector(".reddit-comments-title,.x-reply")
+        .querySelector(".reddit-comments-title,.x-reply,.zhihu-comments")
         ?.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
@@ -492,8 +495,12 @@ async function socialAction(action, data = {}) {
   }
   if (action === "bookmarks") {
     state.selected = null;
-    state.filters.author = "";
-    state.filters.community = "";
+    state.filters = {
+      threads: false,
+      sort: "recent",
+      author: "",
+      community: "",
+    };
     state.feedScroll[state.view] = 0;
     state.viewKey = "";
     state.tag = null;
@@ -886,6 +893,16 @@ $("search").oninput = () => {
   );
 };
 document.addEventListener("keydown", (e) => {
+  if (
+    e.key === "Escape" &&
+    state.view !== "web" &&
+    state.selected &&
+    !$("dialog").open &&
+    !e.target.closest("input,textarea,select,[contenteditable]")
+  ) {
+    e.preventDefault();
+    guarded(socialAction)("back", {});
+  }
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
     e.preventDefault();
     $("search").focus();
@@ -944,7 +961,7 @@ if (globalThis.__TAURI__) {
   const updateCorners = async () =>
     document.documentElement.classList.toggle(
       "native-maximized",
-      await win.isMaximized(),
+      (await win.isMaximized()) || (await win.isFullscreen()),
     );
   win.onResized(updateCorners);
   updateCorners();

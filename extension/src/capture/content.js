@@ -106,6 +106,25 @@ export async function collect({
         ...primary.querySelectorAll(".comments-container .comment-item"),
       ];
     }
+    if (kind === "zhihu") {
+      const primary = elements.find((el) => {
+        const post = extractPost(el, kind);
+        return (
+          post.id === context.postId ||
+          post.url?.match(/\/(?:answer|p)\/(\d+)/)?.[1] === context.postId
+        );
+      });
+      if (!primary) return [];
+      const root = extractPost(primary, kind);
+      if (!root.text && !root.media.length) return [];
+      rootId = root.id;
+      elements = [
+        primary,
+        ...primary.querySelectorAll(
+          "[data-comment-id],.CommentItem,.CommentItemV2",
+        ),
+      ];
+    }
     return elements;
   };
   function accumulate(elements) {
@@ -127,6 +146,8 @@ export async function collect({
   }
   let parts;
   if (mode === "thread" && kind !== "web") {
+    if (kind === "zhihu" && !context.isPost)
+      throw new Error(tr("请先打开知乎回答或文章详情页"));
     if (kind === "xiaohongshu" && !context.isPost)
       throw new Error(tr("请先打开一篇小红书笔记详情"));
     if (kind === "x" && !/\/status\/\d+/.test(location.pathname))

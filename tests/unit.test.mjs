@@ -427,3 +427,22 @@ test("all explicit UI translation keys are present in every catalog", async () =
         );
   }
 });
+
+test("Zhihu supports exact answer/article routes without treating questions or lookalikes as posts", () => {
+  for (const [url, id] of [
+    ["https://www.zhihu.com/question/123/answer/456?utm=test", "456"],
+    ["https://zhuanlan.zhihu.com/p/789", "789"],
+  ]) {
+    assert.equal(platform(new URL(url).hostname), "zhihu");
+    assert.equal(pageContext(url).postId, id);
+    assert.equal(pageContext(url).isPost, true);
+    assert.equal(itemPlatform({ platform: "zhihu", url }), "zhihu");
+  }
+  for (const url of [
+    "https://www.zhihu.com/question/123",
+    "https://www.zhihu.com/collection/123",
+    "https://zhihu.com.attacker.test/question/123/answer/456",
+    "https://www.zhihu.com/p/789",
+  ])
+    assert.equal(pageContext(url).isPost, false);
+});

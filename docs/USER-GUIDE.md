@@ -2,9 +2,9 @@
 
 ## Capture and organization
 
-Use the extension on an HTTP or HTTPS page. Normal pages offer whole-page and multi-region capture. Post detail pages offer structured capture for X, Reddit and Xiaohongshu. Pick a webpage folder or the platform's tags before saving.
+Use the extension on an HTTP or HTTPS page. Normal pages offer whole-page and multi-region capture. Post detail pages offer structured capture for X, Reddit, Xiaohongshu and Zhihu. Pick a webpage folder or the platform's tags before saving.
 
-X automatically loads replies within the configured time and post limits. You can save loaded content immediately or cancel from the source-page control. Reddit and Xiaohongshu capture comments already loaded in the page; expand the comments you want before saving.
+X automatically loads replies within the configured time and post limits. You can save loaded content immediately or cancel from the source-page control. Reddit, Xiaohongshu and Zhihu capture comments already loaded in the page; expand the comments you want before saving.
 
 Webpages live in nested folders. Social sources have independent tag collections and search. Global search covers all sources, including sources hidden from the sidebar. Repeated captures create independent saves. Delete a save from its toolbar or detail menu.
 
@@ -44,3 +44,9 @@ GitHub Releases includes a universal macOS DMG, Windows x64 EXE/MSI, Linux x64 A
 ## Getting help
 
 Include your app version, operating system, browser and the relevant resource report in an [issue](https://github.com/kevinhuang001/bookmark-web/issues). Remove private URLs and account details before sharing.
+
+## Zhihu and keyboard navigation
+
+Open an individual `/question/…/answer/…` answer or a `zhuanlan.zhihu.com/p/…` article. Expand the comments you want before saving. Recommendations and other answers are excluded. The Zhihu collection supports search, tags and sorting, with a full-text reader for saved content. Existing sidebar preferences are preserved; enable Zhihu in Settings → General if it is hidden.
+
+Press ⌘/Ctrl + K for global search. Press Escape outside a text input or dialog to return from a discussion to its collection. Filtered empty states offer a reset, and the interface respects reduced-motion preferences.

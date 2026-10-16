@@ -32,10 +32,9 @@ function bodyText(text) {
     .join("");
 }
 function mediaMarkup(post, item) {
-  const records =
-    item.platform === "xiaohongshu"
-      ? post.media || []
-      : (post.media || []).slice(0, 4);
+  const records = ["xiaohongshu", "zhihu"].includes(item.platform)
+    ? post.media || []
+    : (post.media || []).slice(0, 4);
   if (!records.length) return "";
   return `<div class="social-media-grid media-count-${records.length}">${records.map((m) => `<div class="social-media media-loading ${m.type === "video" ? "video-media" : ""}">${m.type === "video" ? `<video controls preload="metadata" data-archive-id="${item.id}" data-archive-media="${esc(m.url)}"></video>` : `<img loading="lazy" alt="${esc(m.alt || tr("收藏的图片"))}" data-archive-id="${item.id}" data-archive-media="${esc(m.url)}">`}<span class="media-fallback">${tr("媒体未归档")}</span></div>`).join("")}</div>`;
 }
@@ -54,7 +53,12 @@ function xPost(post, item, { detail = false, reply = false } = {}) {
  <div class="x-post-text">${bodyText(post.text)}</div>${mediaMarkup(post, item)}${detail ? `<div class="x-capture-time">${tr("{0} · 已收藏", { 0: new Date(item.capturedAt).toLocaleString(locale()) })}</div>` : ""}${xActions(post, item)}</div></article>`;
 }
 function savedSearch(kind, query) {
-  const label = { x: "X", reddit: "Reddit", xiaohongshu: tr("小红书") }[kind];
+  const label = {
+    x: "X",
+    reddit: "Reddit",
+    xiaohongshu: tr("小红书"),
+    zhihu: tr("知乎"),
+  }[kind];
   return `<form class="saved-search" role="search">${icon("search")}<input type="search" name="q" aria-label="${tr("搜索 {1} 收藏", { 1: label })}" placeholder="${tr("搜索收藏")}" value="${esc(query)}"><button type="submit" aria-label="${tr("搜索收藏")}">${icon("arrowRight")}</button></form>`;
 }
 function savedTags(options) {
@@ -151,6 +155,31 @@ function noteShell(items, options) {
   const rows = feedItems(items, options.filters);
   return `<div class="note-shell"><header class="note-archive-header"><div class="note-wordmark">${icon("xiaohongshu").replace('viewBox="0 0 24 24"', 'viewBox="0 6 24 12"')}</div>${savedSearch("xiaohongshu", options.query)}</header><div class="note-collection-heading"><div><button class="note-saved-tab" data-social-action="bookmarks">${tr("收藏")}</button><span>${tr("{2} 篇笔记", { 2: items.length })}</span></div>${selected ? `<button class="note-back" data-social-action="back">${tr("{0}返回收藏", { 0: icon("back") })}</button>` : ""}</div>${selected ? noteDetail(selected) : `${savedTags(options)}<div class="note-grid">${rows.map(notePost).join("") || `<div class="social-empty">${tr("还没有收藏的笔记。")}</div>`}</div>`}</div>`;
 }
+
+function zhihuPost(item, detail = false) {
+  const post = rootPost(item);
+  const title = post.title || item.title;
+  return `<article class="zhihu-post ${detail ? "zhihu-detail" : ""}" ${detail ? "" : `data-open-archive="${item.id}" tabindex="0" role="link" aria-label="${tr("打开 {2}", { 2: esc(title) })}"`}>
+    <h1>${esc(title)}</h1><div class="zhihu-author">${avatar(post, item)}<strong>${esc(authorName(post))}</strong><span>${stamp(item)}</span>${menu(item)}</div>
+    <div class="zhihu-body">${bodyText(post.text)}</div>${detail ? mediaMarkup(post, item) : ""}
+    <footer class="zhihu-actions"><span class="zhihu-votes">${icon("arrowUp")}${esc(post.stats?.votes || "—")}</span><button data-social-action="open" data-id="${item.id}">${icon("comment")}${tr("评论")} ${Math.max(0, (item.posts?.length || 1) - 1)}</button><button data-social-action="copy" data-id="${item.id}" title="${tr("复制来源链接")}">${icon("share")}${tr("分享")}</button></footer></article>`;
+}
+function zhihuShell(items, options) {
+  const selected = items.find((i) => i.id === options.selected);
+  const rows = feedItems(items, options.filters);
+  return `<div class="zhihu-shell"><header class="zhihu-header"><div class="zhihu-wordmark">${icon("zhihu")}<strong>${tr("知乎")}</strong></div>${savedSearch("zhihu", options.query)}</header><div class="zhihu-layout"><aside class="zhihu-sidebar"><button class="saved-nav-entry active" data-social-action="bookmarks">${icon("bookmark")}<span>${tr("收藏")}</span><small>${items.length}</small></button>${savedTags(options)}</aside><section class="zhihu-main"><header class="zhihu-heading">${selected ? `<button data-social-action="back" aria-label="${tr("返回信息流")}">${icon("back")}</button>` : ""}<h2>${tr("我的收藏")}</h2><span>${tr("{3} 份收藏", { 3: items.length })}</span></header>${
+    selected
+      ? `${zhihuPost(selected, true)}<div class="zhihu-comments"><h2>${tr("评论")} · ${Math.max(0, (selected.posts?.length || 1) - 1)}</h2>${
+          (selected.posts || [])
+            .filter((p) => p.isComment)
+            .map((p) => noteComment(p, selected))
+            .join("") ||
+          `<p class="social-empty">${tr("这份收藏中没有已加载的评论。")}</p>`
+        }</div>`
+      : `<div class="zhihu-sort"><button data-social-action="sort-recent" class="${options.filters.sort !== "best" ? "active" : ""}">${tr("最新")}</button><button data-social-action="sort-best" class="${options.filters.sort === "best" ? "active" : ""}">${tr("最佳")}</button></div>${rows.map((i) => zhihuPost(i)).join("") || `<div class="social-empty">${tr("还没有收藏的回答或文章。")}<p>${tr("通过浏览器插件保存知乎回答和文章。")}</p></div>`}`
+  }</section></div></div>`;
+}
+
 export async function renderSocial(
   root,
   { kind, items, selected, query, filters, callbacks, tags = [], tag = null },
@@ -158,11 +187,27 @@ export async function renderSocial(
   releaseSocial();
   media = new ArchiveMedia();
   root.innerHTML =
-    kind === "xiaohongshu"
-      ? noteShell(items, { selected, query, filters, tags, tag })
-      : kind === "x"
-        ? xShell(items, { selected, query, filters, tags, tag })
-        : redditShell(items, { selected, query, filters, tags, tag });
+    kind === "zhihu"
+      ? zhihuShell(items, { selected, query, filters, tags, tag })
+      : kind === "xiaohongshu"
+        ? noteShell(items, { selected, query, filters, tags, tag })
+        : kind === "x"
+          ? xShell(items, { selected, query, filters, tags, tag })
+          : redditShell(items, { selected, query, filters, tags, tag });
+  if (
+    !selected &&
+    ((items.length && !feedItems(items, filters).length) ||
+      (tag && !items.length && !query))
+  ) {
+    const empty = root.querySelector(".social-empty");
+    if (empty)
+      empty.innerHTML = `${tr("没有符合筛选条件的收藏。")}<p><button data-social-action="bookmarks">${tr("清除筛选")}</button></p>`;
+  }
+  if (!selected && query && !items.length) {
+    const empty = root.querySelector(".social-empty");
+    if (empty)
+      empty.innerHTML = `${tr("没有找到相关收藏。")}<p><button data-social-action="search" data-query="">${tr("清除搜索")}</button></p>`;
+  }
   const gallery = root.querySelector(".note-gallery .social-media-grid");
   if (gallery) {
     const slides = [...gallery.children];

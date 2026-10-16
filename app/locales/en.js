@@ -440,4 +440,15 @@ export default {
   "SEARCH YOUR LIBRARY": "SEARCH YOUR LIBRARY",
   "YOUR PERSONAL CORNER OF THE WEB": "YOUR PERSONAL CORNER OF THE WEB",
   "CAPTURE A MOMENT": "CAPTURE A MOMENT",
+  知乎: "Zhihu",
+  我的收藏: "My collection",
+  "知乎 · 回答、文章与评论": "Zhihu · Answers, articles and comments",
+  请先打开知乎回答或文章详情页: "Open a Zhihu answer or article first.",
+  "还没有收藏的回答或文章。": "No saved answers or articles yet.",
+  "通过浏览器插件保存知乎回答和文章。":
+    "Save Zhihu answers and articles with the browser extension.",
+  "没有符合筛选条件的收藏。": "No saves match these filters.",
+  清除筛选: "Clear filters",
+  "没有找到相关收藏。": "No matching saves found.",
+  清除搜索: "Clear search",
 };

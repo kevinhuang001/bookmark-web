@@ -58,7 +58,9 @@ async function init() {
       ? tr("X · 帖子与讨论")
       : context.platform === "xiaohongshu"
         ? tr("小红书 · 笔记与评论")
-        : tr("Reddit · 帖子与评论")
+        : context.platform === "zhihu"
+          ? tr("知乎 · 回答、文章与评论")
+          : tr("Reddit · 帖子与评论")
     : tr("网页内容");
   $("context-icon").innerHTML = icon(
     context.isPost ? context.platform : "globe",

@@ -1399,32 +1399,6 @@ body[data-view="reddit"] #sidebar .search {
   display: block;
 }
 
-/* One outer clipping surface: child rectangles can no longer escape the corners. */
-html,
-body {
-  border-radius: 20px;
-  overflow: hidden;
-}
-#app {
-  border-radius: 20px;
-  overflow: hidden;
-  clip-path: inset(0 round 20px);
-}
-#sidebar,
-#main {
-  border-radius: 0;
-  resize: none;
-}
-#sidebar::before,
-#sidebar::after {
-  border-radius: 0;
-}
-.native-maximized #app,
-.native-maximized body,
-.native-maximized {
-  border-radius: 0;
-  clip-path: none;
-}
 .tag-choices {
   display: grid;
   gap: 8px;
@@ -1473,18 +1447,19 @@ body {
 }
 html,
 body,
-#app {
+#app,
+.desktop-scene {
   border-radius: var(--window-radius);
   overflow: hidden;
-}
-#app {
   clip-path: inset(0 round var(--window-radius));
 }
-.native-maximized,
-.native-maximized body,
-.native-maximized #app {
+#sidebar,
+#main {
   border-radius: 0;
-  clip-path: none;
+  resize: none;
+}
+.native-maximized {
+  --window-radius: 0px;
 }
 
 .page-metadata {
@@ -1892,4 +1867,22 @@ body,
 }
 .window-titlebar {
   background: rgba(255, 255, 255, 0.72);
+}
+
+/* Visible keyboard navigation and calm motion are part of the default UI. */
+:where(button, input, select, summary, [tabindex]):focus-visible {
+  outline: 2px solid #387da9;
+  outline-offset: 3px;
+}
+:where(.platform-entry, .saved-nav-entry):focus-visible {
+  outline-offset: -3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition: none !important;
+    animation: none !important;
+  }
 }

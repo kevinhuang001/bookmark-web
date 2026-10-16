@@ -53,7 +53,7 @@ for (const [name, file] of Object.entries(aliases)) {
     .replace(/\s+/g, " ");
 }
 const brands = {};
-for (const name of ["x", "reddit", "xiaohongshu"]) {
+for (const name of ["x", "reddit", "xiaohongshu", "zhihu"]) {
   const svg = await readFile(
     `node_modules/simple-icons/icons/${name}.svg`,
     "utf8",

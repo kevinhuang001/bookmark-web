@@ -1,12 +1,13 @@
 /** One classification rule shared by navigation, folder counts and feed rendering. */
 export function itemPlatform(item) {
-  if (["web", "x", "reddit", "xiaohongshu"].includes(item.platform))
+  if (["web", "x", "reddit", "xiaohongshu", "zhihu"].includes(item.platform))
     return item.platform;
   try {
     const host = new URL(item.url).hostname;
     if (/(^|\.)(x\.com|twitter\.com)$/.test(host)) return "x";
     if (/(^|\.)reddit\.com$/.test(host)) return "reddit";
     if (/(^|\.)xiaohongshu\.com$/.test(host)) return "xiaohongshu";
+    if (/(^|\.)zhihu\.com$/.test(host)) return "zhihu";
   } catch {}
   return "web";
 }

@@ -1534,3 +1534,235 @@
     transition: none;
   }
 }
+
+/* Zhihu's saved-answer reading surface: quiet cards, blue actions, generous type. */
+.zhihu-shell {
+  min-height: 100%;
+  background: #f5f6f8;
+  color: #182539;
+}
+.zhihu-header {
+  display: flex;
+  align-items: center;
+  gap: 40px;
+  padding: 20px 32px;
+  background: #fff;
+  border-bottom: 1px solid #e9edf2;
+}
+.zhihu-wordmark {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #1772f6;
+  white-space: nowrap;
+}
+.zhihu-wordmark .icon {
+  width: 36px;
+  height: 36px;
+}
+.zhihu-wordmark strong {
+  font-size: 24px;
+  letter-spacing: 1px;
+}
+.zhihu-header .saved-search {
+  max-width: 440px;
+  flex: 1;
+  margin: 0;
+}
+.zhihu-layout {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 760px);
+  justify-content: center;
+  align-items: start;
+  gap: 24px;
+  padding: 28px;
+}
+.zhihu-sidebar {
+  position: sticky;
+  top: 24px;
+}
+.zhihu-sidebar .saved-tags {
+  margin-top: 24px;
+}
+.zhihu-main {
+  min-width: 0;
+}
+.zhihu-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 4px 18px;
+}
+.zhihu-heading h2 {
+  font-size: 20px;
+  margin: 0;
+}
+.zhihu-heading > span {
+  color: #8590a6;
+  font-size: 12px;
+  margin-left: auto;
+}
+.zhihu-heading button {
+  border: 0;
+  background: transparent;
+  display: flex;
+  padding: 6px;
+  border-radius: 8px;
+}
+.zhihu-sort {
+  display: flex;
+  gap: 20px;
+  padding: 0 4px 16px;
+}
+.zhihu-sort button {
+  border: 0;
+  background: transparent;
+  color: #8590a6;
+  padding: 4px 0;
+  font-size: 13px;
+}
+.zhihu-sort button.active {
+  color: #1772f6;
+  font-weight: 650;
+}
+.zhihu-post {
+  background: #fff;
+  border: 1px solid #e9edf2;
+  border-radius: 12px;
+  padding: 24px 28px;
+  margin-bottom: 14px;
+  overflow-wrap: anywhere;
+}
+.zhihu-post[role="link"] {
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.zhihu-post[role="link"]:hover {
+  border-color: #c4d6ef;
+}
+.zhihu-post h1 {
+  font-size: 20px;
+  line-height: 1.5;
+  margin: 0 0 16px;
+}
+.zhihu-author {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 13px;
+}
+.zhihu-author .social-avatar {
+  width: 28px;
+  height: 28px;
+  font-size: 12px;
+}
+.zhihu-author > span:not(.social-avatar) {
+  color: #8590a6;
+  font-size: 12px;
+}
+.zhihu-author .post-menu {
+  margin-left: auto;
+}
+.zhihu-body {
+  font-size: 15px;
+  line-height: 1.9;
+  white-space: pre-wrap;
+  margin: 18px 0;
+}
+.zhihu-post:not(.zhihu-detail) .zhihu-body {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.zhihu-detail .zhihu-body {
+  font-size: 17px;
+  line-height: 1.95;
+}
+.zhihu-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 22px;
+  color: #8590a6;
+  font-size: 13px;
+}
+.zhihu-actions button,
+.zhihu-votes {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 7px 0;
+}
+.zhihu-actions .icon {
+  width: 17px;
+  height: 17px;
+}
+.zhihu-votes {
+  color: #1772f6;
+  background: #edf4ff;
+  padding: 7px 12px;
+  border-radius: 5px;
+}
+.zhihu-comments {
+  border: 1px solid #e9edf2;
+  border-radius: 12px;
+  background: #fff;
+  padding: 24px 28px;
+}
+.zhihu-comments h2 {
+  margin: 0 0 14px;
+  font-size: 16px;
+}
+.platform-symbol.zhihu {
+  color: #1772f6;
+}
+.social-empty button {
+  border: 1px solid #d6e0e8;
+  background: #fff;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #2d6d95;
+}
+@media (max-width: 1150px) {
+  .zhihu-layout {
+    grid-template-columns: 145px minmax(0, 1fr);
+    gap: 16px;
+    padding: 24px 18px;
+  }
+  .zhihu-post {
+    padding: 22px;
+  }
+}
+@media (max-width: 1000px) {
+  .zhihu-layout {
+    display: block;
+  }
+  .zhihu-sidebar {
+    position: static;
+    margin-bottom: 20px;
+  }
+  .zhihu-sidebar .saved-tags {
+    margin-top: 12px;
+  }
+  .zhihu-header {
+    gap: 20px;
+    padding: 18px;
+  }
+}
+
+.zhihu-detail .social-media-grid {
+  grid-template-columns: 1fr;
+  gap: 16px;
+  border: 0;
+  background: transparent;
+}
+.zhihu-detail .social-media img {
+  height: auto;
+  max-height: none;
+  object-fit: contain;
+}

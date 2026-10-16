@@ -11,7 +11,7 @@ export async function fixtureBridge(root) {
     items: [],
     preferences: {
       language: "system",
-      visiblePlatforms: ["web", "x", "reddit", "xiaohongshu"],
+      visiblePlatforms: ["web", "x", "reddit", "xiaohongshu", "zhihu"],
       maxPosts: 100,
       autoLoadSeconds: 20,
       downloadLimitMb: 500,

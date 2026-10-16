@@ -12,7 +12,7 @@
 An article you want to return to. A thread that explains something well. A note that sparks an idea. Glassmark keeps the content, images and supported videos together, so the things you save remain useful when you come back.
 
 - **Read without the surrounding noise.** Saved webpages fill the reading pane, with their layout and typography preserved.
-- **Keep the conversation.** Save X threads, Reddit discussions and Xiaohongshu notes with their loaded replies, comments and media.
+- **Keep the conversation.** Save X threads, Reddit discussions, Xiaohongshu notes and Zhihu answers with their loaded replies, comments and media.
 - **Make it yours.** Organize pages into nested folders, add tags, search across your library, and choose which sources appear in the sidebar.
 - **Own your library.** Store content locally and optionally sync it between devices with your own WebDAV server. No Glassmark account is required.
 - **Feel at home.** A softly frosted desktop interface for macOS, Windows and Linux, with English, 简体中文 and 日本語 UI.
@@ -43,11 +43,19 @@ Browse a cover-first collection. Open a note to view its images and videos on th
 
 ![A saved note with its image gallery and comments](docs/images/note-reader.jpg)
 
+### Zhihu, focused on answers worth revisiting
+
+Keep individual answers and column articles in a clean, blue-accented collection. Read the full saved text, archived media and loaded comments without recommendations. Open an answer's own URL or a `zhuanlan.zhihu.com/p/…` article before saving.
+
+![Zhihu saved answers and articles](docs/images/zhihu.jpg)
+
 ### Your language, across the app and extension
 
 Choose **Settings → General → Language**. Follow your system language or select English, Simplified Chinese or Japanese. The browser extension follows the desktop client's choice. Your saved content, folder names and custom tags stay in their original language.
 
 ![Language and source preferences](docs/images/languages.jpg)
+
+Use **⌘/Ctrl + K** to search your library and **Escape** to return from a saved discussion to its collection. Empty searches offer a one-click reset, and keyboard focus remains visible throughout the interface.
 
 *Screenshots show the application with sample content.*
 

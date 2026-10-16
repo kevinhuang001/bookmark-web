@@ -86,7 +86,7 @@ async fn delete_item(State(state):State<AppState>,Path(id):Path<String>)->Result
 async fn tags(State(state):State<AppState>)->Result<Json<Value>>{Ok(Json(json!(state.store.list("tag","")?)))}
 async fn create_tag(State(state):State<AppState>,Json(mut value):Json<Value>)->Result<Json<Value>>{
     let name=value["name"].as_str().unwrap_or("").trim().to_owned();
-    if name.is_empty()||name.len()>100||!["web","x","reddit","xiaohongshu"].contains(&value["platform"].as_str().unwrap_or("")){return Err("Invalid tag".to_string().into());}
+    if name.is_empty()||name.len()>100||!["web","x","reddit","xiaohongshu","zhihu"].contains(&value["platform"].as_str().unwrap_or("")){return Err("Invalid tag".to_string().into());}
     value["name"]=json!(name);value["id"]=json!(Uuid::new_v4());
     if let Some(existing)=state.store.list("tag","")?.into_iter().find(|t|t["name"]==value["name"]&&t["platform"]==value["platform"]){return Ok(Json(existing));}
     let saved=state.store.event("tag",value)?;state.schedule_sync();Ok(Json(saved))

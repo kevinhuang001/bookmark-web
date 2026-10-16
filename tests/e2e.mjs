@@ -1236,6 +1236,69 @@ try {
   pass(
     "Xiaohongshu captures only the open note and loaded comments, archives media, opens detail and searches locally",
   );
+
+  await source.route("https://www.zhihu.com/**", (route) =>
+    route.fulfill({
+      contentType: "text/html",
+      path: "tests/fixtures/zhihu.html",
+    }),
+  );
+  const answer = await collect(
+    "https://www.zhihu.com/question/123/answer/456",
+    "thread",
+  );
+  assert.equal(answer.platform, "zhihu");
+  assert.equal(answer.posts.length, 3);
+  assert.equal(answer.posts[0].title, "如何建立自己的知识库？");
+  assert.equal(answer.posts[0].authorName, "林间");
+  assert.ok(!answer.posts.some((p) => p.text.includes("不应采集")));
+  assert.equal(
+    answer.posts[0].media[0].url,
+    "http://127.0.0.1:1420/fixtures/note-cover.svg",
+  );
+  assert.equal(answer.posts[1].text, "读完以后再分类很有帮助。");
+  assert.equal(answer.posts[2].text, "同意，先留下来，再慢慢读。");
+  const answerItem = await save(answer);
+  await page.reload();
+  await page.locator('button[data-view="zhihu"]').click();
+  await expect(page.locator(".zhihu-post")).toHaveCount(1);
+  await expect(page.locator(".zhihu-header .zhihu-wordmark")).toBeVisible();
+  await page.locator(".zhihu-post").click();
+  await expect(page.locator(".zhihu-detail")).toBeVisible();
+  await expect(page.locator(".zhihu-comments .note-comment")).toHaveCount(2);
+  await expect(page.locator(".zhihu-detail .social-media img")).toHaveAttribute(
+    "src",
+    /^blob:/,
+  );
+  await page.screenshot({ path: "artifacts/glassmark-zhihu.png" });
+  await page.locator(".zhihu-heading button").focus();
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".zhihu-detail")).toHaveCount(0);
+  await page
+    .getByRole("searchbox", { name: "搜索 知乎 收藏" })
+    .fill("不存在的搜索");
+  await page.getByRole("searchbox", { name: "搜索 知乎 收藏" }).press("Enter");
+  await expect(page.locator(".social-empty")).toContainText("没有找到相关收藏");
+  await page.getByRole("button", { name: "清除搜索", exact: true }).click();
+  await expect(page.locator(".zhihu-post")).toHaveCount(1);
+  await source.route("https://zhuanlan.zhihu.com/**", (route) =>
+    route.fulfill({
+      contentType: "text/html",
+      body: `<meta charset="utf-8"><main><article class="Post-Main"><h1 class="Post-Title">长文的价值</h1><a class="AuthorInfo-name">林间</a><div class="Post-RichTextContainer">留下想要重读的内容。</div><div class="CommentItem" data-comment-id="article-comment"><a class="UserLink-link">远山</a><p class="CommentItem-content">值得收藏。</p></div></article></main>`,
+    }),
+  );
+  const zhihuArticle = await collect(
+    "https://zhuanlan.zhihu.com/p/789",
+    "thread",
+  );
+  assert.equal(zhihuArticle.posts.length, 2);
+  assert.equal(zhihuArticle.posts[0].title, "长文的价值");
+  assert.equal(zhihuArticle.posts[0].text, "留下想要重读的内容。");
+  assert.equal(zhihuArticle.posts[0].url, "https://zhuanlan.zhihu.com/p/789");
+  await call("/api/items/" + answerItem.id, { method: "DELETE" });
+  pass(
+    "Zhihu locks the selected answer or article, preserves loaded comments and archived images, with its own searchable reader",
+  );
   const popup = await context.newPage();
   popup.on("pageerror", (e) => errors.push(e.message));
   await popup.addInitScript(
@@ -1268,6 +1331,8 @@ try {
     "https://x.com/a/status/123",
     "https://www.reddit.com/r/test/comments/abc/post/",
     "https://www.xiaohongshu.com/explore/abc123",
+    "https://www.zhihu.com/question/123/answer/456",
+    "https://zhuanlan.zhihu.com/p/789",
     "https://example.com/article",
   ]) {
     await popup.goto("http://localhost:1420/extension/popup.html");

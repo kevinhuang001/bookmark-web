@@ -178,6 +178,41 @@ for (const [i, title] of [
     ],
   });
 }
+for (const [i, title] of [
+  "What makes a personal knowledge library useful?",
+  "How can we read more thoughtfully?",
+  "Why does the context of an idea matter?",
+].entries()) {
+  await post("/api/items", {
+    ...base,
+    platform: "zhihu",
+    mode: "thread",
+    title,
+    text: title,
+    url: `https://www.zhihu.com/question/123/answer/${456 + i}`,
+    posts: [
+      {
+        id: `zh${i}`,
+        title,
+        authorName: ["Lin Chen", "Maya", "Noah"][i],
+        text: [
+          "Start with the ideas you want to return to. A useful library preserves the surrounding context, not just a collection of links.\n\nMake time to revisit what you save. The most valuable archive is the one you keep reading.",
+          "Read with a question in mind. Leave room between collecting something and deciding what it means to you.\n\nA few carefully chosen pieces can offer more than an endless reading list.",
+          "An idea often makes sense because of the conversation around it. Keep the explanation, the images and the questions that made it worth saving.",
+        ][i],
+        stats: { votes: ["1.2K", "386", "824"][i] },
+        media: [],
+      },
+      {
+        id: `zc${i}`,
+        isComment: true,
+        authorName: "Quiet reader",
+        text: "The habit of returning to your notes is what makes them useful.",
+        media: [],
+      },
+    ],
+  });
+}
 const browser = await launchBrowser();
 try {
   const page = await browser.newPage({
@@ -226,6 +261,13 @@ try {
     type: "jpeg",
     quality: 90,
   });
+  await page.locator('[data-view="zhihu"]').click();
+  await page.locator(".zhihu-post").first().waitFor();
+  await page.screenshot({
+    path: "docs/images/zhihu.jpg",
+    type: "jpeg",
+    quality: 90,
+  });
   await page.locator("#settings").click();
   await page.getByLabel("Language", { exact: true }).waitFor();
   await page.screenshot({
@@ -235,7 +277,7 @@ try {
   });
   assert.deepEqual(errors, []);
   console.log(
-    "Rendered six English product screenshots from the real application.",
+    "Rendered seven English product screenshots from the real application.",
   );
 } finally {
   await browser.close();

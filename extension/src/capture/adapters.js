@@ -4,6 +4,7 @@ export function platform(host) {
   if (/(^|\.)(x\.com|twitter\.com)$/.test(host)) return "x";
   if (/(^|\.)reddit\.com$/.test(host)) return "reddit";
   if (/(^|\.)xiaohongshu\.com$/.test(host)) return "xiaohongshu";
+  if (/(^|\.)zhihu\.com$/.test(host)) return "zhihu";
   return "web";
 }
 export function adapterFor(kind, doc = document) {
@@ -29,6 +30,11 @@ export function adapterFor(kind, doc = document) {
       link: 'a[href*="/explore/"],a[href*="/discovery/item/"]',
       title: "小红书 · 笔记",
     },
+    zhihu: {
+      selector: ".AnswerItem,.Post-Main",
+      body: ".RichContent-inner,.Post-RichTextContainer",
+      title: "知乎",
+    },
     web: {
       selector: "body",
       body: "body",
@@ -40,6 +46,7 @@ export function adapterFor(kind, doc = document) {
   return configs[kind] || configs.web;
 }
 export function extractPost(el, kind, doc = document) {
+  if (kind === "zhihu") return extractZhihu(el, doc);
   if (kind === "xiaohongshu") return extractNote(el, doc);
   const config = adapterFor(kind, doc);
   const timeLink = el.querySelector("time")?.closest("a[href]");
@@ -255,6 +262,90 @@ function extractNote(el, doc) {
       likes: text(".like-wrapper .count,.like .count"),
       comments: text(".chat-wrapper .count"),
       saves: text(".collect-wrapper .count"),
+    },
+    media: media.filter((m, i, a) => a.findIndex((x) => x.url === m.url) === i),
+    capturedAt: new Date().toISOString(),
+  };
+}
+
+/** Scope every field to this answer/article; recommendations are never a root. */
+function extractZhihu(el, doc) {
+  const comment = el.matches(
+    "[data-comment-id],.CommentItem,.NestComment--rootComment,.CommentItemV2",
+  );
+  const read = (selector) =>
+    el.querySelector(selector)?.textContent.trim() || "";
+  const content = el.querySelector(
+    comment
+      ? '.CommentItem-content,.CommentRichText,.RichText,[class*="commentContent"]'
+      : ".RichContent-inner,.Post-RichTextContainer,.RichText",
+  );
+  const avatar = el.querySelector(
+    "img.AuthorInfo-avatar,.CommentItem-avatar img,.UserLink-avatar img,img.Avatar",
+  );
+  const link = el.querySelector('meta[itemprop="url"],a[itemprop="url"]');
+  const raw = link?.getAttribute("content") || link?.getAttribute("href");
+  const url = comment ? null : raw ? new URL(raw, doc.URL).href : doc.URL;
+  const data = (() => {
+    try {
+      return JSON.parse(el.getAttribute("data-zop") || "{}");
+    } catch {
+      return {};
+    }
+  })();
+  const media = [...(content?.querySelectorAll("img") || [])]
+    .map((i) => ({
+      type: "image",
+      url:
+        i.getAttribute("data-original") ||
+        i.getAttribute("data-actualsrc") ||
+        i.currentSrc ||
+        i.src,
+      alt: i.alt || "",
+    }))
+    .filter((m) => /^https?:/.test(m.url));
+  for (const v of content?.querySelectorAll("video") || []) {
+    const sources = videoSources(content, doc);
+    media.push({
+      type: "video",
+      url: sources[0] || v.currentSrc || v.src,
+      poster: v.poster || "",
+      sources,
+    });
+  }
+  const author =
+    read(".AuthorInfo-name,.CommentItem-meta .UserLink-link,.UserLink-link") ||
+    data.authorName ||
+    "";
+  return {
+    id: comment
+      ? el.getAttribute("data-comment-id") ||
+        el.id ||
+        author + ":" + read(".CommentItem-content,.CommentRichText,.RichText")
+      : String(data.itemId || url),
+    isComment: comment,
+    depth: comment ? 1 : 0,
+    author,
+    authorName: author,
+    avatarUrl: avatar?.currentSrc || avatar?.src || "",
+    title: comment
+      ? ""
+      : doc
+          .querySelector(".QuestionHeader-title,.Post-Title,h1")
+          ?.textContent.trim() || doc.title,
+    text: (content?.innerText || content?.textContent || "").trim(),
+    url,
+    postedAt:
+      el
+        .querySelector('meta[itemprop="datePublished"]')
+        ?.getAttribute("content") ||
+      el.querySelector("time")?.getAttribute("datetime") ||
+      null,
+    stats: {
+      votes: read(
+        '.VoteButton--up,button[aria-label*="赞同"],.Post-NormalMain .VoteButton',
+      ),
+      comments: read(".ContentItem-action button,.ContentItem-action"),
     },
     media: media.filter((m, i, a) => a.findIndex((x) => x.url === m.url) === i),
     capturedAt: new Date().toISOString(),

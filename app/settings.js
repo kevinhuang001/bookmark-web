@@ -26,7 +26,7 @@ export async function openSettings({ modal, folders, onSaved, toast }) {
   ];
   prefs.language ||= "system";
   let active = "general";
-  prefs.visiblePlatforms ||= ["web", "x", "reddit", "xiaohongshu"];
+  prefs.visiblePlatforms ||= ["web", "x", "reddit", "xiaohongshu", "zhihu"];
   const control = (name, key, type = "number", min, max) =>
     `<label class="settings-row"><span>${name}</span><input aria-label="${name}" data-pref="${key}" type="${type}" ${type === "checkbox" ? (prefs[key] ? "checked" : "") : `value="${esc(prefs[key])}" min="${min}" max="${max}" step="1" required`}></label>`;
   const section = (title, body, note = "") =>
@@ -117,6 +117,7 @@ export async function openSettings({ modal, folders, onSaved, toast }) {
             ["x", "X"],
             ["reddit", "Reddit"],
             ["xiaohongshu", tr("小红书")],
+            ["zhihu", tr("知乎")],
           ]
             .map(
               ([id, name]) =>
@@ -225,7 +226,7 @@ export async function openSettings({ modal, folders, onSaved, toast }) {
         "Glassmark",
         '<div class="about-app">' +
           icon("logo") +
-          `<h3>Glassmark 0.6.0</h3><p>${tr("把值得回看的内容留在本机。")}</p></div>`,
+          `<h3>Glassmark 0.7.0</h3><p>${tr("把值得回看的内容留在本机。")}</p></div>`,
         tr(
           "网页保存一份内容文件；帖子保存正文、评论和媒体。Chromium、Firefox 与 Windows / macOS / Linux。",
         ),

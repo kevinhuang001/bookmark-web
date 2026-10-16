@@ -18,6 +18,8 @@ const base = {
         "https://twitter.com/*",
         "https://*.twitter.com/*",
         "https://www.xiaohongshu.com/*",
+        "https://zhihu.com/*",
+        "https://*.zhihu.com/*",
         "https://reddit.com/*",
         "https://*.reddit.com/*",
       ],
@@ -44,17 +46,17 @@ for (const browser of ["chromium", "firefox"]) {
   const browserMessages = {
     en: {
       extensionDescription:
-        "Save webpages, X threads, Reddit discussions and Xiaohongshu notes to your desktop.",
+        "Save webpages, X threads, Reddit discussions Xiaohongshu notes and Zhihu answers to your desktop.",
       saveToGlassmark: "Save to Glassmark",
     },
     zh_CN: {
       extensionDescription:
-        "将网页、X 帖子、Reddit 讨论和小红书笔记保存到桌面客户端。",
+        "将网页、X 帖子、Reddit 讨论、小红书笔记和知乎回答保存到桌面客户端。",
       saveToGlassmark: "收藏到 Glassmark",
     },
     ja: {
       extensionDescription:
-        "ウェブページ、Xのスレッド、Redditの議論、小紅書のノートをデスクトップに保存。",
+        "ウェブページ、Xのスレッド、Redditの議論、小紅書のノート、知乎の回答をデスクトップに保存。",
       saveToGlassmark: "Glassmarkに保存",
     },
   };
