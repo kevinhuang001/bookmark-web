@@ -1,0 +1,29 @@
+{
+  "name": "glassmark",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "A local-first web archive with a Liquid Glass desktop and cross-browser capture extension.",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "node scripts/build.mjs",
+    "test": "node --test tests/unit.test.mjs",
+    "test:e2e": "node tests/e2e.mjs",
+    "check": "node scripts/check.mjs",
+    "tauri": "tauri",
+    "desktop": "tauri dev",
+    "verify": "npm run check && npm test && npm run build && npm run test:e2e"
+  },
+  "devDependencies": {
+    "@fontsource/noto-sans-sc": "^5.2.9",
+    "@playwright/test": "1.58.2",
+    "@sparticuz/chromium": "143.0.4",
+    "@tauri-apps/cli": "^2.11.0",
+    "esbuild": "^0.25.12",
+    "prettier": "^3.6.2"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "MIT"
+}

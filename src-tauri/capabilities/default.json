@@ -1,0 +1,12 @@
+{
+  "identifier": "main-window",
+  "description": "Only the bundled main UI can use native window controls.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-start-dragging",
+    "core:window:allow-close",
+    "core:window:allow-minimize",
+    "core:window:allow-toggle-maximize"
+  ]
+}

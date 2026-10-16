@@ -1,0 +1,28 @@
+{
+  "backend": "fixture-bridge",
+  "browser": "143.0.7499.0",
+  "checks": [
+    "unauthorized access and hostile web origins are blocked",
+    "pairing issues a scoped device token",
+    "full-page capture preserves computed styles, SVG fragments, fonts and source JS",
+    "multi-region capture excludes unrelated siblings",
+    "folders support nesting and reject cycles",
+    "social metadata preserves author, media and metrics for both thread and full-page capture",
+    "X adapter preserves a main post and replies with their UI",
+    "X has a dedicated timeline, thread detail and original-snapshot return path",
+    "X accumulation retains posts removed by virtual scrolling",
+    "Reddit captures loaded post and comments without requesting hidden comments",
+    "Reddit has a dedicated community feed, comment tree and original-snapshot return path",
+    "Reddit saves all loaded comments even when more than 100 are visible",
+    "repeated captures create independent archive IDs",
+    "full-text search finds body text, including Chinese",
+    "tag editing updates the library and filters",
+    "sandbox blocks scripts, event handlers and network access",
+    "search reveals matching webpage files within their ancestor folders",
+    "dragging webpage files moves them between folder tree branches",
+    "webpage files live inside nested folders, collapse with them, and sidebar uses translucent material",
+    "multi-post social feeds filter authors and communities and display only archived media",
+    "desktop interface has no uncaught JavaScript errors"
+  ],
+  "recordedAt": "2026-10-16T00:36:30.812Z"
+}

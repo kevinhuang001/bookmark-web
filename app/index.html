@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Glassmark</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="social.css" />
+  </head>
+  <body>
+    <div class="desktop-scene" aria-hidden="true"></div>
+    <div id="app">
+      <aside id="sidebar">
+        <div class="sidebar-top" data-tauri-drag-region>
+          <div class="traffic">
+            <button
+              id="window-close"
+              title="关闭窗口"
+              aria-label="关闭窗口"
+            ></button
+            ><button
+              id="window-minimize"
+              title="最小化"
+              aria-label="最小化"
+            ></button
+            ><button
+              id="window-maximize"
+              title="切换最大化"
+              aria-label="切换最大化"
+            ></button>
+          </div>
+          <div class="identity">
+            <span class="mark">◈</span>
+            <div>Glassmark<small>留住值得回看的网页</small></div>
+            <button
+              id="settings"
+              class="icon-button"
+              title="连接与同步"
+              aria-label="连接与同步"
+            >
+              ⚙
+            </button>
+          </div>
+          <label class="search"
+            ><span>⌕</span
+            ><input
+              id="search"
+              placeholder="搜索标题、正文、标签"
+              autocomplete="off"
+            /><kbd>⌘ K</kbd></label
+          >
+          <nav id="platforms" aria-label="资料来源"></nav>
+          <div id="web-folder-section">
+            <div class="section-label">
+              网页文件夹<button
+                id="new-folder"
+                title="新建文件夹"
+                aria-label="新建文件夹"
+              >
+                ＋
+              </button>
+            </div>
+            <nav id="folders" aria-label="网页文件夹"></nav>
+          </div>
+          <div id="tags" class="tag-filters"></div>
+        </div>
+        <div class="sidebar-footer">
+          <span id="connection-dot" class="dot"></span
+          ><span id="connection-status">正在连接…</span
+          ><button
+            id="sync-button"
+            class="icon-button"
+            title="立即同步"
+            aria-label="立即同步"
+          >
+            ⟳
+          </button>
+        </div>
+      </aside>
+      <main id="main">
+        <header id="toolbar" data-tauri-drag-region>
+          <button
+            id="snapshot-back"
+            class="icon-button"
+            aria-label="返回信息流"
+            hidden
+          >
+            ←
+          </button>
+          <div class="breadcrumb">
+            <span>资料库</span><span>／</span
+            ><span id="breadcrumb-current">全部网页</span>
+          </div>
+          <div class="toolbar-actions">
+            <button
+              id="move"
+              class="icon-button"
+              title="移动到文件夹"
+              aria-label="移动到文件夹"
+            >
+              ▱</button
+            ><button
+              id="tag-button"
+              class="icon-button"
+              title="编辑标签"
+              aria-label="编辑标签"
+            >
+              ♧</button
+            ><button
+              id="info"
+              class="icon-button"
+              title="归档详情"
+              aria-label="归档详情"
+            >
+              ⓘ</button
+            ><button
+              id="delete"
+              class="icon-button"
+              title="删除收藏"
+              aria-label="删除收藏"
+            >
+              ⌫
+            </button>
+          </div>
+        </header>
+        <div id="reader"></div>
+      </main>
+    </div>
+    <dialog id="dialog">
+      <form method="dialog">
+        <div class="dialog-header">
+          <h2 id="dialog-title"></h2>
+          <button class="icon-button" value="cancel" aria-label="关闭">
+            ×
+          </button>
+        </div>
+        <div id="dialog-body"></div>
+        <div class="dialog-actions" id="dialog-actions"></div>
+      </form>
+    </dialog>
+    <div id="toast" role="status"></div>
+    <script type="module" src="main.js"></script>
+  </body>
+</html>

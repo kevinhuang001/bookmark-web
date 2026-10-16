@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-CN">
+  <meta charset="utf-8" /><link rel="stylesheet" href="extension.css" /><title>
+    Glassmark
+  </title>
+  <body class="popup">
+    <div class="brand">
+      ◈ <span>Glassmark</span><small>网页，留在这里。</small>
+    </div>
+    <p id="status">正在连接客户端…</p>
+    <section id="pair" hidden>
+      <label
+        >客户端「连接与同步」中的配对码<input
+          id="code"
+          autocomplete="off"
+          placeholder="6 位配对码"
+          maxlength="6" /></label
+      ><button id="pairButton">连接客户端</button>
+    </section>
+    <section id="actions" hidden>
+      <button data-mode="page">▣　收藏整个网页</button
+      ><button data-mode="selection">⌖　选择多个区域</button
+      ><button data-mode="thread">☷　收藏帖子与讨论串</button>
+      <p class="muted">
+        内容和资源保存在你的电脑。<br />X 默认收集 100 条；Reddit
+        保存已加载评论。
+      </p>
+      <button class="secondary" id="disconnect">断开配对</button>
+    </section>
+    <script type="module" src="pages/popup.js"></script>
+  </body>
+</html>

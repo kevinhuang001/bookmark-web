@@ -1,0 +1,159 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Lin 的设计手记 / X</title>
+    <style>
+      body {
+        margin: 0;
+        background: #000;
+        color: #e7e9ea;
+        font:
+          15px -apple-system,
+          system-ui;
+      }
+      main {
+        max-width: 650px;
+        margin: auto;
+        border-left: 1px solid #2f3336;
+        border-right: 1px solid #2f3336;
+      }
+      header {
+        padding: 18px 22px;
+        font-size: 21px;
+        font-weight: 700;
+        border-bottom: 1px solid #2f3336;
+      }
+      article {
+        padding: 23px;
+        border-bottom: 1px solid #2f3336;
+        display: flex;
+        gap: 13px;
+      }
+      .avatar {
+        width: 42px;
+        height: 42px;
+        flex-shrink: 0;
+        border-radius: 50%;
+        background: #5c8676;
+        display: grid;
+        place-items: center;
+        font-size: 20px;
+      }
+      .body {
+        flex: 1;
+        min-width: 0;
+      }
+      .name {
+        font-weight: 700;
+      }
+      .name small {
+        color: #71767b;
+        font-weight: 400;
+        margin-left: 8px;
+      }
+      .text {
+        line-height: 1.8;
+        margin-top: 8px;
+        white-space: pre-line;
+      }
+      .photo {
+        height: 160px;
+        border-radius: 16px;
+        background: linear-gradient(150deg, #b5c6b8, #4d7463);
+        display: grid;
+        place-items: center;
+        color: #e8eee8;
+        margin-top: 14px;
+        font-size: 21px;
+        letter-spacing: 5px;
+      }
+      .stats {
+        display: flex;
+        justify-content: space-between;
+        color: #71767b;
+        font-size: 12px;
+        margin-top: 20px;
+      }
+      a {
+        color: #1d9bf0;
+        text-decoration: none;
+      }
+      .verified {
+        color: #1d9bf0;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>←　帖子</header>
+      <article
+        data-testid="tweet"
+        data-likes="128"
+        data-replies="2"
+        data-reposts="32"
+      >
+        <div class="avatar">林</div>
+        <div class="body">
+          <div class="name" data-testid="User-Name">
+            Lin <span class="verified">✓</span
+            ><small>@lin_notes · 2 小时</small>
+          </div>
+          <div class="text" data-testid="tweetText">
+            最近一直在思考：一个好的收藏工具，应该让我们更容易重新遇见那些值得留下的内容。
+            不是把网页丢进一个黑洞，而是给灵感一个可以回来的地方。🌿
+          </div>
+          <div class="photo">
+            <img
+              alt="山间湖泊"
+              width="550"
+              height="260"
+              style="
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                border-radius: 16px;
+              "
+              src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxOTIwIiBoZWlnaHQ9IjEyMDAiIHZpZXdCb3g9IjAgMCAxOTIwIDEyMDAiPjxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0ic2t5IiB4Mj0iMCIgeTI9IjEiPjxzdG9wIHN0b3AtY29sb3I9IiNiOWRjZWMiLz48c3RvcCBvZmZzZXQ9Ii41NSIgc3RvcC1jb2xvcj0iI2U3ZWRmMCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2Q2ZDllYyIvPjwvbGluZWFyR3JhZGllbnQ+PGxpbmVhckdyYWRpZW50IGlkPSJmYXIiIHgyPSIuNSIgeTI9IjEiPjxzdG9wIHN0b3AtY29sb3I9IiM3ZTk5YmUiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNiMWM3ZGQiLz48L2xpbmVhckdyYWRpZW50PjxsaW5lYXJHcmFkaWVudCBpZD0icm9jayIgeDI9Ii43IiB5Mj0iMSI+PHN0b3Agc3RvcC1jb2xvcj0iI2NjYjliMSIvPjxzdG9wIG9mZnNldD0iLjUiIHN0b3AtY29sb3I9IiM5YjlkYjgiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiM3MDhhYTgiLz48L2xpbmVhckdyYWRpZW50PjxsaW5lYXJHcmFkaWVudCBpZD0id2F0ZXIiIHgyPSIuMiIgeTI9IjEiPjxzdG9wIHN0b3AtY29sb3I9IiM3ZGJjZDAiLz48c3RvcCBvZmZzZXQ9Ii41IiBzdG9wLWNvbG9yPSIjNzZhMWM4Ii8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjYTRhOGQwIi8+PC9saW5lYXJHcmFkaWVudD48bGluZWFyR3JhZGllbnQgaWQ9InNob3JlIiB4Mj0iMSIgeTI9IjEiPjxzdG9wIHN0b3AtY29sb3I9IiM3OTlmYTAiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiM0ODZjOTIiLz48L2xpbmVhckdyYWRpZW50PjxmaWx0ZXIgaWQ9ImdyYWluIj48ZmVUdXJidWxlbmNlIHR5cGU9ImZyYWN0YWxOb2lzZSIgYmFzZUZyZXF1ZW5jeT0iLjY1IiBudW1PY3RhdmVzPSIzIiBzdGl0Y2hUaWxlcz0ic3RpdGNoIi8+PGZlQ29sb3JNYXRyaXggdHlwZT0ic2F0dXJhdGUiIHZhbHVlcz0iMCIvPjxmZUNvbXBvbmVudFRyYW5zZmVyPjxmZUZ1bmNBIHR5cGU9ImxpbmVhciIgc2xvcGU9Ii4wNTUiLz48L2ZlQ29tcG9uZW50VHJhbnNmZXI+PGZlQmxlbmQgaW49IlNvdXJjZUdyYXBoaWMiIG1vZGU9InNvZnQtbGlnaHQiLz48L2ZpbHRlcj48L2RlZnM+PGcgZmlsdGVyPSJ1cmwoI2dyYWluKSI+PHJlY3Qgd2lkdGg9IjE5MjAiIGhlaWdodD0iMTIwMCIgZmlsbD0idXJsKCNza3kpIi8+PHBhdGggZD0iTTAgNTEwIDExMCA0MjAgMjA1IDM3NSAyNjggMzg4IDM5MCAyMzYgNDk0IDM0MCA2MzAgMjEyIDc5NSA0MDAgOTA1IDMwMCAxMDQwIDM1MCAxMTUwIDIyMCAxMjkwIDM2OCAxNDAwIDI3NSAxNTUwIDQxMCAxNzAwIDMyMCAxOTIwIDQ1MFY4MDBIMFoiIGZpbGw9InVybCgjZmFyKSIvPjxwYXRoIGQ9Im0wIDU3MCAxMjgtMTM2IDEwOCA2NSAxMjgtMjAwIDczIDc3IDY1LTYyIDExMSAxODUgMTI1LTExMyAxMDEgODkgMTI5LTEwNiAxMzIgMTU1IDExMS02NiAxMDIgNzEgMTM5LTExNCAxMjggODggMTQwLTIydjMwMEgwWiIgZmlsbD0idXJsKCNyb2NrKSIvPjxwYXRoIGQ9Im0xMjggNDM0IDEwOCA2NSAxMjgtMjAwLTI1IDEzNy01NiA0MC0yNyAxMDgtNzItNzVaTTQzNyAzNzZsNjUtNjIgMTExIDE4NS04OC02Ny0yNi01Ny0yMCA2OVpNMTAwMCA0MjRsMTExLTY2IDEwMiA3MS03NC0yOC0zOSA0Mi00NC0xOVoiIGZpbGw9IiNlOWU2ZTIiIG9wYWNpdHk9Ii42NCIvPjxwYXRoIGQ9Ik0wIDY1NFE0MjAgNTY2IDc4MCA2NDNUMTQ2MCA2MTdUMTkyMCA2NjBWMTIwMEgwWiIgZmlsbD0idXJsKCN3YXRlcikiLz48cGF0aCBkPSJNMCA1NjZxMTEyIDE0IDIzOCAxMjl0MzEwIDYwbDE1NyA4OS0xMTAgNjYtMjE1LTE5TDAgMTA2M1oiIGZpbGw9InVybCgjc2hvcmUpIi8+PHBhdGggZD0iTTAgNzA1cTI1MC0xMiA0MTAgNjJsMTk4IDcwLTIzMC00MkwwIDgyOFoiIGZpbGw9IiNhZmM3YjYiIG9wYWNpdHk9Ii41MiIvPjxwYXRoIGQ9Ik0wIDg4NXEyNDAtMTAxIDQ3MC0xMEw2OTUgOTc5bC05OCAyMjFIMFoiIGZpbGw9IiM3MTg5YWQiLz48cGF0aCBkPSJNMTIyMCAxMjAwcTE1MC0yNjcgMzY1LTI5N2wzMzUtOTF2Mzg4WiIgZmlsbD0iIzgxOTZiOSIvPjxnIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2U3ZjRmNiIgb3BhY2l0eT0iLjE0Ij48cGF0aCBkPSJNOTIwIDc3N2g2NTBNODEwIDg0M2g3OTBNNzY1IDkzMGg1MDBNNjUwIDEwMzJoODAwTTYyMCAxMTAwaDUwMCIgc3Ryb2tlLXdpZHRoPSIzIi8+PHBhdGggZD0iTTEwMTAgNzUwaDQ1ME05MDAgODE1aDcwME04MDAgOTAwaDYwME03MDAgMTAwMGg3ODBNNjAwIDExMzBoNjUwIiBzdHJva2Utd2lkdGg9IjEuNSIvPjwvZz48L2c+PC9zdmc+Cg=="
+            />
+          </div>
+          <div class="stats">
+            <span>♡ 128</span><span>⇄ 32</span><span>▥ 8,420</span
+            ><a href="/lin/status/1001">↗</a>
+          </div>
+        </div>
+      </article>
+      <article data-testid="tweet">
+        <div class="avatar" style="background: #64748b">陈</div>
+        <div class="body">
+          <div class="name" data-testid="User-Name">
+            Chen<small>@chenbuilds · 1 小时</small>
+          </div>
+          <div class="text" data-testid="tweetText">
+            完全同意！尤其是保留原来的排版和上下文，回看时才会想起当时为什么被打动。
+          </div>
+          <div class="stats">
+            <span>♡ 24</span><span>⇄ 3</span><span>▥ 1,282</span
+            ><a href="/chen/status/1002">↗</a>
+          </div>
+        </div>
+      </article>
+      <article data-testid="tweet">
+        <div class="avatar" style="background: #887785">M</div>
+        <div class="body">
+          <div class="name" data-testid="User-Name">
+            Mia<small>@mia_reads · 45 分钟</small>
+          </div>
+          <div class="text" data-testid="tweetText">
+            如果还支持全文搜索和自己的
+            WebDAV，那就太适合做一个长期的个人资料库了。
+          </div>
+          <div class="stats">
+            <span>♡ 17</span><span>⇄ 1</span><span>▥ 860</span
+            ><a href="/mia/status/1003">↗</a>
+          </div>
+        </div>
+      </article>
+    </main>
+  </body>
+</html>
