@@ -1,6 +1,7 @@
 /** Vendor a small, licensed subset; runtime works without a CDN or npm resolver. */
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 const aliases = {
+  video: "video",
   copy: "copy",
   file: "file-text",
   search: "search",

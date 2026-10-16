@@ -5,6 +5,8 @@
   color: #273542;
   background: #e4e9ed;
   font-synthesis: none;
+  --glass-tint: rgba(237, 243, 247, 0.42);
+  --glass-blur: 30px;
   --muted: #82909b;
   --accent: #2d6d95;
   --stroke: #ffffffb0;
@@ -697,7 +699,7 @@ body {
   padding: 0 12px;
   background:
     linear-gradient(125deg, #ffffff20, #ffffff0a 55%, #ffffff17),
-    rgba(255, 255, 255, 0.17);
+    var(--glass-tint);
   backdrop-filter: blur(18px) saturate(155%);
   -webkit-backdrop-filter: blur(18px) saturate(155%);
   border: 1px solid #ffffff90;
@@ -1038,10 +1040,6 @@ body {
 }
 .native-glass .desktop-scene {
   background: none;
-}
-.native-glass #sidebar {
-  background:
-    linear-gradient(125deg, #ffffff16, #ffffff04), rgba(255, 255, 255, 0.12);
 }
 .native-glass #app {
   background: transparent;
@@ -1833,10 +1831,6 @@ body,
   width: 14px;
   height: 14px;
 }
-.native-glass #sidebar {
-  background: rgba(236, 241, 245, 0.84);
-  backdrop-filter: blur(32px) saturate(115%);
-}
 .traffic button span {
   width: 8px;
   height: 8px;
@@ -1884,4 +1878,18 @@ body,
 }
 [hidden] {
   display: none !important;
+}
+
+/* One softly translucent frosted treatment across all desktop hosts. */
+#sidebar,
+.native-glass #sidebar {
+  background: var(--glass-tint);
+  backdrop-filter: blur(var(--glass-blur)) saturate(115%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(115%);
+}
+#main {
+  background: rgba(248, 250, 252, 0.88);
+}
+.window-titlebar {
+  background: rgba(255, 255, 255, 0.72);
 }

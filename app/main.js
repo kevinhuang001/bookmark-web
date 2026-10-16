@@ -956,8 +956,7 @@ if (globalThis.__TAURI__) {
   });
 }
 
-if (globalThis.__TAURI__ && /Mac|Windows/.test(navigator.userAgent))
-  document.body.classList.add("native-glass");
+if (globalThis.__TAURI__) document.body.classList.add("native-glass");
 
 $("dialog").addEventListener("close", () => {
   state.editing = null;

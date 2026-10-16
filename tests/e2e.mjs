@@ -470,8 +470,8 @@ try {
     .click();
   assert.equal(await page.locator(".reddit-comment").count(), 108);
   assert.match(
-    await page.locator(".discussion-scope").textContent(),
-    /已保存 108 条/,
+    await page.locator(".reddit-comments-title").textContent(),
+    /108/,
   );
   await page.locator(".reddit-comment").last().scrollIntoViewIfNeeded();
   assert.equal(await page.locator(".reddit-comment").last().isVisible(), true);
@@ -719,8 +719,16 @@ try {
     background: getComputedStyle(el).backgroundColor,
     blur: getComputedStyle(el).backdropFilter,
   }));
-  assert.match(glass.background, /0\.17/);
-  assert.match(glass.blur, /blur/);
+  assert.match(glass.background, /0\.42/);
+  assert.match(glass.blur, /blur\(30px\)/);
+  await page.locator("body").evaluate((el) => el.classList.add("native-glass"));
+  const nativeTint = await page
+    .locator("#sidebar")
+    .evaluate((el) => getComputedStyle(el).backgroundColor);
+  assert.equal(nativeTint, glass.background);
+  await page
+    .locator("body")
+    .evaluate((el) => el.classList.remove("native-glass"));
   pass(
     "webpage files live inside nested folders, collapse with them, and sidebar uses translucent material",
   );
@@ -834,6 +842,15 @@ try {
   await page.screenshot({ path: "artifacts/glassmark-x.png" });
   await page.locator('button[data-view="reddit"]').click();
   await expect(page.locator(".reddit-post")).toHaveCount(3);
+  await expect(
+    page.locator(".reddit-archive-header .reddit-wordmark"),
+  ).toBeVisible();
+  assert.equal(
+    await page
+      .locator(".reddit-shell .x-shell,.reddit-shell .saved-site-sidebar")
+      .count(),
+    0,
+  );
   assert.equal(
     await page
       .locator(
@@ -1123,19 +1140,74 @@ try {
   assert.ok(note.posts[0].avatarUrl.endsWith("avatar.svg"));
   assert.doesNotMatch(note.text, /推荐笔记/);
   const noteItem = await save(note);
+  const noteExtras = [];
+  for (const [index, title] of [
+    "一条安静的山间小路",
+    "周末的片刻留白",
+    "把日常慢慢收藏",
+    "山野有风",
+  ].entries()) {
+    noteExtras.push(
+      await save({
+        ...note,
+        title,
+        text: title,
+        url: note.url.replace("abc123", `sample${index}`),
+        posts: [
+          {
+            ...note.posts[0],
+            title,
+            text: title + "。留住值得回看的风景。",
+            media: note.posts[0].media.filter((m) => m.type === "image"),
+            authorName: ["小林", "南山", "小满", "木木"][index],
+          },
+        ],
+      }),
+    );
+  }
   await page.waitForTimeout(3300);
   await page.locator('button[data-view="xiaohongshu"]').click();
-  await expect(page.locator(".note-post")).toHaveCount(1);
-  await page.locator(".note-post").click();
-  await expect(page.locator(".reddit-comment")).toHaveCount(1);
+  await expect(page.locator(".note-post")).toHaveCount(5);
+  assert.equal(
+    await page
+      .locator(
+        ".note-shell .x-shell,.note-shell .x-feed-header,.note-shell .reddit-comment,.note-shell .saved-site-sidebar",
+      )
+      .count(),
+    0,
+  );
+  assert.equal(await page.locator(".note-grid .note-cover").count(), 5);
+  await page.screenshot({
+    path: "artifacts/glassmark-xiaohongshu-collection.png",
+  });
+  await page.locator(`.note-post[data-open-archive="${noteItem.id}"]`).click();
+  await expect(page.locator(".note-comment")).toHaveCount(1);
+  await expect(page.locator(".note-gallery")).toBeVisible();
+  const split = await page.locator(".note-detail").evaluate((el) => {
+    const gallery = el.querySelector(".note-gallery").getBoundingClientRect();
+    const content = el
+      .querySelector(".note-detail-content")
+      .getBoundingClientRect();
+    return gallery.right <= content.left + 2;
+  });
+  assert.equal(split, true);
+  await page.getByRole("button", { name: "下一张", exact: true }).click();
+  await expect(page.locator(".note-gallery-count")).toHaveText("2 / 2");
+  await page.getByRole("button", { name: "上一张", exact: true }).click();
+  await expect(page.locator(".note-gallery-count")).toHaveText("1 / 2");
+  await page.screenshot({ path: "artifacts/glassmark-xiaohongshu-detail.png" });
+  await page.getByRole("button", { name: "返回收藏", exact: true }).click();
+  await expect(page.locator(".note-post")).toHaveCount(5);
   assert.equal(await page.locator(".show-thread").count(), 0);
   await page.getByRole("searchbox", { name: "搜索 小红书 收藏" }).fill("山间");
   await page
     .getByRole("searchbox", { name: "搜索 小红书 收藏" })
     .press("Enter");
-  await expect(page.locator(".note-post")).toHaveCount(1);
+  await expect(page.locator(".note-post")).toHaveCount(2);
   await page.screenshot({ path: "artifacts/glassmark-xiaohongshu.png" });
   await call("/api/items/" + noteItem.id, { method: "DELETE" });
+  for (const item of noteExtras)
+    await call("/api/items/" + item.id, { method: "DELETE" });
   pass(
     "Xiaohongshu captures only the open note and loaded comments, archives media, opens detail and searches locally",
   );
@@ -1226,6 +1298,12 @@ try {
     console.log("VIDEO", video);
   }
   console.log(`Passed ${checks.length} end-to-end checks.`);
+} catch (error) {
+  await context
+    ?.pages()[0]
+    ?.screenshot({ path: "artifacts/e2e-failure.png" })
+    .catch(() => {});
+  throw error;
 } finally {
   if (context) await context.close();
   if (browser) await browser.close();
