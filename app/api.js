@@ -1,3 +1,4 @@
+import { t as tr, localizeError } from "./i18n.js";
 let connection;
 export async function connect() {
   if (globalThis.__TAURI__) {
@@ -5,7 +6,7 @@ export async function connect() {
   } else {
     const response = await fetch("/__dev/connection");
     if (!response.ok)
-      throw new Error("请使用 Tauri 客户端，或运行 npm run dev -- --demo");
+      throw new Error(tr("请使用 Tauri 客户端，或运行 npm run dev -- --demo"));
     connection = await response.json();
   }
   // The native bridge starts asynchronously with the window.
@@ -17,7 +18,7 @@ export async function connect() {
       await new Promise((r) => setTimeout(r, 200));
     }
   }
-  throw new Error("本地服务启动失败，请检查端口 47831 是否被其他程序占用");
+  throw new Error(tr("本地服务启动失败，请检查端口 47831 是否被其他程序占用"));
 }
 export async function request(path, options = {}) {
   const response = await fetch(connection.base + path, {
@@ -32,7 +33,10 @@ export async function request(path, options = {}) {
     try {
       detail = (await response.json()).error;
     } catch {}
-    throw new Error(detail || `请求失败（${response.status}）`);
+    throw new Error(
+      localizeError(detail) ||
+        `${tr("请求失败（{0}）", { 0: response.status })}`,
+    );
   }
   return response;
 }

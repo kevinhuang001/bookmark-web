@@ -1,3 +1,4 @@
+import { t as tr } from "../../../app/i18n.js";
 const OMIT = new Set([
   "SCRIPT",
   "IFRAME",
@@ -63,7 +64,7 @@ export function serializeElement(
     )
       return "";
     if (++count > 60000)
-      throw new Error("页面超过 60000 个元素，请选择较小区域后重试");
+      throw new Error(tr("页面超过 60000 个元素，请选择较小区域后重试"));
     if (node instanceof HTMLImageElement) {
       const avatar =
         /avatar|profile_images|snoovatar/i.test(node.currentSrc || node.src) ||
@@ -129,7 +130,7 @@ export function serializeElement(
       try {
         return `<img style="${escapeHtml(clone.getAttribute("style"))}" src="${node.toDataURL()}">`;
       } catch {
-        warnings.push("受跨域限制的 canvas 未能保存");
+        warnings.push(tr("受跨域限制的 canvas 未能保存"));
       }
     }
     if (node instanceof HTMLAnchorElement) {

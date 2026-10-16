@@ -79,6 +79,11 @@ try {
     403,
   );
   pass("unauthorized access and hostile web origins are blocked");
+  await post(
+    "/api/preferences",
+    { ...(await get("/api/preferences")), language: "zh-CN" },
+    "PUT",
+  );
   const pairing = await post("/api/pairing", {});
   assert.equal(
     (
@@ -177,6 +182,7 @@ try {
     await source.addScriptTag({ content: captureScript });
     return source.evaluate((opts) => GlassmarkCapture.collect(opts), {
       mode,
+      language: "zh-CN",
       ...options,
     });
   }
@@ -1139,6 +1145,25 @@ try {
   assert.equal(note.posts[0].media.length, 2);
   assert.ok(note.posts[0].avatarUrl.endsWith("avatar.svg"));
   assert.doesNotMatch(note.text, /推荐笔记/);
+  const sourceLocale = await source.evaluate(async () => {
+    const before = document.documentElement.lang;
+    const capture = await GlassmarkCapture.collect({
+      mode: "thread",
+      language: "ja",
+    });
+    return {
+      before,
+      after: document.documentElement.lang,
+      title: capture.posts[0].title,
+      warnings: capture.warnings.join(" "),
+    };
+  });
+  assert.equal(sourceLocale.before, sourceLocale.after);
+  assert.equal(sourceLocale.title, "山间的一天");
+  assert.match(sourceLocale.warnings, /読み込み済み/);
+  pass(
+    "capture controls use the requested language without changing the source document language or post text",
+  );
   const noteItem = await save(note);
   const noteExtras = [];
   for (const [index, title] of [
@@ -1232,6 +1257,7 @@ try {
             get: async (key) =>
               key === "connection" ? { connection: { token } } : {},
             remove: async () => {},
+            set: async () => {},
           },
         },
       };
@@ -1276,6 +1302,52 @@ try {
   });
   await popup.evaluate(() => document.fonts.ready);
   await popup.screenshot({ path: "artifacts/glassmark-popup.png" });
+  // Switch through the actual settings control and reload, preserving user content.
+  await page.locator("#settings").click();
+  await page.locator('[data-pref="language"]').selectOption("en");
+  await page.getByRole("button", { name: "保存设置", exact: true }).click();
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  await page.locator('[data-view="web"]').click();
+  await expect(page.locator("#folders")).toContainText("灵感花园");
+  await popup.reload();
+  await expect(popup.locator("html")).toHaveAttribute("lang", "en");
+  await expect(popup.locator("#save-page")).toHaveText(/Save entire page/);
+  await page.locator("#settings").click();
+  await expect(page.getByLabel("Language", { exact: true })).toHaveValue("en");
+  const previousSize = page.viewportSize();
+  await page.setViewportSize({ width: 960, height: 640 });
+  await expect(
+    page.getByRole("button", { name: "Save settings", exact: true }),
+  ).toBeInViewport();
+  await page.getByLabel("Language", { exact: true }).selectOption("ja");
+  await page
+    .getByRole("button", { name: "Save settings", exact: true })
+    .click();
+  await expect(page.locator("html")).toHaveAttribute("lang", "ja");
+  await page.locator("#settings").click();
+  await expect(page.getByLabel("言語", { exact: true })).toHaveValue("ja");
+  await page.getByLabel("言語", { exact: true }).selectOption("system");
+  await page.getByRole("button", { name: "設定を保存", exact: true }).click();
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  await popup.addInitScript(() =>
+    Object.defineProperty(navigator, "language", { value: "ja-JP" }),
+  );
+  await popup.reload();
+  await expect(popup.locator("html")).toHaveAttribute("lang", "en");
+  const systemPreference = await get("/api/preferences");
+  assert.equal(systemPreference.language, "system");
+  assert.equal(systemPreference.resolvedLanguage, "en");
+  await page.locator("#settings").click();
+  await page.getByLabel("Language", { exact: true }).selectOption("zh-CN");
+  await page
+    .getByRole("button", { name: "Save settings", exact: true })
+    .click();
+  await expect(page.locator("html")).toHaveAttribute("lang", "zh-CN");
+  await page.setViewportSize(previousSize);
+  assert.equal((await get("/api/preferences")).language, "zh-CN");
+  pass(
+    "language settings persist across reloads, extensions follow the client, user folder names remain original and compact English controls fit",
+  );
   await popup.close();
   pass(
     "popup exposes only post actions on X, Reddit and Xiaohongshu; webpages retain both capture modes and connection settings expand",

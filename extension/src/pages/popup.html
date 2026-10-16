@@ -4,83 +4,109 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <link rel="stylesheet" href="extension.css" />
-    <title>Glassmark · 收藏</title>
+    <title data-i18n="Glassmark · 收藏">Glassmark · 收藏</title>
   </head>
   <body class="popup">
     <header class="popup-header">
       <div class="brand"><span data-icon="logo"></span>Glassmark</div>
-      <span class="connection-badge" id="connection-badge">检查连接</span>
+      <span class="connection-badge" id="connection-badge" data-i18n="检查连接"
+        >检查连接</span
+      >
     </header>
-    <p id="status" role="status" aria-live="polite">正在连接客户端…</p>
+    <p id="status" role="status" aria-live="polite" data-i18n="正在连接客户端…">
+      正在连接客户端…
+    </p>
     <section id="pair" hidden>
       <div class="pair-heading">
         <span data-icon="link"></span>
         <div>
-          <h2>连接 Glassmark</h2>
-          <small>浏览器与客户端安全配对</small>
+          <h2 data-i18n="连接 Glassmark">连接 Glassmark</h2>
+          <small data-i18n="浏览器与客户端安全配对"
+            >浏览器与客户端安全配对</small
+          >
         </div>
       </div>
-      <p class="muted">
+      <p
+        class="muted"
+        data-i18n="打开客户端「设置 → 浏览器连接」，复制配对码并粘贴到下方。"
+      >
         打开客户端「设置 → 浏览器连接」，复制配对码并粘贴到下方。
       </p>
       <label
-        >配对码<input
+        ><span data-i18n="配对码">配对码</span
+        ><input
           id="code"
           inputmode="numeric"
           autocomplete="one-time-code"
           placeholder="000000"
           maxlength="6" /></label
-      ><button id="pairButton">连接客户端</button>
+      ><button id="pairButton" data-i18n="连接客户端">连接客户端</button>
     </section>
     <section class="page-context" id="page-context">
       <div class="context-icon" id="context-icon">
         <span data-icon="globe"></span>
       </div>
       <div>
-        <small id="page-kind">当前网页</small
-        ><strong id="page-title">读取当前标签页…</strong
+        <small id="page-kind" data-i18n="当前网页">当前网页</small
+        ><strong id="page-title" data-i18n="读取当前标签页…"
+          >读取当前标签页…</strong
         ><span id="page-host"></span>
       </div>
     </section>
     <section id="actions" hidden>
       <div class="save-destination">
         <label id="folder-field"
-          >保存位置<select id="destination-folder">
-            <option value="">网页 · 根文件夹</option>
+          ><span data-i18n="保存位置">保存位置</span
+          ><select id="destination-folder">
+            <option value="" data-i18n="网页 · 根文件夹">
+              网页 · 根文件夹
+            </option>
           </select></label
         >
         <fieldset id="tags-field">
-          <legend>标签（可多选）</legend>
+          <legend data-i18n="标签（可多选）">标签（可多选）</legend>
           <div id="destination-tags" class="popup-tag-choices"></div>
-          <small>在客户端管理此来源的标签</small>
+          <small data-i18n="在客户端管理此来源的标签"
+            >在客户端管理此来源的标签</small
+          >
         </fieldset>
       </div>
       <button data-mode="thread" id="save-post">
         <span data-icon="bookmark"></span
-        ><span id="save-post-label">保存当前帖子与讨论</span>
+        ><span id="save-post-label" data-i18n="保存当前帖子与讨论"
+          >保存当前帖子与讨论</span
+        >
       </button>
       <button data-mode="page" id="save-page">
-        <span data-icon="globe"></span>保存整个网页
+        <span data-icon="globe"></span
+        ><span data-i18n="保存整个网页">保存整个网页</span>
       </button>
       <button data-mode="selection" class="secondary selection-action">
-        <span data-icon="pointer"></span>选择网页中的多个区域<span
-          class="action-key"
-          >↗</span
-        >
+        <span data-icon="pointer"></span
+        ><span data-i18n="选择网页中的多个区域">选择网页中的多个区域</span
+        ><span class="action-key">↗</span>
       </button>
     </section>
     <footer class="popup-footer">
-      <span>你的内容，留在你的电脑</span>
+      <span data-i18n="你的内容，留在你的电脑">你的内容，留在你的电脑</span>
       <details id="connection-settings">
         <summary>
-          <span data-icon="settings"></span>连接设置<span
-            class="connection-chevron"
-            >⌄</span
-          >
+          <span data-icon="settings"></span
+          ><span data-i18n="连接设置">连接设置</span
+          ><span class="connection-chevron">⌄</span>
         </summary>
-        <p class="muted">客户端需保持运行，收藏会自动保存到本机。</p>
-        <button class="secondary" id="retry-connection">重新检查连接</button
-        ><button class="secondary" id="disconnect">断开配对</button>
+        <p class="muted" data-i18n="客户端需保持运行，收藏会自动保存到本机。">
+          客户端需保持运行，收藏会自动保存到本机。
+        </p>
+        <button
+          class="secondary"
+          id="retry-connection"
+          data-i18n="重新检查连接"
+        >
+          重新检查连接</button
+        ><button class="secondary" id="disconnect" data-i18n="断开配对">
+          断开配对
+        </button>
       </details>
     </footer>
     <script type="module" src="pages/popup.js"></script>

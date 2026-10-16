@@ -6,8 +6,8 @@ const base = {
   manifest_version: 3,
   name: "Glassmark",
   version,
-  description:
-    "Archive pages, selected regions, X threads and Reddit discussions to your desktop.",
+  default_locale: "en",
+  description: "__MSG_extensionDescription__",
   permissions: ["activeTab", "scripting", "storage"],
   host_permissions: ["<all_urls>"],
   content_scripts: [
@@ -25,7 +25,10 @@ const base = {
       run_at: "document_start",
     },
   ],
-  action: { default_popup: "popup.html", default_title: "收藏到 Glassmark" },
+  action: {
+    default_popup: "popup.html",
+    default_title: "__MSG_saveToGlassmark__",
+  },
   icons: { 48: "icons/48.png", 128: "icons/128.png" },
 };
 await rm("dist", { recursive: true, force: true });
@@ -38,15 +41,52 @@ await cp("node_modules/hls.js/LICENSE", "dist/app/licenses/HLS.js-LICENSE.txt");
 for (const browser of ["chromium", "firefox"]) {
   const out = `dist/extension-${browser}`;
   await mkdir(out + "/pages", { recursive: true });
-  for (const name of [
-    "api.js",
-    "archive.js",
-    "hls.js",
-    "background.js",
-    "observe-media.js",
-    "picker.js",
-  ])
+  const browserMessages = {
+    en: {
+      extensionDescription:
+        "Save webpages, X threads, Reddit discussions and Xiaohongshu notes to your desktop.",
+      saveToGlassmark: "Save to Glassmark",
+    },
+    zh_CN: {
+      extensionDescription:
+        "将网页、X 帖子、Reddit 讨论和小红书笔记保存到桌面客户端。",
+      saveToGlassmark: "收藏到 Glassmark",
+    },
+    ja: {
+      extensionDescription:
+        "ウェブページ、Xのスレッド、Redditの議論、小紅書のノートをデスクトップに保存。",
+      saveToGlassmark: "Glassmarkに保存",
+    },
+  };
+  for (const [language, messages] of Object.entries(browserMessages)) {
+    await mkdir(`${out}/_locales/${language}`, { recursive: true });
+    await writeFile(
+      `${out}/_locales/${language}/messages.json`,
+      JSON.stringify(
+        Object.fromEntries(
+          Object.entries(messages).map(([key, message]) => [key, { message }]),
+        ),
+      ),
+    );
+  }
+
+  for (const name of ["background.js", "observe-media.js"])
     await cp("extension/src/" + name, out + "/" + name);
+  for (const name of ["api", "archive", "hls"])
+    await build({
+      entryPoints: [`extension/src/${name}.js`],
+      bundle: true,
+      format: "esm",
+      outfile: `${out}/${name}.js`,
+      target: "es2022",
+    });
+  await build({
+    entryPoints: ["extension/src/picker.js"],
+    bundle: true,
+    format: "iife",
+    outfile: out + "/picker.js",
+    target: "es2022",
+  });
   for (const name of ["popup", "capture"])
     await build({
       entryPoints: [`extension/src/pages/${name}.js`],

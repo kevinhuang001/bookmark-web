@@ -1,11 +1,19 @@
+import {
+  t as tr,
+  setLanguage,
+  translateDOM,
+  localizeError,
+} from "../../../app/i18n.js";
 import { hydrateIcons, icon } from "../../../app/icons.js";
 import { api, BASE, request, connected } from "../api.js";
 import { pageContext } from "../context.js";
 hydrateIcons();
+translateDOM();
 const $ = (id) => document.getElementById(id);
 let currentTab,
   context,
-  busy = false;
+  busy = false,
+  captureLanguage = "system";
 const esc = (s) =>
   String(s || "").replace(
     /[&<>"']/g,
@@ -15,41 +23,56 @@ const esc = (s) =>
       ],
   );
 function error(message) {
-  $("status").textContent = message;
+  $("status").textContent = localizeError(message);
   $("status").classList.add("error");
 }
 async function init() {
   $("status").classList.remove("error");
   const live = await connected();
-  $("connection-badge").textContent = live ? "已连接" : "未连接";
+  let options;
+  if (live) {
+    options = await (await request("/api/capture-options")).json();
+    captureLanguage =
+      options.preferences?.resolvedLanguage ||
+      options.preferences?.language ||
+      "system";
+    setLanguage(captureLanguage);
+  } else {
+    const stored = await api.storage.local.get("uiLanguage");
+    captureLanguage = stored.uiLanguage || "system";
+    setLanguage(captureLanguage);
+  }
+  translateDOM();
+  await api.storage.local.set({ uiLanguage: captureLanguage });
+  $("connection-badge").textContent = live ? tr("已连接") : tr("未连接");
   $("connection-badge").classList.toggle("online", live);
   $("status").textContent = live
-    ? "已就绪 · 收藏将发送到 Glassmark"
-    : "客户端未连接，请打开客户端后收藏";
+    ? tr("已就绪 · 收藏将发送到 Glassmark")
+    : tr("客户端未连接，请打开客户端后收藏");
   [currentTab] = await api.tabs.query({ active: true, currentWindow: true });
   context = pageContext(currentTab?.url);
-  $("page-title").textContent = currentTab?.title || "当前标签页";
-  $("page-host").textContent = context.host || "浏览器内部页面";
+  $("page-title").textContent = currentTab?.title || tr("当前标签页");
+  $("page-host").textContent = context.host || tr("浏览器内部页面");
   $("page-kind").textContent = context.isPost
     ? context.platform === "x"
-      ? "X · 帖子与讨论"
+      ? tr("X · 帖子与讨论")
       : context.platform === "xiaohongshu"
-        ? "小红书 · 笔记与评论"
-        : "Reddit · 帖子与评论"
-    : "网页内容";
+        ? tr("小红书 · 笔记与评论")
+        : tr("Reddit · 帖子与评论")
+    : tr("网页内容");
   $("context-icon").innerHTML = icon(
     context.isPost ? context.platform : "globe",
   );
   $("actions").hidden = !live || !context.supported;
   if (live && !context.supported)
-    error("此页面不能收藏，请打开一个 HTTP/HTTPS 网页");
+    error(tr("此页面不能收藏，请打开一个 HTTP/HTTPS 网页"));
   $("save-post").hidden = !context.isPost;
   $("save-page").hidden = context.isPost;
   document.querySelector(".selection-action").hidden = context.isPost;
   $("save-post-label").textContent =
     context.platform === "x"
-      ? "保存当前帖子与回复"
-      : "保存当前帖子与已加载评论";
+      ? tr("保存当前帖子与回复")
+      : tr("保存当前帖子与已加载评论");
   $("folder-field").hidden = context.isPost;
   $("tags-field").hidden = !context.isPost;
   try {
@@ -58,7 +81,6 @@ async function init() {
     });
     $("pair").hidden = !health.ok || live;
     if (live) {
-      const options = await (await request("/api/capture-options")).json();
       const config = options.preferences || {};
       const stored = await api.storage.local.get("capturePreferences");
       const prefs = stored.capturePreferences || {};
@@ -76,7 +98,7 @@ async function init() {
         );
       };
       $("destination-folder").innerHTML =
-        '<option value="">网页 · 根文件夹</option>' +
+        `<option value="">${tr("网页 · 根文件夹")}</option>` +
         folders
           .map(
             (f) =>
@@ -101,11 +123,12 @@ async function init() {
             (t) =>
               `<label><input type="checkbox" value="${esc(t)}" ${selected.has(t) ? "checked" : ""}><span>${esc(t)}</span></label>`,
           )
-          .join("") || '<p class="muted">还没有标签，可先在客户端新建。</p>';
+          .join("") ||
+        `<p class="muted">${tr("还没有标签，可先在客户端新建。")}</p>`;
     }
   } catch (e) {
     $("pair").hidden = true;
-    if (live) error("无法读取保存位置：" + e.message);
+    if (live) error(tr("无法读取保存位置：") + e.message);
   }
 }
 $("pairButton").onclick = async () => {
@@ -114,7 +137,7 @@ $("pairButton").onclick = async () => {
   $("pairButton").disabled = true;
   try {
     if (!/^\d{6}$/.test($("code").value.trim()))
-      throw new Error("请输入 6 位数字配对码");
+      throw new Error(tr("请输入 6 位数字配对码"));
     const response = await fetch(BASE + "/pair", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -124,7 +147,7 @@ $("pairButton").onclick = async () => {
       }),
       signal: AbortSignal.timeout(5000),
     });
-    if (!response.ok) throw new Error("配对码无效，请在客户端重新生成");
+    if (!response.ok) throw new Error(tr("配对码无效，请在客户端重新生成"));
     await api.storage.local.set({ connection: await response.json() });
     await init();
   } catch (e) {
@@ -150,7 +173,7 @@ for (const button of document.querySelectorAll("[data-mode]"))
       await request("/api/status");
       const tab = await api.tabs.get(currentTab.id);
       if (tab.url !== currentTab.url)
-        throw new Error("来源页面已变化，请重新打开扩展");
+        throw new Error(tr("来源页面已变化，请重新打开扩展"));
       const mode = button.dataset.mode;
       const tags =
         context.isPost && mode === "thread"
@@ -159,7 +182,7 @@ for (const button of document.querySelectorAll("[data-mode]"))
             )
           : [];
       if (tags.some((t) => new TextEncoder().encode(t).length > 100))
-        throw new Error("每个标签不能超过 100 字节");
+        throw new Error(tr("每个标签不能超过 100 字节"));
       const folderId =
         mode === "thread" ? null : $("destination-folder").value || null;
       const stored = await api.storage.local.get("capturePreferences");
@@ -176,12 +199,19 @@ for (const button of document.querySelectorAll("[data-mode]"))
           createdAt: Date.now(),
         },
       });
-      if (mode === "selection")
+      if (mode === "selection") {
+        await api.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: (language) => {
+            globalThis.__glassmarkLanguage = language;
+          },
+          args: [captureLanguage],
+        });
         await api.scripting.executeScript({
           target: { tabId: tab.id },
           files: ["picker.js"],
         });
-      else
+      } else
         await api.tabs.create({
           active: mode !== "thread",
           url:

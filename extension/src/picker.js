@@ -1,4 +1,6 @@
+import { t as tr, setLanguage } from "../../app/i18n.js";
 (() => {
+  setLanguage(globalThis.__glassmarkLanguage || "system");
   globalThis.__glassmarkPickerCleanup?.();
   const selected = [];
   let hovered;
@@ -10,8 +12,7 @@
   toolbar.setAttribute("data-glassmark-ui", "");
   toolbar.style.cssText =
     "position:fixed;bottom:28px;left:50%;transform:translateX(-50%);z-index:2147483647;background:#20232deF;color:white;padding:12px 16px;border-radius:18px;box-shadow:0 12px 50px #0005;font:14px system-ui;display:flex;gap:10px;align-items:center;backdrop-filter:blur(24px)";
-  toolbar.innerHTML =
-    '<span>点击选择 · ↑ 父级 · ↓ 子级</span><b>0 个区域</b><button data-action="done">收藏选区</button><button data-action="cancel">取消</button>';
+  toolbar.innerHTML = `<span>${tr("点击选择 · ↑ 父级 · ↓ 子级")}</span><b>${tr("0 个区域")}</b><button data-action="done">${tr("收藏选区")}</button><button data-action="cancel">${tr("取消")}</button>`;
   toolbar
     .querySelectorAll("button")
     .forEach(
@@ -48,7 +49,7 @@
           selected.splice(i, 1);
       selected.push(hovered);
     }
-    toolbar.querySelector("b").textContent = selected.length + " 个区域";
+    toolbar.querySelector("b").textContent = selected.length + tr(" 个区域");
   };
   const key = (e) => {
     if (e.key === "Escape") cleanup();

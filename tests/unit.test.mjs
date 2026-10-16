@@ -1,3 +1,12 @@
+import {
+  setLanguage,
+  getLanguage,
+  resolveLocale,
+  t,
+  catalogs,
+  localizeError,
+} from "../app/i18n.js";
+setLanguage("zh-CN");
 import { pageContext } from "../extension/src/context.js";
 import { itemPlatform } from "../app/library.js";
 import { test } from "node:test";
@@ -335,4 +344,86 @@ test("Xiaohongshu note context supports both detail routes and rejects lookalike
     }),
     "xiaohongshu",
   );
+});
+
+test("locale catalogs are complete and preserve every interpolation", () => {
+  const keys = Object.keys(catalogs["zh-CN"]);
+  const tokens = (s) => [...s.matchAll(/\{([\w]+)\}/g)].map((m) => m[1]).sort();
+  for (const language of ["en", "ja"]) {
+    assert.deepEqual(Object.keys(catalogs[language]).sort(), [...keys].sort());
+    for (const key of keys) {
+      const entry = catalogs[language][key];
+      for (const value of typeof entry === "string"
+        ? [entry]
+        : [entry.one, entry.other]) {
+        assert.ok(value.trim());
+        assert.deepEqual(
+          tokens(value),
+          tokens(catalogs["zh-CN"][key]),
+          language + ": " + key,
+        );
+      }
+    }
+  }
+});
+test("locale fallback, placeholders and backend errors use the chosen language", () => {
+  assert.equal(resolveLocale("system", "ja-JP"), "ja");
+  assert.equal(resolveLocale("system", "zh-TW"), "zh-CN");
+  assert.equal(resolveLocale("fr"), "en");
+  for (const [language, label] of [
+    ["en", "Settings"],
+    ["ja", "設定"],
+    ["zh-CN", "设置"],
+  ]) {
+    setLanguage(language);
+    assert.equal(t("设置"), label);
+    assert.equal(
+      t("打开 {1}", { 1: "User title <原文>" }).includes("User title <原文>"),
+      true,
+    );
+  }
+  setLanguage("en");
+  assert.equal(t("{2} 篇笔记", { 2: 1 }), "1 note");
+  assert.equal(t("{2} 篇笔记", { 2: 2 }), "2 notes");
+  assert.match(
+    localizeError("帖子数量需要在 1–1000 之间"),
+    /Post count must be between 1 and 1000/,
+  );
+  assert.equal(t("unknown diagnostic"), "unknown diagnostic");
+  setLanguage("zh-CN");
+});
+
+test("all explicit UI translation keys are present in every catalog", async () => {
+  const { readFile, readdir } = await import("node:fs/promises");
+  async function files(dir) {
+    return (
+      await Promise.all(
+        (await readdir(dir, { withFileTypes: true })).map((e) =>
+          e.isDirectory() ? files(dir + "/" + e.name) : [dir + "/" + e.name],
+        ),
+      )
+    ).flat();
+  }
+  const paths = [
+    ...(await files("app")),
+    ...(await files("extension/src")),
+  ].filter((p) => /\.(js|html)$/.test(p) && !p.includes("/locales/"));
+  for (const path of paths) {
+    const source = await readFile(path, "utf8");
+    const keys = [...source.matchAll(/\b(?:tr|t)\("((?:\\.|[^"\\])*)"/g)].map(
+      (m) => JSON.parse('"' + m[1] + '"'),
+    );
+    if (path.endsWith(".html"))
+      keys.push(
+        ...[...source.matchAll(/data-i18n(?:-[\w-]+)?="([^"]+)"/g)].map(
+          (m) => m[1],
+        ),
+      );
+    for (const key of keys)
+      for (const language of ["en", "zh-CN", "ja"])
+        assert.ok(
+          Object.hasOwn(catalogs[language], key),
+          path + ": " + language + ": " + key,
+        );
+  }
 });

@@ -1,3 +1,4 @@
+import { t as tr } from "../../app/i18n.js";
 import { hlsPlaylist } from "./hls.js";
 /** Bounded concurrent media downloads and local content rewrites. */
 export const DEFAULT_BUDGET = 500 * 1024 * 1024;
@@ -58,11 +59,11 @@ export async function readBounded(response, state, approve, signal) {
   let size = 0;
   async function permit(bytes, commit = false) {
     const turn = (state.gate || Promise.resolve()).then(async () => {
-      if (signal?.aborted) throw new Error("已取消");
+      if (signal?.aborted) throw new Error(tr("已取消"));
       if (state.total + bytes > state.limit) {
         if (state.declined || !(await approve(state.total + bytes))) {
           state.declined = true;
-          throw new Error("超过下载上限，已跳过此资源");
+          throw new Error(tr("超过下载上限，已跳过此资源"));
         }
         state.limit = Math.max(
           state.limit + (state.step || DEFAULT_BUDGET),
@@ -79,7 +80,7 @@ export async function readBounded(response, state, approve, signal) {
   const reader = response.body.getReader();
   try {
     while (true) {
-      if (signal?.aborted) throw new Error("已取消");
+      if (signal?.aborted) throw new Error(tr("已取消"));
       const { done, value } = await reader.read();
       if (done) break;
       await permit(value.byteLength, true);
@@ -127,11 +128,11 @@ export async function archiveResources(
       active: active.size,
     });
   async function process(url) {
-    if (signal?.aborted) throw new Error("已取消收藏");
+    if (signal?.aborted) throw new Error(tr("已取消收藏"));
     const record = { url, status: "failed", bytes: 0 };
     resources.push(record);
     if (!/^https?:/.test(url)) {
-      record.error = "该资源不是可下载的 HTTP 地址";
+      record.error = tr("该资源不是可下载的 HTTP 地址");
       return;
     }
     report(url);
@@ -152,7 +153,7 @@ export async function archiveResources(
       record.mime =
         response.headers.get("content-type") || "application/octet-stream";
       if (/text\/html/i.test(record.mime))
-        throw new Error("资源返回了网页或登录页，未保存为媒体");
+        throw new Error(tr("资源返回了网页或登录页，未保存为媒体"));
       let bytes = await readBounded(response, state, approve, signal);
       if (/mpegurl/i.test(record.mime) || /\.m3u8(?:\?|$)/i.test(url)) {
         const playlist = hlsPlaylist(
@@ -167,7 +168,7 @@ export async function archiveResources(
       }
       if (/dash\+xml/.test(record.mime))
         throw new Error(
-          "DASH 播放清单暂不支持，请使用站点提供的 HLS 或 MP4 视频",
+          tr("DASH 播放清单暂不支持，请使用站点提供的 HLS 或 MP4 视频"),
         );
       const hash = [
         ...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)),
@@ -214,12 +215,12 @@ export async function archiveResources(
     else break;
   }
   await Promise.allSettled(active);
-  if (signal?.aborted) throw new Error("已取消收藏");
+  if (signal?.aborted) throw new Error(tr("已取消收藏"));
   if (queue.length)
     resources.push({
       url: "resource-limit",
       status: "failed",
-      error: "资源数量超过设置上限，请缩小收藏范围",
+      error: tr("资源数量超过设置上限，请缩小收藏范围"),
       bytes: 0,
     });
   // A playlist with missing segments is explicitly incomplete, never a success.
@@ -233,7 +234,7 @@ export async function archiveResources(
           /\.(ts|m4s|m3u8|aac|mp4)(?:\?|$)/i.test(r.url),
       )
     )
-      record.warning = "部分视频分片未保存，离线播放可能不完整";
+      record.warning = tr("部分视频分片未保存，离线播放可能不完整");
   }
   return resources;
 }

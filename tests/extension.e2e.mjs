@@ -41,6 +41,15 @@ try {
   let worker = context.serviceWorkers()[0];
   if (!worker) worker = await context.waitForEvent("serviceworker");
   const extensionId = new URL(worker.url()).host;
+  const auth = { Authorization: "Bearer " + connection.token };
+  const preferences = await (
+    await fetch(connection.base + "/api/preferences", { headers: auth })
+  ).json();
+  await fetch(connection.base + "/api/preferences", {
+    method: "PUT",
+    headers: { ...auth, "Content-Type": "application/json" },
+    body: JSON.stringify({ ...preferences, language: "zh-CN" }),
+  });
   const popup = await context.newPage();
   await popup.goto(`chrome-extension://${extensionId}/popup.html`);
   await popup.locator("#pair").waitFor({ state: "visible" });

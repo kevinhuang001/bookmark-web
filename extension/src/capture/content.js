@@ -1,8 +1,10 @@
+import { t as tr, setLanguage } from "../../../app/i18n.js";
 import { pageContext } from "../context.js";
 import { videoSources } from "./video.js";
 import { platform, adapterFor, extractPost } from "./adapters.js";
 import { serializeElement, contentDocument, escapeHtml } from "./serialize.js";
 export async function collect({
+  language = "system",
   mode = "page",
   maxPosts = 100,
   autoLoadSeconds = 20,
@@ -10,6 +12,7 @@ export async function collect({
   includeAvatars = true,
   includeVideos = true,
 } = {}) {
+  setLanguage(language);
   globalThis.__glassmarkCaptureCanceled = false;
   const kind = platform(location.hostname);
   const config = adapterFor(kind);
@@ -21,7 +24,7 @@ export async function collect({
   let control;
   let finish = false;
   const notify = () => {
-    const message = `已识别 ${posts.size} 条帖子 / 评论`;
+    const message = `${tr("已识别 {0} 条帖子 / 评论", { 0: posts.size })}`;
     if (control) control.querySelector("span").textContent = message;
     try {
       globalThis.chrome?.runtime
@@ -125,17 +128,16 @@ export async function collect({
   let parts;
   if (mode === "thread" && kind !== "web") {
     if (kind === "xiaohongshu" && !context.isPost)
-      throw new Error("请先打开一篇小红书笔记详情");
+      throw new Error(tr("请先打开一篇小红书笔记详情"));
     if (kind === "x" && !/\/status\/\d+/.test(location.pathname))
-      throw new Error("请先打开一条 X 帖子的详情页");
+      throw new Error(tr("请先打开一条 X 帖子的详情页"));
     if (kind === "reddit" && !/\/comments\//.test(location.pathname))
-      throw new Error("请先打开 Reddit 讨论详情页");
+      throw new Error(tr("请先打开 Reddit 讨论详情页"));
     control = document.createElement("div");
     control.setAttribute("data-glassmark-ui", "");
     control.style.cssText =
       "position:fixed;top:16px;right:16px;z-index:2147483647;padding:14px 16px;border-radius:14px;background:#fff;color:#253c4d;box-shadow:0 5px 35px #0003;font:13px/1.6 system-ui;display:flex;gap:12px;align-items:center";
-    control.innerHTML =
-      '<strong>Glassmark</strong><span>正在识别主帖…</span><button type="button">保存已加载内容</button><button type="button">取消</button>';
+    control.innerHTML = `<strong>Glassmark</strong><span>${tr("正在识别主帖…")}</span><button type="button">${tr("保存已加载内容")}</button><button type="button">${tr("取消")}</button>`;
     control.querySelectorAll("button")[0].onclick = () => {
       finish = true;
     };
@@ -151,14 +153,16 @@ export async function collect({
         for (let attempt = 0; attempt < 10 && !rootId; attempt++) {
           await new Promise((r) => setTimeout(r, 300));
           if (globalThis.__glassmarkCaptureCanceled)
-            throw new Error("已取消收藏");
+            throw new Error(tr("已取消收藏"));
           accumulate(candidates());
           notify();
         }
       }
       if (!rootId)
         throw new Error(
-          "未识别到当前主帖，请等待帖子详情加载完成后重试；登录或访问限制也可能导致内容不可见",
+          tr(
+            "未识别到当前主帖，请等待帖子详情加载完成后重试；登录或访问限制也可能导致内容不可见",
+          ),
         );
       let unchanged = 0;
       while (
@@ -168,7 +172,7 @@ export async function collect({
         performance.now() - started < autoLoadSeconds * 1000
       ) {
         if (globalThis.__glassmarkCaptureCanceled)
-          throw new Error("已取消收藏");
+          throw new Error(tr("已取消收藏"));
         window.scrollBy(0, Math.max(600, innerHeight * 0.8));
         await new Promise((resolve) => setTimeout(resolve, 700));
         const before = posts.size;
@@ -177,10 +181,13 @@ export async function collect({
         unchanged = posts.size === before ? unchanged + 1 : 0;
         if (unchanged >= 3) break;
       }
-      if (globalThis.__glassmarkCaptureCanceled) throw new Error("已取消收藏");
+      if (globalThis.__glassmarkCaptureCanceled)
+        throw new Error(tr("已取消收藏"));
       if (performance.now() - started >= autoLoadSeconds * 1000)
         warnings.push(
-          "已保存当前收集到的内容；自动加载达到设置的时长上限，可继续收集更多回复",
+          tr(
+            "已保存当前收集到的内容；自动加载达到设置的时长上限，可继续收集更多回复",
+          ),
         );
     } finally {
       control.remove();
@@ -189,8 +196,8 @@ export async function collect({
     parts = [];
     warnings.push(
       kind === "x"
-        ? `保存了 ${posts.size} 条已加载帖子；隐藏、受限或未加载的回复不包含在内`
-        : `保存了 ${posts.size} 个已加载主帖/评论；折叠及未加载评论不包含在内`,
+        ? `${tr("保存了 {0} 条已加载帖子；隐藏、受限或未加载的回复不包含在内", { 0: posts.size })}`
+        : `${tr("保存了 {0} 个已加载主帖/评论；折叠及未加载评论不包含在内", { 0: posts.size })}`,
     );
   } else {
     const roots =
@@ -198,7 +205,7 @@ export async function collect({
         ? globalThis.__glassmarkSelection || []
         : [document.body];
     if (!roots.length || roots.some((el) => !el.isConnected))
-      throw new Error("选择已失效，请重新选择区域");
+      throw new Error(tr("选择已失效，请重新选择区域"));
     parts = roots.map((el) => {
       const capture = serializeElement(el, {
         includeImages,
@@ -248,7 +255,7 @@ export async function collect({
     try {
       visit(sheet.cssRules, sheet.href || document.baseURI);
     } catch {
-      warnings.push("部分跨域字体无法读取，正文仍按保存的排版显示");
+      warnings.push(tr("部分跨域字体无法读取，正文仍按保存的排版显示"));
     }
   }
   return {

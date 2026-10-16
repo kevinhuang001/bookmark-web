@@ -1,3 +1,4 @@
+import { localizeError } from "../../app/i18n.js";
 export const api = globalThis.browser || globalThis.chrome;
 export const BASE = "http://127.0.0.1:47831";
 export async function credentials() {
@@ -14,8 +15,11 @@ export async function request(path, options = {}) {
     signal: options.signal || AbortSignal.timeout(10000),
   });
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(error || `HTTP ${response.status}`);
+    let error = await response.text();
+    try {
+      error = JSON.parse(error).error || error;
+    } catch {}
+    throw new Error(localizeError(error) || `HTTP ${response.status}`);
   }
   return response;
 }

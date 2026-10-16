@@ -1,3 +1,4 @@
+import { t as tr, locale } from "./i18n.js";
 import { icon, escapeHtml as esc } from "./icons.js";
 import { rootPost, communityFromUrl, feedItems } from "./library.js";
 import { ArchiveMedia } from "./media.js";
@@ -7,12 +8,14 @@ export function releaseSocial() {
   media = null;
 }
 const stamp = (item) =>
-  new Date(item.capturedAt).toLocaleDateString("zh-CN", {
+  new Date(item.capturedAt).toLocaleDateString(locale(), {
     month: "short",
     day: "numeric",
   });
 function authorName(post) {
-  return post.authorName || post.author?.split("@")[0].trim() || "收藏的作者";
+  return (
+    post.authorName || post.author?.split("@")[0].trim() || tr("收藏的作者")
+  );
 }
 function avatar(post, item) {
   const name = authorName(post);
@@ -34,31 +37,31 @@ function mediaMarkup(post, item) {
       ? post.media || []
       : (post.media || []).slice(0, 4);
   if (!records.length) return "";
-  return `<div class="social-media-grid media-count-${records.length}">${records.map((m) => `<div class="social-media media-loading ${m.type === "video" ? "video-media" : ""}">${m.type === "video" ? `<video controls preload="metadata" data-archive-id="${item.id}" data-archive-media="${esc(m.url)}"></video>` : `<img loading="lazy" alt="${esc(m.alt || "收藏的图片")}" data-archive-id="${item.id}" data-archive-media="${esc(m.url)}">`}<span class="media-fallback">媒体未归档</span></div>`).join("")}</div>`;
+  return `<div class="social-media-grid media-count-${records.length}">${records.map((m) => `<div class="social-media media-loading ${m.type === "video" ? "video-media" : ""}">${m.type === "video" ? `<video controls preload="metadata" data-archive-id="${item.id}" data-archive-media="${esc(m.url)}"></video>` : `<img loading="lazy" alt="${esc(m.alt || tr("收藏的图片"))}" data-archive-id="${item.id}" data-archive-media="${esc(m.url)}">`}<span class="media-fallback">${tr("媒体未归档")}</span></div>`).join("")}</div>`;
 }
 function menu(item) {
-  return `<details class="post-menu"><summary aria-label="更多收藏操作">${icon("more")}</summary><div><button data-social-action="tags" data-id="${item.id}">编辑标签</button><button data-social-action="info" data-id="${item.id}">保存详情</button><button class="danger" data-social-action="delete" data-id="${item.id}">删除收藏</button></div></details>`;
+  return `<details class="post-menu"><summary aria-label="${tr("更多收藏操作")}">${icon("more")}</summary><div><button data-social-action="tags" data-id="${item.id}">${tr("编辑标签")}</button><button data-social-action="info" data-id="${item.id}">${tr("保存详情")}</button><button class="danger" data-social-action="delete" data-id="${item.id}">${tr("删除收藏")}</button></div></details>`;
 }
 function xActions(post, item) {
   const stats = post.stats || {};
   const liked = item.tags?.includes("喜欢");
-  return `<div class="x-post-actions"><button data-social-action="open" data-id="${item.id}" title="查看已收藏的回复">${icon("comment")}<span>${esc(stats.replies || (item.posts?.length > 1 ? item.posts.length - 1 : ""))}</span></button><span>${icon("repeat")}<span>${esc(stats.reposts || "")}</span></span><button class="${liked ? "locally-liked" : ""}" data-social-action="like" data-id="${item.id}" title="标记喜欢（本地）">${icon("heart")}<span>${esc(stats.likes || "")}</span></button><span>${icon("chart")}<span>${esc(stats.views || "")}</span></span><button data-social-action="info" data-id="${item.id}" title="已保存的收藏">${icon("bookmark")}</button><button data-social-action="copy" data-id="${item.id}" title="复制来源链接">${icon("share")}</button></div>`;
+  return `<div class="x-post-actions"><button data-social-action="open" data-id="${item.id}" title="${tr("查看已收藏的回复")}">${icon("comment")}<span>${esc(stats.replies || (item.posts?.length > 1 ? item.posts.length - 1 : ""))}</span></button><span>${icon("repeat")}<span>${esc(stats.reposts || "")}</span></span><button class="${liked ? "locally-liked" : ""}" data-social-action="like" data-id="${item.id}" title="${tr("标记喜欢（本地）")}">${icon("heart")}<span>${esc(stats.likes || "")}</span></button><span>${icon("chart")}<span>${esc(stats.views || "")}</span></span><button data-social-action="info" data-id="${item.id}" title="${tr("已保存的收藏")}">${icon("bookmark")}</button><button data-social-action="copy" data-id="${item.id}" title="${tr("复制来源链接")}">${icon("share")}</button></div>`;
 }
 function xPost(post, item, { detail = false, reply = false } = {}) {
   const name = authorName(post);
-  return `<article class="x-post ${detail ? "x-post-detail" : ""} ${reply ? "x-reply" : ""}" data-open-archive="${item.id}" tabindex="0" role="link" aria-label="打开 ${esc(name)} 的帖子">
+  return `<article class="x-post ${detail ? "x-post-detail" : ""} ${reply ? "x-reply" : ""}" data-open-archive="${item.id}" tabindex="0" role="link" aria-label="${tr("打开 {3} 的帖子", { 3: esc(name) })}">
  ${avatar(post, item)}<div class="x-post-content"><div class="x-author-line"><button class="author-name" data-social-action="author" data-author="${esc(name)}">${esc(name)}</button>${post.verified ? icon("verified") : ""}<span>${esc(post.authorHandle || "")}</span><span>· ${stamp(item)}</span>${menu(item)}</div>
- <div class="x-post-text">${bodyText(post.text)}</div>${mediaMarkup(post, item)}${detail ? `<div class="x-capture-time">${new Date(item.capturedAt).toLocaleString("zh-CN")} · 已收藏</div>` : ""}${xActions(post, item)}</div></article>`;
+ <div class="x-post-text">${bodyText(post.text)}</div>${mediaMarkup(post, item)}${detail ? `<div class="x-capture-time">${tr("{0} · 已收藏", { 0: new Date(item.capturedAt).toLocaleString(locale()) })}</div>` : ""}${xActions(post, item)}</div></article>`;
 }
 function savedSearch(kind, query) {
-  const label = { x: "X", reddit: "Reddit", xiaohongshu: "小红书" }[kind];
-  return `<form class="saved-search" role="search">${icon("search")}<input type="search" name="q" aria-label="搜索 ${label} 收藏" placeholder="搜索收藏" value="${esc(query)}"><button type="submit" aria-label="搜索收藏">${icon("arrowRight")}</button></form>`;
+  const label = { x: "X", reddit: "Reddit", xiaohongshu: tr("小红书") }[kind];
+  return `<form class="saved-search" role="search">${icon("search")}<input type="search" name="q" aria-label="${tr("搜索 {1} 收藏", { 1: label })}" placeholder="${tr("搜索收藏")}" value="${esc(query)}"><button type="submit" aria-label="${tr("搜索收藏")}">${icon("arrowRight")}</button></form>`;
 }
 function savedTags(options) {
-  return `<div class="saved-tags"><div><h2>标签</h2><button data-social-action="new-tag" aria-label="新建标签">${icon("plus")}</button></div><button class="${!options.tag ? "active" : ""}" data-social-action="tag-filter" data-tag="">全部收藏</button>${(options.tags || []).map((t) => `<button class="${options.tag === t ? "active" : ""}" data-social-action="tag-filter" data-tag="${esc(t)}">${icon("tag")}<span>${esc(t)}</span></button>`).join("")}</div>`;
+  return `<div class="saved-tags"><div><h2>${tr("标签")}</h2><button data-social-action="new-tag" aria-label="${tr("新建标签")}">${icon("plus")}</button></div><button class="${!options.tag ? "active" : ""}" data-social-action="tag-filter" data-tag="">${tr("全部收藏")}</button>${(options.tags || []).map((t) => `<button class="${options.tag === t ? "active" : ""}" data-social-action="tag-filter" data-tag="${esc(t)}">${icon("tag")}<span>${esc(t)}</span></button>`).join("")}</div>`;
 }
 function xSidebar(options) {
-  return `<aside class="saved-site-sidebar x-saved-sidebar" aria-label="X 书签导航"><div class="saved-site-brand">${icon("x")}</div><button class="saved-nav-entry active" data-social-action="bookmarks">${icon("bookmark")}<span>书签</span><small>${options.items.length}</small></button>${savedSearch("x", options.query)}${savedTags(options)}<p class="saved-local-note">${icon("archive")}本地收藏</p></aside>`;
+  return `<aside class="saved-site-sidebar x-saved-sidebar" aria-label="${tr("X 书签导航")}"><div class="saved-site-brand">${icon("x")}</div><button class="saved-nav-entry active" data-social-action="bookmarks">${icon("bookmark")}<span>${tr("书签")}</span><small>${options.items.length}</small></button>${savedSearch("x", options.query)}${savedTags(options)}<p class="saved-local-note">${tr("{5}本地收藏", { 5: icon("archive") })}</p></aside>`;
 }
 function redditSidebar(items, options) {
   const communities = [
@@ -66,16 +69,16 @@ function redditSidebar(items, options) {
       items.map((i) => rootPost(i).community || communityFromUrl(i.url)),
     ),
   ];
-  return `<aside class="reddit-saved-sidebar" aria-label="Reddit 已保存导航"><button class="saved-nav-entry active" data-social-action="bookmarks">${icon("bookmark")}<span>已保存</span><small>${items.length}</small></button>${communities.length ? `<div class="saved-communities"><h2>已收藏的社区</h2><button class="${!options.filters.community ? "active" : ""}" data-social-action="community" data-community="">全部社区</button>${communities.map((c) => `<button class="${options.filters.community === c ? "active" : ""}" data-social-action="community" data-community="${esc(c)}"><span class="reddit-community-mark">r/</span>${esc(c)}</button>`).join("")}</div>` : ""}${savedTags(options)}</aside>`;
+  return `<aside class="reddit-saved-sidebar" aria-label="${tr("Reddit 已保存导航")}"><button class="saved-nav-entry active" data-social-action="bookmarks">${icon("bookmark")}<span>${tr("已保存")}</span><small>${items.length}</small></button>${communities.length ? `<div class="saved-communities"><h2>${tr("已收藏的社区")}</h2><button class="${!options.filters.community ? "active" : ""}" data-social-action="community" data-community="">${tr("全部社区")}</button>${communities.map((c) => `<button class="${options.filters.community === c ? "active" : ""}" data-social-action="community" data-community="${esc(c)}"><span class="reddit-community-mark">r/</span>${esc(c)}</button>`).join("")}</div>` : ""}${savedTags(options)}</aside>`;
 }
 function discussionScope(item) {
   const count = Math.max(0, (item.posts?.length || 1) - 1);
-  return `<div class="discussion-scope">${icon("archive")}<span>已保存 ${count} 条回复 / 评论 · 下方显示本次归档的全部内容</span><button data-social-action="copy" data-id="${item.id}" title="复制来源地址，在浏览器插件中继续收藏">${icon("link")}来源链接</button></div>`;
+  return `<div class="discussion-scope">${icon("archive")}<span>${tr("已保存 {1} 条回复 / 评论 · 下方显示本次归档的全部内容", { 1: count })}</span><button data-social-action="copy" data-id="${item.id}" title="${tr("复制来源地址，在浏览器插件中继续收藏")}">${tr("{3}来源链接", { 3: icon("link") })}</button></div>`;
 }
 function xShell(items, options) {
   const selected = items.find((i) => i.id === options.selected);
   const rows = feedItems(items, options.filters);
-  return `<div class="x-shell">${xSidebar({ ...options, items })}<section class="x-timeline"><header class="x-feed-header">${selected ? `<div class="x-detail-title"><button data-social-action="back" aria-label="返回信息流">${icon("back")}</button><strong>帖子</strong></div>` : `<div class="x-bookmarks-title"><div><strong>书签</strong><span>X · ${items.length} 份收藏</span></div>${icon("bookmark")}</div>`}</header>
+  return `<div class="x-shell">${xSidebar({ ...options, items })}<section class="x-timeline"><header class="x-feed-header">${selected ? `<div class="x-detail-title"><button data-social-action="back" aria-label="${tr("返回信息流")}">${icon("back")}</button><strong>${tr("帖子")}</strong></div>` : `<div class="x-bookmarks-title"><div><strong>${tr("书签")}</strong><span>${tr("X · {0} 份收藏", { 0: items.length })}</span></div>${icon("bookmark")}</div>`}</header>
  ${
    selected
      ? xPost(rootPost(selected), selected, { detail: true }) +
@@ -84,20 +87,20 @@ function xShell(items, options) {
          .slice(1)
          .map((p) => xPost(p, selected, { reply: true }))
          .join("")
-     : `${options.filters.author ? `<div class="feed-filter-bar">${esc(options.filters.author)}<button data-social-action="clear-filter">${icon("close")} 清除筛选</button></div>` : ""}${rows.map((item) => xPost(rootPost(item), item)).join("") || '<div class="social-empty">这里还没有收藏的帖子。<p>通过浏览器插件保存帖子和讨论串。</p></div>'}<div class="feed-end">${rows.length ? "已显示全部书签" : ""}</div>`
+     : `${options.filters.author ? `<div class="feed-filter-bar">${esc(options.filters.author)}<button data-social-action="clear-filter">${tr("{1} 清除筛选", { 1: icon("close") })}</button></div>` : ""}${rows.map((item) => xPost(rootPost(item), item)).join("") || `<div class="social-empty">${tr("这里还没有收藏的帖子。")}<p>${tr("通过浏览器插件保存帖子和讨论串。")}</p></div>`}<div class="feed-end">${rows.length ? tr("已显示全部书签") : ""}</div>`
  }</section></div>`;
 }
 function redditActions(post, item) {
-  return `<div class="reddit-post-actions"><span class="reddit-votes">${icon("arrowUp")}<b>${esc(post.stats?.votes || "—")}</b>${icon("arrowDown")}</span><button data-social-action="open" data-id="${item.id}">${icon("comment")}<b>${esc(post.stats?.comments || (item.posts?.length > 1 ? item.posts.length - 1 : "评论"))}</b></button><button data-social-action="copy" data-id="${item.id}">${icon("share")}<b>分享</b></button><button class="reddit-save" data-social-action="info" data-id="${item.id}" title="已收藏">${icon("bookmark")}</button></div>`;
+  return `<div class="reddit-post-actions"><span class="reddit-votes">${icon("arrowUp")}<b>${esc(post.stats?.votes || "—")}</b>${icon("arrowDown")}</span><button data-social-action="open" data-id="${item.id}">${icon("comment")}<b>${esc(post.stats?.comments || (item.posts?.length > 1 ? item.posts.length - 1 : tr("评论")))}</b></button><button data-social-action="copy" data-id="${item.id}">${icon("share")}<b>${tr("分享")}</b></button><button class="reddit-save" data-social-action="info" data-id="${item.id}" title="${tr("已收藏")}">${icon("bookmark")}</button></div>`;
 }
 function redditPost(item, detail = false) {
   const post = rootPost(item);
   const community = post.community || communityFromUrl(item.url);
   const title = post.title || item.title.replace(/\s*[:|]\s*r\/.*$/, "");
-  return `<article class="reddit-post ${detail ? "reddit-post-detail" : ""}" data-open-archive="${item.id}" tabindex="0" role="link" aria-label="打开 ${esc(title)}"><div class="reddit-author-line"><button class="community-avatar" data-social-action="community" data-community="${esc(community)}">r/</button><button class="community-name" data-social-action="community" data-community="${esc(community)}">r/${esc(community)}</button><span>· ${stamp(item)}</span><span class="reddit-post-author">u/${esc(authorName(post))}</span>${menu(item)}</div><h1>${esc(title)}</h1><div class="reddit-post-text">${bodyText(post.text)}</div>${mediaMarkup(post, item)}${redditActions(post, item)}</article>`;
+  return `<article class="reddit-post ${detail ? "reddit-post-detail" : ""}" data-open-archive="${item.id}" tabindex="0" role="link" aria-label="${tr("打开 {2}", { 2: esc(title) })}"><div class="reddit-author-line"><button class="community-avatar" data-social-action="community" data-community="${esc(community)}">r/</button><button class="community-name" data-social-action="community" data-community="${esc(community)}">r/${esc(community)}</button><span>· ${stamp(item)}</span><span class="reddit-post-author">u/${esc(authorName(post))}</span>${menu(item)}</div><h1>${esc(title)}</h1><div class="reddit-post-text">${bodyText(post.text)}</div>${mediaMarkup(post, item)}${redditActions(post, item)}</article>`;
 }
 function redditComment(post, item) {
-  return `<article class="reddit-comment" style="--depth:${Math.min(post.depth || 0, 7)}"><div class="reddit-comment-author">${avatar(post, item)}<strong>${esc(authorName(post))}</strong><span>· ${stamp(item)}</span></div><p>${bodyText(post.text)}</p><div class="reddit-comment-actions">${icon("arrowUp")}<span>${esc(post.stats?.votes || "")}</span>${icon("arrowDown")}<span>回复</span></div></article>`;
+  return `<article class="reddit-comment" style="--depth:${Math.min(post.depth || 0, 7)}"><div class="reddit-comment-author">${avatar(post, item)}<strong>${esc(authorName(post))}</strong><span>· ${stamp(item)}</span></div><p>${bodyText(post.text)}</p><div class="reddit-comment-actions">${icon("arrowUp")}<span>${esc(post.stats?.votes || "")}</span>${icon("arrowDown")}<span>${tr("回复")}</span></div></article>`;
 }
 function redditShell(items, options) {
   const selected = items.find((i) => i.id === options.selected);
@@ -107,16 +110,16 @@ function redditShell(items, options) {
       items.map((i) => rootPost(i).community || communityFromUrl(i.url)),
     ),
   ];
-  return `<div class="reddit-shell"><header class="reddit-archive-header"><div class="reddit-wordmark">${icon("reddit")}<strong>reddit</strong></div>${savedSearch("reddit", options.query)}</header>${redditSidebar(items, options)}<div class="reddit-main"><header class="reddit-saved-heading"><h1>已保存</h1><span>${items.length} 份收藏</span></header><div class="reddit-layout"><section class="reddit-timeline">${
+  return `<div class="reddit-shell"><header class="reddit-archive-header"><div class="reddit-wordmark">${icon("reddit")}<strong>reddit</strong></div>${savedSearch("reddit", options.query)}</header>${redditSidebar(items, options)}<div class="reddit-main"><header class="reddit-saved-heading"><h1>${tr("已保存")}</h1><span>${tr("{3} 份收藏", { 3: items.length })}</span></header><div class="reddit-layout"><section class="reddit-timeline">${
     selected
-      ? `<div class="reddit-detail-nav"><button data-social-action="back" aria-label="返回信息流">${icon("back")}</button><span>r/${esc(rootPost(selected).community || communityFromUrl(selected.url))}</span></div>${redditPost(selected, true)}<div class="reddit-comments-title"><h2>评论 <span>${Math.max(0, (selected.posts?.length || 1) - 1)}</span></h2></div>${
+      ? `<div class="reddit-detail-nav"><button data-social-action="back" aria-label="${tr("返回信息流")}">${icon("back")}</button><span>r/${esc(rootPost(selected).community || communityFromUrl(selected.url))}</span></div>${redditPost(selected, true)}<div class="reddit-comments-title"><h2>${tr("评论")} <span>${Math.max(0, (selected.posts?.length || 1) - 1)}</span></h2></div>${
           (selected.posts || [])
             .slice(1)
             .map((p) => redditComment(p, selected))
             .join("") ||
-          '<div class="social-empty">这份收藏中没有已加载的评论。</div>'
+          `<div class="social-empty">${tr("这份收藏中没有已加载的评论。")}</div>`
         }`
-      : `<div class="reddit-sort-bar"><select class="saved-community" aria-label="筛选已收藏的社区"><option value="">全部收藏</option>${communities.map((c) => `<option value="${esc(c)}" ${options.filters.community === c ? "selected" : ""}>r/${esc(c)}</option>`).join("")}</select><div><button data-social-action="sort-recent" class="${options.filters.sort !== "best" ? "active" : ""}">最新</button><button data-social-action="sort-best" class="${options.filters.sort === "best" ? "active" : ""}">最佳</button></div></div>${rows.map((item) => redditPost(item)).join("") || '<div class="social-empty">还没有收藏的讨论。</div>'}`
+      : `<div class="reddit-sort-bar"><select class="saved-community" aria-label="${tr("筛选已收藏的社区")}"><option value="">${tr("全部收藏")}</option>${communities.map((c) => `<option value="${esc(c)}" ${options.filters.community === c ? "selected" : ""}>r/${esc(c)}</option>`).join("")}</select><div><button data-social-action="sort-recent" class="${options.filters.sort !== "best" ? "active" : ""}">${tr("最新")}</button><button data-social-action="sort-best" class="${options.filters.sort === "best" ? "active" : ""}">${tr("最佳")}</button></div></div>${rows.map((item) => redditPost(item)).join("") || `<div class="social-empty">${tr("还没有收藏的讨论。")}</div>`}`
   }</section></div></div></div>`;
 }
 function noteCover(post, item) {
@@ -124,29 +127,29 @@ function noteCover(post, item) {
   if (!first)
     return `<div class="note-cover note-cover-text"><p>${esc((post.text || post.title || item.title).slice(0, 120))}</p></div>`;
   const url = first.type === "video" ? first.poster : first.url;
-  return `<div class="social-media note-cover ${url ? "media-loading" : "note-cover-video"}">${url ? `<img loading="lazy" alt="${esc(first.alt || post.title || "笔记封面")}" data-archive-id="${item.id}" data-archive-media="${esc(url)}"><span class="media-fallback">封面未归档</span>` : icon("video")}${first.type === "video" ? `<span class="note-cover-badge">${icon("video")}</span>` : ""}${post.media.length > 1 ? `<span class="note-cover-count">${post.media.length}</span>` : ""}</div>`;
+  return `<div class="social-media note-cover ${url ? "media-loading" : "note-cover-video"}">${url ? `<img loading="lazy" alt="${esc(first.alt || post.title || tr("笔记封面"))}" data-archive-id="${item.id}" data-archive-media="${esc(url)}"><span class="media-fallback">${tr("封面未归档")}</span>` : icon("video")}${first.type === "video" ? `<span class="note-cover-badge">${icon("video")}</span>` : ""}${post.media.length > 1 ? `<span class="note-cover-count">${post.media.length}</span>` : ""}</div>`;
 }
 function notePost(item) {
   const post = rootPost(item);
-  return `<article class="note-post" data-open-archive="${item.id}" tabindex="0" role="link" aria-label="打开 ${esc(post.title || item.title)}">${noteCover(post, item)}<div class="note-card-info"><h2>${esc(post.title || post.text?.slice(0, 50) || item.title)}</h2><div class="note-card-author">${avatar(post, item)}<span>${esc(authorName(post))}</span><span class="note-card-likes">${icon("heart")}${esc(post.stats?.likes || "")}</span></div></div></article>`;
+  return `<article class="note-post" data-open-archive="${item.id}" tabindex="0" role="link" aria-label="${tr("打开 {1}", { 1: esc(post.title || item.title) })}">${noteCover(post, item)}<div class="note-card-info"><h2>${esc(post.title || post.text?.slice(0, 50) || item.title)}</h2><div class="note-card-author">${avatar(post, item)}<span>${esc(authorName(post))}</span><span class="note-card-likes">${icon("heart")}${esc(post.stats?.likes || "")}</span></div></div></article>`;
 }
 function noteComment(post, item) {
-  return `<article class="note-comment" style="--depth:${Math.min(post.depth || 0, 4)}">${avatar(post, item)}<div><strong>${esc(authorName(post))}</strong><p>${bodyText(post.text)}</p><span>${esc(post.postedAt ? new Date(post.postedAt).toLocaleDateString("zh-CN") : "")}</span></div><span class="note-comment-likes">${icon("heart")}${esc(post.stats?.likes || "")}</span></article>`;
+  return `<article class="note-comment" style="--depth:${Math.min(post.depth || 0, 4)}">${avatar(post, item)}<div><strong>${esc(authorName(post))}</strong><p>${bodyText(post.text)}</p><span>${esc(post.postedAt ? new Date(post.postedAt).toLocaleDateString(locale()) : "")}</span></div><span class="note-comment-likes">${icon("heart")}${esc(post.stats?.likes || "")}</span></article>`;
 }
 function noteDetail(item) {
   const post = rootPost(item);
   const count = post.media?.length || 0;
-  return `<div class="note-detail"><section class="note-gallery" aria-label="笔记图片与视频">${count ? mediaMarkup(post, item) : `<div class="note-gallery-empty">${icon("file")}<span>文字笔记</span></div>`}${count > 1 ? `<div class="note-gallery-controls"><button data-note-slide="-1" aria-label="上一张">${icon("back")}</button><span class="note-gallery-count">1 / ${count}</span><button data-note-slide="1" aria-label="下一张">${icon("arrowRight")}</button></div>` : ""}</section><article class="note-post note-detail-content"><div class="note-detail-author">${avatar(post, item)}<strong>${esc(authorName(post))}</strong>${menu(item)}</div><div class="note-detail-scroll"><h1>${esc(post.title || item.title)}</h1><div class="note-body">${bodyText(post.text)}</div><p class="note-date">${stamp(item)}</p><section class="note-comments"><h2>共 ${Math.max(0, (item.posts?.length || 1) - 1)} 条已收藏评论</h2>${
+  return `<div class="note-detail"><section class="note-gallery" aria-label="${tr("笔记图片与视频")}">${count ? mediaMarkup(post, item) : `<div class="note-gallery-empty">${icon("file")}<span>${tr("文字笔记")}</span></div>`}${count > 1 ? `<div class="note-gallery-controls"><button data-note-slide="-1" aria-label="${tr("上一张")}">${icon("back")}</button><span class="note-gallery-count">1 / ${count}</span><button data-note-slide="1" aria-label="${tr("下一张")}">${icon("arrowRight")}</button></div>` : ""}</section><article class="note-post note-detail-content"><div class="note-detail-author">${avatar(post, item)}<strong>${esc(authorName(post))}</strong>${menu(item)}</div><div class="note-detail-scroll"><h1>${esc(post.title || item.title)}</h1><div class="note-body">${bodyText(post.text)}</div><p class="note-date">${stamp(item)}</p><section class="note-comments"><h2>${tr("共 {8} 条已收藏评论", { 8: Math.max(0, (item.posts?.length || 1) - 1) })}</h2>${
     (item.posts || [])
       .slice(1)
       .map((p) => noteComment(p, item))
-      .join("") || '<p class="note-no-comments">暂无已收藏评论</p>'
-  }</section></div><div class="note-detail-actions"><span>${icon("heart")}${esc(post.stats?.likes || "—")}</span><span>${icon("bookmark")}${esc(post.stats?.saves || "—")}</span><button data-note-comments aria-label="查看已收藏评论">${icon("comment")}${esc(post.stats?.comments || (item.posts?.length || 1) - 1)}</button><button data-social-action="copy" data-id="${item.id}" aria-label="复制来源链接">${icon("share")}</button></div></article></div>`;
+      .join("") || `<p class="note-no-comments">${tr("暂无已收藏评论")}</p>`
+  }</section></div><div class="note-detail-actions"><span>${icon("heart")}${esc(post.stats?.likes || "—")}</span><span>${icon("bookmark")}${esc(post.stats?.saves || "—")}</span><button data-note-comments aria-label="${tr("查看已收藏评论")}">${icon("comment")}${esc(post.stats?.comments || (item.posts?.length || 1) - 1)}</button><button data-social-action="copy" data-id="${item.id}" aria-label="${tr("复制来源链接")}">${icon("share")}</button></div></article></div>`;
 }
 function noteShell(items, options) {
   const selected = items.find((i) => i.id === options.selected);
   const rows = feedItems(items, options.filters);
-  return `<div class="note-shell"><header class="note-archive-header"><div class="note-wordmark">${icon("xiaohongshu").replace('viewBox="0 0 24 24"', 'viewBox="0 6 24 12"')}</div>${savedSearch("xiaohongshu", options.query)}</header><div class="note-collection-heading"><div><button class="note-saved-tab" data-social-action="bookmarks">收藏</button><span>${items.length} 篇笔记</span></div>${selected ? `<button class="note-back" data-social-action="back">${icon("back")}返回收藏</button>` : ""}</div>${selected ? noteDetail(selected) : `${savedTags(options)}<div class="note-grid">${rows.map(notePost).join("") || '<div class="social-empty">还没有收藏的笔记。</div>'}</div>`}</div>`;
+  return `<div class="note-shell"><header class="note-archive-header"><div class="note-wordmark">${icon("xiaohongshu").replace('viewBox="0 0 24 24"', 'viewBox="0 6 24 12"')}</div>${savedSearch("xiaohongshu", options.query)}</header><div class="note-collection-heading"><div><button class="note-saved-tab" data-social-action="bookmarks">${tr("收藏")}</button><span>${tr("{2} 篇笔记", { 2: items.length })}</span></div>${selected ? `<button class="note-back" data-social-action="back">${tr("{0}返回收藏", { 0: icon("back") })}</button>` : ""}</div>${selected ? noteDetail(selected) : `${savedTags(options)}<div class="note-grid">${rows.map(notePost).join("") || `<div class="social-empty">${tr("还没有收藏的笔记。")}</div>`}</div>`}</div>`;
 }
 export async function renderSocial(
   root,

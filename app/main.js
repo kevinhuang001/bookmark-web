@@ -1,3 +1,4 @@
+import { t as tr, localizeError, locale } from "./i18n.js";
 import { openSettings } from "./settings.js";
 import { connect, json, request, mutate } from "./api.js";
 import { ArchiveMedia } from "./media.js";
@@ -47,15 +48,15 @@ const escape = (value) =>
 const platformLabel = {
   x: "X",
   reddit: "Reddit",
-  web: "网页",
-  xiaohongshu: "小红书",
+  web: tr("网页"),
+  xiaohongshu: tr("小红书"),
 };
 const fmt = (bytes) =>
   bytes >= 1024 ** 2
     ? (bytes / 1024 ** 2).toFixed(1) + " MB"
     : Math.round(bytes / 1024) + " KB";
 function toast(message) {
-  $("toast").textContent = message;
+  $("toast").textContent = localizeError(message);
   $("toast").classList.add("show");
   setTimeout(() => $("toast").classList.remove("show"), 3200);
 }
@@ -72,11 +73,13 @@ function domain(item) {
   try {
     return new URL(item.url).hostname.replace(/^www\./, "");
   } catch {
-    return "网页";
+    return tr("网页");
   }
 }
 function folderName() {
-  return state.folders.find((f) => f.id === state.folder)?.name || "全部网页";
+  return (
+    state.folders.find((f) => f.id === state.folder)?.name || tr("全部网页")
+  );
 }
 function descendants(id, seen = new Set()) {
   if (seen.has(id)) return seen;
@@ -125,7 +128,7 @@ function renderPlatforms() {
   $("social-platforms").innerHTML = [
     ["x", "X", "Twitter"],
     ["reddit", "Reddit", ""],
-    ["xiaohongshu", "小红书", ""],
+    ["xiaohongshu", tr("小红书"), ""],
   ]
     .filter(([view]) =>
       (
@@ -145,7 +148,7 @@ function renderPlatforms() {
   $("web-root-button").className =
     "platform-entry " + (state.view === "web" ? "active" : "");
   $("web-root-button").innerHTML =
-    `<span class="platform-symbol web">${icon("globe")}</span><span>网页</span><b>${state.allItems.filter((i) => itemPlatform(i) === "web").length}</b>`;
+    `<span class="platform-symbol web">${icon("globe")}</span><span>${tr("网页")}</span><b>${state.allItems.filter((i) => itemPlatform(i) === "web").length}</b>`;
   const showWeb = (state.preferences.visiblePlatforms || ["web"]).includes(
     "web",
   );
@@ -185,11 +188,11 @@ function renderFolders() {
           state.folders.some((f) => f.parentId === folder.id) ||
           matches.some((i) => i.folderId === folder.id);
         const collapsed = !filtered && state.collapsed.has(folder.id);
-        return `<div class="tree-folder" data-tree-folder="${folder.id}"><div class="folder-row ${state.folder === folder.id ? "active" : ""}" style="--depth:${depth}"><button class="folder-disclosure ${collapsed ? "collapsed" : ""}" data-collapse="${folder.id}" ${hasChildren ? "" : "disabled"} aria-label="${collapsed ? "展开" : "折叠"} ${escape(folder.name)}" aria-expanded="${!collapsed}" aria-controls="folder-children-${folder.id}">${hasChildren ? icon("chevron") : ""}</button><button class="folder" data-folder="${folder.id}">${icon("folder")}<span>${escape(folder.name)}</span><small>${webItems.filter((i) => ids.has(i.folderId)).length}</small></button><button class="rename-folder" data-rename="${folder.id}" aria-label="编辑 ${escape(folder.name)}">${icon("more")}</button></div>${collapsed ? "" : `<div class="folder-children" id="folder-children-${folder.id}">${walk(folder.id, depth + 1, next)}${files(folder.id, depth + 1)}</div>`}</div>`;
+        return `<div class="tree-folder" data-tree-folder="${folder.id}"><div class="folder-row ${state.folder === folder.id ? "active" : ""}" style="--depth:${depth}"><button class="folder-disclosure ${collapsed ? "collapsed" : ""}" data-collapse="${folder.id}" ${hasChildren ? "" : "disabled"} aria-label="${collapsed ? tr("展开") : tr("折叠")} ${escape(folder.name)}" aria-expanded="${!collapsed}" aria-controls="folder-children-${folder.id}">${hasChildren ? icon("chevron") : ""}</button><button class="folder" data-folder="${folder.id}">${icon("folder")}<span>${escape(folder.name)}</span><small>${webItems.filter((i) => ids.has(i.folderId)).length}</small></button><button class="rename-folder" data-rename="${folder.id}" aria-label="${tr("编辑 {16}", { 16: escape(folder.name) })}">${icon("more")}</button></div>${collapsed ? "" : `<div class="folder-children" id="folder-children-${folder.id}">${walk(folder.id, depth + 1, next)}${files(folder.id, depth + 1)}</div>`}</div>`;
       })
       .join("");
   }
-  const treeMarkup = `${walk()}${files(null, 0)}${matches.length ? "" : '<div class="tree-empty">从浏览器收藏网页</div>'}`;
+  const treeMarkup = `${walk()}${files(null, 0)}${matches.length ? "" : `<div class="tree-empty">${tr("从浏览器收藏网页")}</div>`}`;
   if (state.folderTreeMarkup !== treeMarkup) {
     $("folders").innerHTML = treeMarkup;
     state.folderTreeMarkup = treeMarkup;
@@ -300,13 +303,13 @@ function renderGlobalResults() {
     state.items.map((i) => i.id + i.modifiedAt).join();
   $("reader").classList.remove("social-reader");
   $("toolbar").hidden = false;
-  $("breadcrumb-current").textContent = "全局搜索";
+  $("breadcrumb-current").textContent = tr("全局搜索");
   for (const id of ["move", "tag-button", "info", "delete"])
     $(id).disabled = true;
   if (state.viewKey === key) return;
   state.viewKey = key;
   $("reader").innerHTML =
-    `<section class="global-results"><p class="eyebrow">SEARCH YOUR LIBRARY</p><h1>${escape(state.query)}</h1><p>${state.items.length} 份收藏 · 网页与平台内容</p>${state.items.map((i) => `<button class="global-result" data-global-id="${i.id}">${icon(itemPlatform(i) === "web" ? "file" : itemPlatform(i))}<span><strong>${escape(i.title)}</strong><small>${platformLabel[itemPlatform(i)]} · ${escape(domain(i))} · ${(i.tags || []).map((t) => "#" + escape(t)).join(" ")}</small><p>${escape((i.text || "").slice(0, 140))}</p></span></button>`).join("") || "<p>没有找到匹配的内容</p>"}</section>`;
+    `<section class="global-results"><p class="eyebrow">${tr("SEARCH YOUR LIBRARY")}</p><h1>${escape(state.query)}</h1><p>${tr("{1} 份收藏 · 网页与平台内容", { 1: state.items.length })}</p>${state.items.map((i) => `<button class="global-result" data-global-id="${i.id}">${icon(itemPlatform(i) === "web" ? "file" : itemPlatform(i))}<span><strong>${escape(i.title)}</strong><small>${platformLabel[itemPlatform(i)]} · ${escape(domain(i))} · ${(i.tags || []).map((t) => "#" + escape(t)).join(" ")}</small><p>${escape((i.text || "").slice(0, 140))}</p></span></button>`).join("") || `<p>${tr("没有找到匹配的内容")}</p>`}</section>`;
   $("reader").onclick = guarded(async (e) => {
     clearTimeout(timer);
     state.generation++;
@@ -407,7 +410,7 @@ async function renderReader() {
   if (!item) {
     releasePreview();
     $("reader").innerHTML =
-      `<section class="empty-reader"><div class="glass-emblem">${icon("logo")}</div><p class="eyebrow">YOUR PERSONAL CORNER OF THE WEB</p><h1>让好内容，留下来。</h1><p>一篇文章，一段对话，一瞬灵感。<br>从浏览器收藏，在这里慢慢读。</p><div class="empty-features"><span>${icon("archive")}本地保存</span><span>${icon("globe")}原站外观</span><span>${icon("refresh")}跨设备同步</span></div><button id="connect-start" class="primary">连接浏览器插件 ${icon("external")}</button></section>`;
+      `<section class="empty-reader"><div class="glass-emblem">${icon("logo")}</div><p class="eyebrow">${tr("YOUR PERSONAL CORNER OF THE WEB")}</p><h1>${tr("让好内容，留下来。")}</h1><p>${tr("一篇文章，一段对话，一瞬灵感。")}<br>${tr("从浏览器收藏，在这里慢慢读。")}</p><div class="empty-features"><span>${tr("{1}本地保存", { 1: icon("archive") })}</span><span>${tr("{2}原站外观", { 2: icon("globe") })}</span><span>${tr("{3}跨设备同步", { 3: icon("refresh") })}</span></div><button id="connect-start" class="primary">${tr("连接浏览器插件 {4}", { 4: icon("external") })}</button></section>`;
     $("connect-start").onclick = guarded(showSettings);
     return;
   }
@@ -415,11 +418,11 @@ async function renderReader() {
   const saved = item.resources.filter((r) => r.status === "saved");
   const failed = item.resources.length - saved.length;
   $("page-metadata").innerHTML =
-    `<span class="page-title" title="${escape(item.title)}">${escape(item.title)}</span><button id="source-link" class="text-button" title="${escape(item.url)}">${escape(domain(item))}</button><span ${state.preferences.showSavedTime === false ? "hidden" : ""}>${new Date(item.capturedAt).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}</span><button id="resource-warning" ${state.preferences.showMediaStats === false ? "hidden" : ""} class="text-button ${failed ? "has-failures" : ""}" title="查看保存详情">${saved.length} 个资源 · ${fmt(saved.reduce((n, r) => n + r.bytes, 0))}${failed ? ` · ${failed} 个失败` : ""}</button>`;
+    `<span class="page-title" title="${escape(item.title)}">${escape(item.title)}</span><button id="source-link" class="text-button" title="${escape(item.url)}">${escape(domain(item))}</button><span ${state.preferences.showSavedTime === false ? "hidden" : ""}>${new Date(item.capturedAt).toLocaleString(locale(), { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}</span><button id="resource-warning" ${state.preferences.showMediaStats === false ? "hidden" : ""} class="text-button ${failed ? "has-failures" : ""}" title="${tr("查看保存详情")}">${tr("{8} 个资源 · {9}{10}", { 8: saved.length, 9: fmt(saved.reduce((n, r) => n + r.bytes, 0)), 10: failed ? ` ${tr("· {0} 个失败", { 0: failed })}` : "" })}</button>`;
   $("source-link").onclick = () => showSourceLink(item.url);
   $("resource-warning").onclick = guarded(showInfo);
   $("reader").innerHTML =
-    '<div class="preview-frame"><div id="preview-loading">正在加载保存内容…</div><iframe id="saved-page" title="保存的网页内容" sandbox="allow-same-origin" referrerpolicy="no-referrer" hidden></iframe></div>';
+    `<div class="preview-frame"><div id="preview-loading">${tr("正在加载保存内容…")}</div><iframe id="saved-page" title="${tr("保存的网页内容")}" sandbox="allow-same-origin" referrerpolicy="no-referrer" hidden></iframe></div>`;
   try {
     const url = await preview(item, signal);
     if (signal.aborted) return;
@@ -432,14 +435,14 @@ async function renderReader() {
     if (streams.length) {
       const section = document.createElement("section");
       section.className = "archived-videos";
-      section.innerHTML = `<h2>离线视频</h2>${streams.map((u) => `<div class="social-media"><video controls preload="metadata" data-archive-id="${item.id}" data-archive-media="${escape(u)}"></video><span class="media-fallback">视频未能归档或当前系统不支持播放</span></div>`).join("")}`;
+      section.innerHTML = `<h2>${tr("离线视频")}</h2>${streams.map((u) => `<div class="social-media"><video controls preload="metadata" data-archive-id="${item.id}" data-archive-media="${escape(u)}"></video><span class="media-fallback">${tr("视频未能归档或当前系统不支持播放")}</span></div>`).join("")}`;
       $("reader").append(section);
       webMedia = new ArchiveMedia();
       await webMedia.hydrate(section, [item]);
     }
   } catch (error) {
     if (error.name !== "AbortError" && $("preview-loading"))
-      $("preview-loading").textContent = "预览失败：" + error.message;
+      $("preview-loading").textContent = tr("预览失败：") + error.message;
   }
 }
 function render() {
@@ -515,15 +518,15 @@ async function socialAction(action, data = {}) {
   }
   if (action === "new-tag") {
     modal(
-      "新建 " + platformLabel[state.view] + " 标签",
-      '<label>标签名称<input id="catalog-tag-name" maxlength="100" placeholder="例如：设计灵感"></label>',
+      tr("新建平台标签", { platform: platformLabel[state.view] }),
+      `<label>${tr("标签名称")}<input id="catalog-tag-name" maxlength="100" placeholder="${tr("例如：设计灵感")}"></label>`,
       [
         {
-          label: "创建标签",
+          label: tr("创建标签"),
           primary: true,
           run: async () => {
             const name = $("catalog-tag-name").value.trim();
-            if (!name) throw new Error("请输入标签名称");
+            if (!name) throw new Error(tr("请输入标签名称"));
             await mutate("/api/tags", { name, platform: state.view });
             $("dialog").close();
             await refresh();
@@ -555,7 +558,7 @@ async function socialAction(action, data = {}) {
   }
   if (action === "copy" && item) {
     await navigator.clipboard.writeText(item.url);
-    toast("来源链接已复制");
+    toast(tr("来源链接已复制"));
     return;
   }
   if (action === "like" && item) {
@@ -596,7 +599,7 @@ function modal(title, body, actions = []) {
   $("dialog-title").textContent = title;
   $("dialog-body").innerHTML = body;
   $("dialog-actions").innerHTML =
-    '<button type="button" id="dialog-cancel" class="secondary">取消</button>';
+    `<button type="button" id="dialog-cancel" class="secondary">${tr("取消")}</button>`;
   $("dialog-cancel").onclick = () => $("dialog").close();
   for (const action of actions) {
     const button = document.createElement("button");
@@ -610,7 +613,7 @@ function modal(title, body, actions = []) {
 }
 function folderOptions(current = null) {
   return (
-    '<option value="">所有收藏（未归类）</option>' +
+    `<option value="">${tr("所有收藏（未归类）")}</option>` +
     state.folders
       .map(
         (f) =>
@@ -621,15 +624,15 @@ function folderOptions(current = null) {
 }
 async function createFolder() {
   modal(
-    "新建文件夹",
-    `<label>名称<input id="folder-name" placeholder="例如：设计灵感" maxlength="100" required></label><label>父文件夹<select id="folder-parent">${folderOptions(state.folder)}</select></label>`,
+    tr("新建文件夹"),
+    `<label>${tr("名称")}<input id="folder-name" placeholder="${tr("例如：设计灵感")}" maxlength="100" required></label><label>${tr("父文件夹")}<select id="folder-parent">${folderOptions(state.folder)}</select></label>`,
     [
       {
-        label: "创建文件夹",
+        label: tr("创建文件夹"),
         primary: true,
         run: async () => {
           const name = $("folder-name").value.trim();
-          if (!name) throw new Error("请输入文件夹名称");
+          if (!name) throw new Error(tr("请输入文件夹名称"));
           await mutate("/api/folders", {
             name,
             parentId: $("folder-parent").value || null,
@@ -646,11 +649,11 @@ function editFolder(id) {
   const folder = state.folders.find((f) => f.id === id);
   if (!folder) return;
   modal(
-    "编辑文件夹",
-    `<label>名称<input id="folder-name" value="${escape(folder.name)}" maxlength="100"></label><label>父文件夹<select id="folder-parent">${folderOptions(folder.parentId)}</select></label>`,
+    tr("编辑文件夹"),
+    `<label>${tr("名称")}<input id="folder-name" value="${escape(folder.name)}" maxlength="100"></label><label>${tr("父文件夹")}<select id="folder-parent">${folderOptions(folder.parentId)}</select></label>`,
     [
       {
-        label: "保存",
+        label: tr("保存"),
         primary: true,
         run: async () => {
           await mutate(
@@ -672,15 +675,15 @@ const selected = () =>
   state.items.find((i) => i.id === (state.editing || state.selected));
 function showSourceLink(url) {
   modal(
-    "原始网页",
-    `<p class="subtle">复制下面的地址，在浏览器中打开原站。</p><input id="original-url" readonly value="${escape(url)}">`,
+    tr("原始网页"),
+    `<p class="subtle">${tr("复制下面的地址，在浏览器中打开原站。")}</p><input id="original-url" readonly value="${escape(url)}">`,
     [
       {
-        label: "复制网址",
+        label: tr("复制网址"),
         primary: true,
         run: async () => {
           await navigator.clipboard.writeText(url);
-          toast("网址已复制");
+          toast(tr("网址已复制"));
         },
       },
     ],
@@ -709,17 +712,18 @@ function editTags() {
           (tag) =>
             `<label class="tag-choice"><input type="checkbox" name="item-tag" value="${escape(tag)}" ${chosen.has(tag) ? "checked" : ""}>${icon("tag")}<span>${escape(tag)}</span></label>`,
         )
-        .join("") || '<p class="subtle">还没有标签，请先新建标签，再勾选。</p>';
+        .join("") ||
+      `<p class="subtle">${tr("还没有标签，请先新建标签，再勾选。")}</p>`;
     for (const input of $("tag-choices").querySelectorAll("input"))
       input.onchange = () =>
         input.checked ? chosen.add(input.value) : chosen.delete(input.value);
   };
   modal(
-    "选择标签",
-    '<p class="subtle">可多选，取消勾选即可移除标签。</p><div id="tag-choices" class="tag-choices"></div><details class="new-tag-inline"><summary>新建标签</summary><label>名称<input id="new-item-tag" maxlength="100" placeholder="标签名称"></label><button type="button" id="create-item-tag" class="secondary">创建并选中</button></details>',
+    tr("选择标签"),
+    `<p class="subtle">${tr("可多选，取消勾选即可移除标签。")}</p><div id="tag-choices" class="tag-choices"></div><details class="new-tag-inline"><summary>${tr("新建标签")}</summary><label>${tr("名称")}<input id="new-item-tag" maxlength="100" placeholder="${tr("标签名称")}"></label><button type="button" id="create-item-tag" class="secondary">${tr("创建并选中")}</button></details>`,
     [
       {
-        label: "保存标签",
+        label: tr("保存标签"),
         primary: true,
         run: async () => {
           await mutate("/api/items/" + item.id, { tags: [...chosen] }, "PUT");
@@ -732,7 +736,7 @@ function editTags() {
   draw();
   $("create-item-tag").onclick = guarded(async () => {
     const name = $("new-item-tag").value.trim();
-    if (!name) throw new Error("请输入标签名称");
+    if (!name) throw new Error(tr("请输入标签名称"));
     const tag = await mutate("/api/tags", {
       name,
       platform: itemPlatform(item),
@@ -747,11 +751,11 @@ function moveItem() {
   const item = selected();
   if (!item) return;
   modal(
-    "移动收藏",
-    `<label>目标文件夹<select id="move-folder">${folderOptions(item.folderId)}</select></label>`,
+    tr("移动收藏"),
+    `<label>${tr("目标文件夹")}<select id="move-folder">${folderOptions(item.folderId)}</select></label>`,
     [
       {
-        label: "移动",
+        label: tr("移动"),
         primary: true,
         run: async () => {
           await mutate(
@@ -783,13 +787,18 @@ async function showInfo() {
   if (!item) return;
   const failures = item.resources.filter((r) => r.status !== "saved");
   modal(
-    "归档详情",
-    `<div class="detail-grid"><span>来源</span><span>${escape(item.url)}</span><span>保存范围</span><span>${escape(item.mode)} · ${item.posts?.length || 0} 个帖子/评论</span><span>归档时间</span><span>${escape(item.capturedAt)}</span></div><h3>保存记录</h3><ul class="report-list">${[...(item.warnings || []), ...item.resources.filter((r) => r.warning).map((r) => r.warning), ...failures.map((r) => r.url + " — " + r.error)].map((w) => `<li>${escape(w)}</li>`).join("") || "<li>本次请求的资源均已保存</li>"}</ul><p class="subtle">正文、评论与媒体保存在本机；网页保留一份用于阅读的内容文件。</p>`,
+    tr("归档详情"),
+    `<div class="detail-grid"><span>${tr("来源")}</span><span>${escape(item.url)}</span><span>${tr("保存范围")}</span><span>${tr("{1} · {2} 个帖子/评论", { 1: escape(item.mode === "thread" ? tr("帖子与讨论") : item.mode === "selection" ? tr("选定区域") : tr("网页内容")), 2: item.posts?.length || 0 })}</span><span>${tr("归档时间")}</span><span>${escape(new Date(item.capturedAt).toLocaleString(locale()))}</span></div><h3>${tr("保存记录")}</h3><ul class="report-list">${[...(item.warnings || []), ...item.resources.filter((r) => r.warning).map((r) => r.warning), ...failures.map((r) => r.url + " — " + r.error)].map((w) => `<li>${escape(w)}</li>`).join("") || `<li>${tr("本次请求的资源均已保存")}</li>`}</ul><p class="subtle">${tr("正文、评论与媒体保存在本机；网页保留一份用于阅读的内容文件。")}</p>`,
     [
       ...(itemPlatform(item) === "web"
-        ? [{ label: "导出网页内容", run: () => download(item, "content.html") }]
+        ? [
+            {
+              label: tr("导出网页内容"),
+              run: () => download(item, "content.html"),
+            },
+          ]
         : []),
-      { label: "导出资源清单", run: () => download(item, "manifest.json") },
+      { label: tr("导出资源清单"), run: () => download(item, "manifest.json") },
     ],
   );
 }
@@ -814,17 +823,17 @@ function confirmDelete(item) {
         state.selected = null;
         state.viewKey = "";
         await refresh();
-        toast("收藏已删除");
+        toast(tr("收藏已删除"));
       })
       .catch((e) => toast(e.message));
     return;
   }
   modal(
-    "删除这份收藏？",
-    `<p>「${escape(item.title)}」将从资料库、搜索结果和标签中移除。删除记录会同步到其他设备。</p>`,
+    tr("删除这份收藏？"),
+    `<p>${tr("「{0}」将从资料库、搜索结果和标签中移除。删除记录会同步到其他设备。", { 0: escape(item.title) })}</p>`,
     [
       {
-        label: "删除收藏",
+        label: tr("删除收藏"),
         run: async () => {
           await json("/api/items/" + item.id, { method: "DELETE" });
           state.selected = null;
@@ -832,7 +841,7 @@ function confirmDelete(item) {
           state.viewKey = "";
           $("dialog").close();
           await refresh();
-          toast("收藏已删除");
+          toast(tr("收藏已删除"));
         },
       },
     ],
@@ -857,9 +866,9 @@ $("dialog").addEventListener("click", (e) => {
   }
 });
 $("sync-button").onclick = guarded(async () => {
-  toast("正在同步…");
+  toast(tr("正在同步…"));
   const result = await mutate("/api/sync", {});
-  toast(result.error || "同步完成");
+  toast(result.error || tr("同步完成"));
   await refresh();
 });
 let timer;
@@ -901,14 +910,14 @@ async function poll() {
     const status = await json("/api/status");
     $("connection-dot").classList.add("online");
     $("connection-status").textContent = status.sync?.error
-      ? "同步失败，点击设置查看"
+      ? tr("同步失败，点击设置查看")
       : status.running
-        ? "正在同步…"
-        : "本地服务已连接";
+        ? tr("正在同步…")
+        : tr("本地服务已连接");
     if (!$("dialog").open) await refresh();
   } catch {
     $("connection-dot").classList.remove("online");
-    $("connection-status").textContent = "本地服务未连接";
+    $("connection-status").textContent = tr("本地服务未连接");
   } finally {
     busy = false;
   }
@@ -920,9 +929,9 @@ async function poll() {
     await poll();
     setInterval(poll, 3000);
   } catch (error) {
-    $("connection-status").textContent = "连接失败";
+    $("connection-status").textContent = tr("连接失败");
     $("reader").innerHTML =
-      '<section class="empty-reader"><h1>暂时无法连接</h1><p>' +
+      `<section class="empty-reader"><h1>${tr("暂时无法连接")}</h1><p>` +
       escape(error.message) +
       "</p></section>";
   }

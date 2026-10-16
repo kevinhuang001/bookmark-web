@@ -1,11 +1,34 @@
-# 贡献指南
+# Contributing to Glassmark
 
-使用功能分支和小范围提交。改动前确认模块边界：捕获代码不操作本地文件；扩展下载与上传独立于页面 DOM；Rust 服务负责持久化和同步；阅读器不运行原站脚本。
+Use Node.js 22+, Rust stable and the system dependencies required by Tauri for your platform.
 
-提交前运行 `npm run check`、`npm test` 和 `npm run build`。改动原生模块时运行 `cargo test --manifest-path core/Cargo.toml` 与 `cargo clippy --manifest-path core/Cargo.toml --all-targets`。涉及捕获、通信或客户端交互时，连接编译后的原生 bridge 执行浏览器端到端测试。
+```sh
+npm ci
+npm run desktop
+```
 
-新增站点适配器时，提供脱敏的最小 DOM 测试素材，并覆盖平台域名识别、帖子的稳定 ID、已加载范围和嵌套去重。不要将真实登录页面、Cookie、个人收藏或 WebDAV 密码提交到仓库。
+For frontend work without a native window:
 
-修改数据格式时提高格式版本并说明读取规则。同步更改必须测试至少两个独立数据目录，覆盖重复执行、网络中断及并发修改；不要只测试单台设备上传成功。
+```sh
+npm run build
+npm run dev -- --demo
+```
 
-报告问题时附上系统、浏览器版本、页面公开链接、捕获模式及经过脱敏的资源报告。区分直接视频、流媒体、登录限制和页面 DOM 变化。
+The demo uses a development fixture service. The desktop app always uses the Rust service.
+
+## Validate a change
+
+```sh
+npm run check
+npm test
+cargo test --locked --manifest-path core/Cargo.toml
+cargo clippy --locked --manifest-path core/Cargo.toml --all-targets -- -D warnings
+npm run build
+npm run test:e2e
+```
+
+Set `GLASSMARK_BRIDGE_BIN=core/target/debug/glassmark-bridge` to run browser integration tests against the production service. CI also validates an installed Chromium extension, the Firefox capture engine, and all three desktop builds.
+
+Keep capture logic, library UI and storage changes in their respective modules. Use the shared localization layer for user-facing strings, and preserve archived text and user-defined names. See [localization](docs/I18N.md) and [architecture](docs/ARCHITECTURE.md).
+
+Run `npm run screenshots` to regenerate the product screenshots with sample content. Screenshots use a headless browser; `GLASSMARK_PORTABLE_CHROMIUM=1` enables the bundled portable Chromium in environments without an installed Playwright browser.

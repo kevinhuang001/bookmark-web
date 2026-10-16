@@ -3,37 +3,57 @@
   <meta charset="utf-8" /><meta
     name="viewport"
     content="width=device-width,initial-scale=1"
-  /><link rel="stylesheet" href="extension.css" /><title>
+  /><link rel="stylesheet" href="extension.css" /><title
+    data-i18n="Glassmark · 收藏"
+  >
     Glassmark · 收藏
   </title>
   <body class="capture">
     <main>
       <div class="brand"><span data-icon="logo"></span> Glassmark</div>
-      <p class="eyebrow">CAPTURE A MOMENT</p>
-      <h1 id="title">准备保存这份灵感</h1>
-      <p id="detail">正在确认客户端连接…</p>
+      <p class="eyebrow" data-i18n="CAPTURE A MOMENT">CAPTURE A MOMENT</p>
+      <h1 id="title" data-i18n="准备保存这份灵感">准备保存这份灵感</h1>
+      <p id="detail" data-i18n="正在确认客户端连接…">正在确认客户端连接…</p>
       <div class="steps">
-        <span id="step-collect" class="active"><b>1</b>识别内容</span
-        ><span id="step-media"><b>2</b>归档资源</span
-        ><span id="step-save"><b>3</b>发送到资料库</span>
+        <span id="step-collect" class="active"
+          ><b>1</b><span data-i18n="识别内容">识别内容</span></span
+        ><span id="step-media"
+          ><b>2</b><span data-i18n="归档资源">归档资源</span></span
+        ><span id="step-save"
+          ><b>3</b><span data-i18n="发送到资料库">发送到资料库</span></span
+        >
       </div>
       <progress id="progress"></progress>
       <p id="stats" class="muted"></p>
       <div id="limit" hidden>
-        <p id="limit-message">此次下载将超过设置上限，是否继续？</p>
-        <button id="approve">继续下载</button
-        ><button class="secondary" id="skip">跳过超限资源</button>
+        <p id="limit-message" data-i18n="此次下载将超过设置上限，是否继续？">
+          此次下载将超过设置上限，是否继续？
+        </p>
+        <button id="approve" data-i18n="继续下载">继续下载</button
+        ><button class="secondary" id="skip" data-i18n="跳过超限资源">
+          跳过超限资源
+        </button>
       </div>
       <div class="actions">
-        <button id="retry" hidden>重试收藏</button
-        ><button id="cancel" class="secondary">取消收藏</button
-        ><button id="more" hidden>继续收集更多回复（新增收藏）</button>
+        <button id="retry" hidden data-i18n="重试收藏">重试收藏</button
+        ><button id="cancel" class="secondary" data-i18n="取消收藏">
+          取消收藏</button
+        ><button id="more" hidden data-i18n="继续收集更多回复（新增收藏）">
+          继续收集更多回复（新增收藏）
+        </button>
       </div>
       <details id="report" hidden>
-        <summary>查看保存范围与资源报告</summary>
+        <summary data-i18n="查看保存范围与资源报告">
+          查看保存范围与资源报告
+        </summary>
         <pre id="warnings"></pre>
       </details>
-      <p class="muted">请保持此页打开，直到发送完成。来源网页仍可正常使用。</p>
+      <p
+        class="muted"
+        data-i18n="请保持此页打开，直到发送完成。来源网页仍可正常使用。"
+      >
+        请保持此页打开，直到发送完成。来源网页仍可正常使用。
+      </p>
     </main>
     <script type="module" src="pages/capture.js"></script>
   </body>

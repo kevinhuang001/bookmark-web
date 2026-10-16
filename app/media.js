@@ -1,3 +1,4 @@
+import { t as tr } from "./i18n.js";
 import { request } from "./api.js";
 /** Every displayed social image is either an archived blob or inline image data. */
 export class ArchiveMedia {
@@ -78,7 +79,7 @@ export class ArchiveMedia {
   async hls(el, item) {
     const { default: Hls } = await import("./vendor/hls.mjs");
     if (this.#controller.signal.aborted) return;
-    if (!Hls.isSupported()) throw new Error("当前系统不支持离线 HLS 播放");
+    if (!Hls.isSupported()) throw new Error(tr("当前系统不支持离线 HLS 播放"));
     const archive = this;
     class LocalLoader {
       constructor() {
@@ -99,7 +100,7 @@ export class ArchiveMedia {
         this.stats.loading.start = performance.now();
         (async () => {
           const local = await archive.resolve(item, context.url);
-          if (!local) throw new Error("视频分片未归档");
+          if (!local) throw new Error(tr("视频分片未归档"));
           const response = await fetch(local, {
             signal: archive.#controller.signal,
           });

@@ -1,126 +1,96 @@
-# Glassmark
+<p align="center"><img src="assets/app-icon.svg" width="88" alt="Glassmark"></p>
+<h1 align="center">Glassmark</h1>
+<p align="center"><strong>A home for the web you want to keep.</strong></p>
+<p align="center">Save webpages, conversations and ideas. Read them in a calm, familiar space.<br>Keep the content and its media on your own computer.</p>
+<p align="center"><a href="https://github.com/kevinhuang001/bookmark-web/releases/latest">Download Glassmark</a> · <a href="#get-started">Get started</a> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ja.md">日本語</a></p>
+<p align="center"><a href="https://github.com/kevinhuang001/bookmark-web/actions/workflows/ci.yml"><img src="https://github.com/kevinhuang001/bookmark-web/actions/workflows/ci.yml/badge.svg" alt="CI"></a> <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a></p>
 
-Glassmark 是 Tauri 桌面客户端与 Chromium / Firefox 扩展组成的本地收藏工具。网页按文件夹保存，X 和 Reddit 按书签信息流与标签组织。支持 Windows、macOS 和 Linux，界面采用 macOS 26 风格。
+![Read a saved webpage in Glassmark](docs/images/webpages.jpg)
 
-[下载客户端与扩展](https://github.com/kevinhuang001/bookmark-web/releases) · [CI](https://github.com/kevinhuang001/bookmark-web/actions)
+## More than a link
 
-## 使用
+An article you want to return to. A thread that explains something well. A note that sparks an idea. Glassmark keeps the content, images and supported videos together, so the things you save remain useful when you come back.
 
-1. 启动桌面客户端，在「设置 → 浏览器连接」查看配对码。
-2. 安装对应浏览器扩展，在扩展中输入配对码。
-3. 打开网页或 X / Reddit 帖子详情，从扩展发起收藏。
-4. 网页可选择目标文件夹；帖子可勾选该平台已有的标签。
-5. 在客户端阅读内容、查看讨论、编辑标签或删除收藏。
+- **Read without the surrounding noise.** Saved webpages fill the reading pane, with their layout and typography preserved.
+- **Keep the conversation.** Save X threads, Reddit discussions and Xiaohongshu notes with their loaded replies, comments and media.
+- **Make it yours.** Organize pages into nested folders, add tags, search across your library, and choose which sources appear in the sidebar.
+- **Own your library.** Store content locally and optionally sync it between devices with your own WebDAV server. No Glassmark account is required.
+- **Feel at home.** A softly frosted desktop interface for macOS, Windows and Linux, with English, 简体中文 and 日本語 UI.
 
-客户端没有运行时，扩展停用收藏。Chromium ZIP 解压后通过扩展管理页加载；Firefox ZIP 可通过 `about:debugging` 临时加载。发布页提供 macOS 通用 DMG、Windows EXE / MSI、Linux AppImage / DEB。这些是 GitHub 发布包，未提交扩展商店；macOS 使用 ad-hoc 签名，Windows 安装包未配置代码签名。
+## A familiar place for every save
 
-## 保存内容
+### Webpages, with room to read
 
-普通网页保存一份 `content.html`，包含当前内容、计算样式和可下载媒体。多个选择区域合并为同一份内容。作者头像、正文图片、GIF、视频、字体等媒体进入本地 `assets` 目录。
+Keep whole pages or select several regions from a page. Read the saved content in a dedicated pane; its title, source and resource details stay within reach.
 
-X / Reddit 直接保存主帖、正文、作者、头像、媒体、评论、层级与统计数据，使用客户端的站点风格信息流阅读。帖子收集不遍历整站样式，不下载应用脚本。当前 URL 对应的帖子优先作为主帖，推荐内容排除在外。
+### X, focused on bookmarks
 
-X 自动加载回复，数量和加载时间由设置决定，达到任一上限便保存已收集的内容。来源页显示当前数量，可立即保存已加载内容或取消。Reddit 保存页面已加载的全部评论。隐藏、未加载或受访问限制的内容不在保存范围中。
+A familiar timeline for your saved posts and threads. Open a conversation, filter by author, or search just your X collection.
 
-v0.5 使用内容格式 2，数据位于应用目录的 `content-v2/`，不提供旧格式兼容读取。更新客户端与扩展后重新配对、收藏。旧目录不参与新版本的索引或同步。
+![X bookmarks and saved threads](docs/images/x.jpg)
 
-## 媒体下载
+### Reddit, focused on saved discussions
 
-默认 6 路并发，单次预算 500 MB。全部并发任务共享预算，达到上限时统一询问。HTTP 请求使用浏览器现有会话下载已渲染页面引用的资源；每个资源记录下载成功或具体失败原因，失败不会伪装为成功。
+Browse your saved posts by community, sort the collection, and read archived comments in their original hierarchy.
 
-视频支持直接 MP4 / WebM，以及未加密的有限 HLS 点播清单、音轨、初始化段和分片。HLS 保留一档画质，本地播放器仅加载本地资源。DASH 清单、直播、DRM 及没有可下载地址的 blob 媒体会记录失败。
+![Reddit saved discussions and community filters](docs/images/reddit.jpg)
 
-## 客户端
+### Xiaohongshu, focused on the notes you love
 
-- 网页入口是根文件夹，子文件夹及网页文件直接显示在下面。
-- 网页阅读区不重复显示标题和信息卡；标题、来源、时间和资源状态位于文件夹面包屑右侧。
-- 全局搜索覆盖网页、X、Reddit 的标题、正文、地址和标签；各站保留独立搜索。
-- 各平台拥有独立标签目录。编辑标签通过复选框完成，新建标签有单独入口。
-- 网页工具栏和帖子菜单均可删除内容；删除记录同步到其他设备。
-- 新建文件夹可通过关闭、取消、Esc 或点击遮罩退出，名称只在提交时校验。
+Browse a cover-first collection. Open a note to view its images and videos on the left, with the text and saved comments on the right.
 
-窗口采用统一的外层裁切。Windows 使用系统圆角与无边线设置，macOS 使用系统玻璃材质；独立标题区支持拖动，窗口按钮悬停显示符号和提示。原生材质及圆角效果受操作系统设置影响。
+![Xiaohongshu saved notes](docs/images/xiaohongshu.jpg)
 
-## 设置
+![A saved note with its image gallery and comments](docs/images/note-reader.jpg)
 
-设置窗口按 macOS 风格分组，包含：
+### Your language, across the app and extension
 
-| 分类       | 配置                                                 |
-| ---------- | ---------------------------------------------------- |
-| 通用       | 显示保存时间、资源状态、删除前确认、默认网页文件夹   |
-| 内容收藏   | X 默认收集条数、自动加载时长、图片 / 头像 / 视频开关 |
-| 媒体下载   | 单次 MB 上限、并发数、资源数量、图片与视频超时       |
-| WebDAV     | 自动同步、服务器地址、用户名和应用密码、立即同步     |
-| 浏览器连接 | 配对码、连接设备、撤销配对                           |
+Choose **Settings → General → Language**. Follow your system language or select English, Simplified Chinese or Japanese. The browser extension follows the desktop client's choice. Your saved content, folder names and custom tags stay in their original language.
 
-扩展在开始收藏时读取客户端配置。设置作用于之后发起的任务；正在运行的任务使用开始时的配置。配对扩展仅能读取保存位置、标签和收藏偏好，不能读取已有收藏或 WebDAV 密码。
+![Language and source preferences](docs/images/languages.jpg)
 
-## WebDAV
+*Screenshots show the application with sample content.*
 
-在「设置 → WebDAV」配置 HTTPS 目录、用户名和应用密码。启用后，启动时、内容变更后及每分钟自动同步。
+## Get started
 
-仅使用目标目录下的 `glassmark/content-v2/` 子目录。远端保存普通文件和不可变 revision 事件，未进行端到端加密，便于其他工具读取。相同内容反复收藏始终生成独立 ID。
+### 1. Download the desktop app
 
-```
-glassmark/content-v2/
-  events/<revision>.json
-  archives/<id>/
-    manifest.json
-    content.html        # 仅网页
-    assets/<sha256>.<ext>
-```
+Choose your installer from the [latest release](https://github.com/kevinhuang001/bookmark-web/releases/latest).
 
-配置与设备凭证保存在应用数据目录；不要将其提交到仓库。
+| Platform | Download |
+| --- | --- |
+| macOS · Apple Silicon and Intel | Universal `.dmg` |
+| Windows · x64 | `.exe` installer or `.msi` |
+| Linux · x64 | `.AppImage` or `.deb` |
 
-## 开发
+### 2. Add the browser extension
 
-需要 Node.js 22+、Rust stable，以及 Tauri 对应平台的系统依赖。
+The same release includes **glassmark-chromium.zip** and **glassmark-firefox.zip**.
 
-```bash
-npm ci
-npm run desktop
-```
+- **Chrome, Edge and other Chromium browsers:** unzip the package, open the browser's extension manager, enable Developer mode, then choose **Load unpacked** and select the extracted folder.
+- **Firefox:** open `about:debugging` → **This Firefox** → **Load Temporary Add-on**, then select the extension's `manifest.json` or ZIP. Temporary add-ons must be loaded again after restarting Firefox.
 
-仅调试前端时，使用开发测试服务：
+### 3. Connect and save
 
-```bash
-npm run build
-npm run dev -- --demo
-```
+1. Open Glassmark, then **Settings → Browser connection**.
+2. Copy the pairing code and paste it into the extension.
+3. Open a webpage or a post's detail page and click the extension to save it.
+4. Return to Glassmark to read, search and organize your collection.
 
-生产客户端始终运行 Rust 后端，测试服务不执行 WebDAV 同步。
+Keep the desktop client running while saving. Pairing codes are valid for five minutes.
 
-```bash
-npm run check
-npm test
-cargo test --locked --manifest-path core/Cargo.toml
-npm run build
-npm run test:e2e
-```
+## Built around your library
 
-浏览器测试设置 `GLASSMARK_BRIDGE_BIN=core/target/debug/glassmark-bridge` 可使用生产后端。详细说明见 [架构](docs/ARCHITECTURE.md) 和 [验证](docs/VALIDATION.md)。
+**Local media.** Images, avatars, GIFs and supported videos are stored alongside your saves. Download limits, concurrency and timeouts are configurable in Settings.
 
-## CI 与发布
+**Your sync server.** Add an HTTPS WebDAV directory in **Settings → WebDAV** to sync saved content, folders, tags and deletions. Files are stored under `glassmark/content-v2/` on your server. See the [user guide](docs/USER-GUIDE.md) for storage and sync details.
 
-CI 运行 JavaScript 检查、Rust/WebDAV 测试、浏览器端到端测试、已安装 Chromium 扩展测试及 Firefox 捕获引擎测试，同时构建三个平台的客户端。全部成功后，发布工作流上传安装包、两个扩展 ZIP、测试报告和 SHA256 校验清单。
+**Clear capture boundaries.** X can load replies within configurable time and post limits. Reddit and Xiaohongshu save the comments already loaded on the page. Direct MP4/WebM and unencrypted, finite HLS video are supported; live streams, DRM and unavailable media cannot be preserved. Each capture includes a resource report.
 
-缓存涵盖 npm 下载、Rust 工作区与编译产物、Playwright 浏览器及 Tauri 安装工具。两个 Cargo.lock 固定 Rust 依赖；CI 使用 `--locked` 检查。
+## Open source
 
-## 开源许可
+Glassmark is built with Tauri and a Rust local service. The code is available under the [MIT license](LICENSE).
 
-项目使用 MIT 许可。Lucide 图标与 Simple Icons 标志的许可证随应用及扩展分发。HLS.js 播放器许可证随客户端分发。项目与 X、Reddit、Apple 没有隶属关系。
+[User guide](docs/USER-GUIDE.md) · [Contributing](CONTRIBUTING.md) · [Architecture](docs/ARCHITECTURE.md) · [Localization](docs/I18N.md) · [Report an issue](https://github.com/kevinhuang001/bookmark-web/issues)
 
-### 小红书与侧边栏
-
-在小红书网页版打开笔记详情（`/explore/<id>` 或 `/discovery/item/<id>`），点击扩展中的「保存当前帖子与已加载评论」。收藏包含当前笔记正文、作者头像、页面已加载的图片与可下载视频，以及已加载的评论；推荐笔记不会混入。先在来源页面展开需要的评论和图片，再发起收藏。客户端的小红书来源支持笔记阅读、评论、标签、搜索和删除。媒体使用本地归档资源，下载结果可在保存报告中查看。
-
-在「设置 → 通用 → 侧边栏平台」中选择显示网页、X、Reddit、小红书。开关会持久保存；隐藏来源不会删除收藏，全局搜索仍可找到内容。网页默认文件夹与各平台标签分别管理。
-
-在「设置 → 浏览器连接」点击配对码旁的「复制」，到扩展的连接卡片中粘贴。配对码五分钟内有效。设置窗口的头部和操作栏固定，内容区独立滚动，适配 960 × 640 及以上窗口。
-
-macOS 使用系统侧边栏磨砂材质；各桌面平台统一使用 42% 的浅色磨砂底色与 30px 模糊，保留轻微透光；窗口控制点在悬停时显示关闭、最小化与缩放符号。帖子详情页的扩展只提供帖子收藏入口，普通网页提供整页与多区域收藏。
-
-
-### 平台收藏界面
-
-X 保留书签侧栏和帖子时间线。Reddit 使用独立的橙色品牌头部、社区导航、已保存帖子列表、投票数据和层级评论；搜索、标签、社区和排序仅作用于本地收藏。小红书使用图片优先的瀑布流，封面下显示标题、作者和点赞数据；打开笔记后，左侧切换已归档图片或视频，右侧阅读正文和已保存评论。各平台只展示收藏相关入口，不展示推荐、发布、通知或登录入口。
+Desktop installers and extension ZIPs are distributed through GitHub Releases. The macOS app is ad-hoc signed; Windows packages and Firefox add-ons are not store-signed. Glassmark is an independent project and is not affiliated with the platforms it supports.

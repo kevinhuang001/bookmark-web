@@ -10,6 +10,7 @@ export async function fixtureBridge(root) {
   let db = {
     items: [],
     preferences: {
+      language: "system",
       visiblePlatforms: ["web", "x", "reddit", "xiaohongshu"],
       maxPosts: 100,
       autoLoadSeconds: 20,

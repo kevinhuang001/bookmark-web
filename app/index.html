@@ -13,26 +13,46 @@
       <aside id="sidebar">
         <div class="sidebar-top">
           <div class="traffic window-drag-handle">
-            <button id="window-close" title="关闭窗口" aria-label="关闭窗口">
+            <button
+              id="window-close"
+              title="关闭窗口"
+              aria-label="关闭窗口"
+              data-i18n-title="关闭窗口"
+              data-i18n-aria-label="关闭窗口"
+            >
               <span aria-hidden="true">×</span></button
-            ><button id="window-minimize" title="最小化" aria-label="最小化">
+            ><button
+              id="window-minimize"
+              title="最小化"
+              aria-label="最小化"
+              data-i18n-title="最小化"
+              data-i18n-aria-label="最小化"
+            >
               <span aria-hidden="true">−</span></button
             ><button
               id="window-maximize"
               title="缩放窗口"
               aria-label="缩放窗口"
+              data-i18n-title="缩放窗口"
+              data-i18n-aria-label="缩放窗口"
             >
               <span aria-hidden="true">↗</span>
             </button>
           </div>
           <div class="identity window-drag-handle">
             <span class="mark"><span data-icon="logo"></span></span>
-            <div>Glassmark<small>留住值得回看的网页</small></div>
+            <div>
+              Glassmark<small data-i18n="留住值得回看的网页"
+                >留住值得回看的网页</small
+              >
+            </div>
             <button
               id="settings"
               class="icon-button"
               title="连接与同步"
               aria-label="连接与同步"
+              data-i18n-title="连接与同步"
+              data-i18n-aria-label="连接与同步"
             >
               <span data-icon="settings"></span>
             </button>
@@ -43,9 +63,14 @@
               id="search"
               placeholder="全局搜索 · 网页与平台收藏"
               autocomplete="off"
+              data-i18n-placeholder="全局搜索 · 网页与平台收藏"
             /><kbd>⌘ K</kbd></label
           >
-          <nav id="platforms" aria-label="资料来源">
+          <nav
+            id="platforms"
+            aria-label="资料来源"
+            data-i18n-aria-label="资料来源"
+          >
             <div id="social-platforms"></div>
             <div class="web-root-row">
               <button
@@ -58,38 +83,55 @@
                 class="icon-button"
                 title="在网页中新建文件夹"
                 aria-label="新建文件夹"
+                data-i18n-title="在网页中新建文件夹"
+                data-i18n-aria-label="新建文件夹"
               >
                 <span data-icon="plus"></span>
               </button>
             </div>
-            <nav id="folders" aria-label="网页文件夹"></nav>
+            <nav
+              id="folders"
+              aria-label="网页文件夹"
+              data-i18n-aria-label="网页文件夹"
+            ></nav>
           </nav>
-          <button id="global-results-back" class="text-button" hidden>
+          <button
+            id="global-results-back"
+            class="text-button"
+            hidden
+            data-i18n="查看全局搜索结果"
+          >
             查看全局搜索结果
           </button>
           <div id="tags" class="tag-filters"></div>
         </div>
         <div class="sidebar-footer">
           <span id="connection-dot" class="dot"></span
-          ><span id="connection-status">正在连接…</span
+          ><span id="connection-status" data-i18n="正在连接…">正在连接…</span
           ><button
             id="sync-button"
             class="icon-button"
             title="立即同步"
             aria-label="立即同步"
+            data-i18n-title="立即同步"
+            data-i18n-aria-label="立即同步"
           >
             <span data-icon="refresh"></span>
           </button>
         </div>
       </aside>
       <main id="main">
-        <div class="window-titlebar window-drag-handle" aria-label="拖动窗口">
+        <div
+          class="window-titlebar window-drag-handle"
+          aria-label="拖动窗口"
+          data-i18n-aria-label="拖动窗口"
+        >
           <span>Glassmark</span>
         </div>
         <header id="toolbar" class="window-drag-handle">
           <div class="breadcrumb">
-            <span>资料库</span><span>／</span
-            ><span id="breadcrumb-current">全部网页</span>
+            <span data-i18n="资料库">资料库</span><span>／</span
+            ><span id="breadcrumb-current" data-i18n="全部网页">全部网页</span>
           </div>
           <div id="page-metadata" class="page-metadata" hidden></div>
           <div class="toolbar-actions">
@@ -98,6 +140,8 @@
               class="icon-button"
               title="移动到文件夹"
               aria-label="移动到文件夹"
+              data-i18n-title="移动到文件夹"
+              data-i18n-aria-label="移动到文件夹"
             >
               <span data-icon="move"></span></button
             ><button
@@ -105,6 +149,8 @@
               class="icon-button"
               title="编辑标签"
               aria-label="编辑标签"
+              data-i18n-title="编辑标签"
+              data-i18n-aria-label="编辑标签"
             >
               <span data-icon="tag"></span></button
             ><button
@@ -112,6 +158,8 @@
               class="icon-button"
               title="归档详情"
               aria-label="归档详情"
+              data-i18n-title="归档详情"
+              data-i18n-aria-label="归档详情"
             >
               <span data-icon="info"></span></button
             ><button
@@ -119,6 +167,8 @@
               class="icon-button"
               title="删除收藏"
               aria-label="删除收藏"
+              data-i18n-title="删除收藏"
+              data-i18n-aria-label="删除收藏"
             >
               <span data-icon="trash"></span>
             </button>
@@ -137,6 +187,7 @@
             id="dialog-close"
             value="cancel"
             aria-label="关闭"
+            data-i18n-aria-label="关闭"
           >
             <span data-icon="close"></span>
           </button>
@@ -146,6 +197,6 @@
       </form>
     </dialog>
     <div id="toast" role="status"></div>
-    <script type="module" src="main.js"></script>
+    <script type="module" src="bootstrap.js"></script>
   </body>
 </html>
