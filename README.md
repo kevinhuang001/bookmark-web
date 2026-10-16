@@ -30,12 +30,12 @@ GitHub Actions 执行 JavaScript、Rust、WebDAV、原生后端浏览器测试�
 
 从 [Releases](https://github.com/kevinhuang001/bookmark-web/releases/latest) 下载：
 
-| 平台 | 产物 |
-| --- | --- |
-| Windows x64 | `.exe` 安装程序或 `.msi` |
-| macOS Apple Silicon / Intel | 通用 `.dmg` |
-| Linux x64 | `.AppImage` 或 `.deb` |
-| Chromium / Firefox | 对应浏览器的 ZIP |
+| 平台                        | 产物                     |
+| --------------------------- | ------------------------ |
+| Windows x64                 | `.exe` 安装程序或 `.msi` |
+| macOS Apple Silicon / Intel | 通用 `.dmg`              |
+| Linux x64                   | `.AppImage` 或 `.deb`    |
+| Chromium / Firefox          | 对应浏览器的 ZIP         |
 
 macOS 包使用 ad-hoc 签名，Windows 包没有商业代码签名。浏览器 ZIP 在下方“安装浏览器扩展”一节加载；Firefox 临时附加组件在重启后移除，持久安装需要 Mozilla 签名。
 
@@ -157,7 +157,6 @@ X 与 Reddit 的信息流重现各站的布局、字号层次、交互图标、�
 
 透明窗口使用 Tauri 2.12.1+，配置 `transparent`、透明背景和 `liquidGlassClear` / `sidebar` / `mica` / `acrylic` 平台材质。浏览器演示中的底图用于观察玻璃透射；不能用浏览器录屏代替原生材质验收。
 
-
 ## 图标与许可证
 
 界面使用 [Lucide](https://lucide.dev) 1.57.0（ISC，部分源自 MIT 许可的 Feather）和 [Simple Icons](https://simpleicons.org) 16.35.0（CC0）品牌标识。选用的 SVG 数据随应用离线打包，许可证保存在 `licenses/` 并随客户端和扩展分发。运行 `npm run icons` 可根据锁定的 npm 依赖重新生成图标数据。
@@ -165,3 +164,14 @@ X 与 Reddit 的信息流重现各站的布局、字号层次、交互图标、�
 ## 版本发布
 
 `CI` 在 `main` 推送和 PR 上运行测试及三平台构建。`Release` 只接受 `main` 上成功完成的 CI，核对全部安装包及三份浏览器报告，将 `package.json` 版本发布为 `v<version>`。版本已经发布时跳过；下一次发布先同步更新 npm、Tauri 配置和两个 Cargo 包的版本号。发布过程使用仓库 `GITHUB_TOKEN`，不需要个人访问令牌。
+
+## v0.4 更新
+
+- 扩展根据 URL 区分网页与 X/Reddit 帖子，优先保存当前主帖及讨论，排除推荐区；网页快照归入网页目录。
+- 扩展可直接选择网页目标文件夹，或给帖子添加所属平台的标签；上次使用的位置会保留。客户端关闭时停用。
+- 全局搜索始终可见，跨网页、X、Reddit 搜索标题、正文、URL 和标签；站点内部保留独立搜索。
+- X/Reddit 各自有标签目录，可预先新建空标签。标签事件随 WebDAV 同步。
+- 视频支持直接 MP4/WebM 以及有限、未加密的 HLS 点播清单、音轨和分片。本地播放器只读取已归档资源；直播、加密/DRM、只有 blob 且未暴露媒体 URL 的内容会报告失败。DASH 清单暂不支持；Reddit 会尝试对应 HLS 点播清单。
+- 网页入口就是根文件夹，子文件夹和网页文件直接置于其下。
+- Windows 优先 Acrylic，macOS 使用系统玻璃；移除外层留白和阴影造成的细边框，增加常驻拖动区和窗口按钮悬停符号/提示。系统关闭透明效果或 Linux 合成器不支持时，效果会回退。
+- CI 缓存 npm、Rust 编译工作区、Playwright 浏览器和安装工具；提交两个 Cargo.lock，并通过 --locked 检查依赖。首次运行仍需要填充缓存，依赖变化会自动更新缓存键。

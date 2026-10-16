@@ -56,7 +56,7 @@ impl Store {
         if !valid_id(id){return Err("Invalid document id".into());}
         let revision=event["revision"].as_str().ok_or("Missing revision")?;
         let kind=event["kind"].as_str().ok_or("Missing kind")?;
-        if !["item","folder"].contains(&kind){return Err("Unknown event kind".into());}
+        if !["item","folder","tag"].contains(&kind){return Err("Unknown event kind".into());}
         let mut db=self.db.lock().map_err(|e|e.to_string())?;
         let tx=db.transaction().map_err(|e|e.to_string())?;
         let current:Option<String>=tx.query_row("SELECT revision FROM documents WHERE id=?1",[id],|r|r.get(0)).ok();
@@ -99,6 +99,13 @@ impl Store {
         let parsed=url::Url::parse(url).map_err(|e|e.to_string())?;
         if !["http","https"].contains(&parsed.scheme()){return Err("Only HTTP(S) pages can be archived".into());}
         for key in ["title","snapshot","original","text"]{if !value[key].is_string(){return Err(format!("Missing {key}"));}}
+        if value["tags"].is_null(){value["tags"]=json!([]);}
+        let tags=value["tags"].as_array().ok_or("Tags must be an array")?;
+        if tags.len()>100||tags.iter().any(|t|t.as_str().is_none_or(|s|s.trim().is_empty()||s.len()>100)){return Err("Invalid tags".into());}
+        if let Some(folder)=value["folderId"].as_str(){
+            if !self.list("folder","")?.iter().any(|f|f["id"]==folder){return Err("Folder does not exist".into());}
+        }else if !value["folderId"].is_null(){return Err("Invalid folder".into());}
+        if value["mode"]=="thread" && value["posts"].as_array().is_none_or(|p|p.is_empty()){return Err("未识别到帖子，收藏未保存".into());}
         let id=Uuid::new_v4().to_string();let dir=self.root.join("archives").join(&id);fs::create_dir_all(dir.join("assets")).map_err(|e|e.to_string())?;
         let resources=value["resources"].as_array().ok_or("Missing resources")?;
         for resource in resources {
@@ -112,7 +119,7 @@ impl Store {
         atomic_write(&dir.join("source.html"),value["original"].as_str().unwrap().as_bytes())?;
         atomic_write(&dir.join("posts.json"),&serde_json::to_vec_pretty(&value["posts"]).unwrap())?;
         value.as_object_mut().unwrap().remove("snapshot");value.as_object_mut().unwrap().remove("original");
-        value["id"]=json!(id);value["folderId"]=Value::Null;value["tags"]=json!([]);
+        value["id"]=json!(id);if value.get("folderId").is_none(){value["folderId"]=Value::Null;}
         let saved=self.event("item",value)?;
         atomic_write(&dir.join("manifest.json"),&serde_json::to_vec_pretty(&saved).unwrap())?;
         Ok(saved)
@@ -128,6 +135,15 @@ mod tests {
         let first=store.capture(fixture.clone()).unwrap();let second=store.capture(fixture).unwrap();assert_ne!(first["id"],second["id"]);
         assert_eq!(store.list("item","diffusion").unwrap().len(),2);assert_eq!(store.list("item","光电").unwrap().len(),2);
         drop(store);assert_eq!(Store::open(dir.path().to_path_buf()).unwrap().list("item","").unwrap().len(),2);
+    }
+    #[test]fn capture_keeps_destination_and_platform_tags(){
+        let dir=tempfile::tempdir().unwrap();let store=Store::open(dir.path().to_path_buf()).unwrap();
+        let folder=store.event("folder",json!({"name":"Reading"})).unwrap();
+        let fixture=json!({"version":1,"title":"Video","text":"test","url":"https://example.com","snapshot":"<p>Video</p>","original":"<html></html>","resources":[],"posts":[],"folderId":folder["id"],"tags":["Research"]});
+        let saved=store.capture(fixture.clone()).unwrap();assert_eq!(saved["folderId"],folder["id"]);assert_eq!(saved["tags"],json!(["Research"]));
+        let mut bad=fixture;bad["folderId"]=json!(Uuid::new_v4());assert!(store.capture(bad).is_err());
+        store.event("tag",json!({"name":"Videos","platform":"x"})).unwrap();drop(store);
+        assert_eq!(Store::open(dir.path().to_path_buf()).unwrap().list("tag","").unwrap().len(),1);
     }
     #[test]fn revision_order_is_deterministic(){let dir=tempfile::tempdir().unwrap();let store=Store::open(dir.path().to_path_buf()).unwrap();let id=Uuid::new_v4().to_string();
         let event=|rev:&str,title:&str|json!({"kind":"item","revision":rev,"data":{"id":id,"title":title}});

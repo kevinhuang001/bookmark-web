@@ -1,3 +1,4 @@
+import { hlsPlaylist } from "./hls.js";
 /** Resource graph and rewrites shared by capture, source exports and tests. */
 export const DEFAULT_BUDGET = 500 * 1024 * 1024;
 export function dependencies(text, mime, base) {
@@ -32,6 +33,10 @@ export function extensionFor(mime) {
     "image/webp": "webp",
     "image/gif": "gif",
     "image/svg+xml": "svg",
+    "application/vnd.apple.mpegurl": "m3u8",
+    "application/x-mpegURL": "m3u8",
+    "audio/mp4": "m4a",
+    "video/mp2t": "ts",
     "video/mp4": "mp4",
     "video/webm": "webm",
     "audio/mpeg": "mp3",
@@ -125,7 +130,22 @@ export async function archiveResources(
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       record.mime =
         response.headers.get("content-type") || "application/octet-stream";
-      const bytes = await readBounded(response, state, approve, signal);
+      let bytes = await readBounded(response, state, approve, signal);
+      if (/mpegurl/i.test(record.mime) || /\.m3u8(?:\?|$)/i.test(url)) {
+        const playlist = hlsPlaylist(
+          new TextDecoder().decode(bytes),
+          response.url || url,
+        );
+        bytes = new TextEncoder().encode(playlist.text);
+        record.mime = "application/vnd.apple.mpegurl";
+        playlist.dependencies.forEach((dependency) => {
+          if (!seen.has(dependency)) queue.push(dependency);
+        });
+      }
+      if (/dash\+xml/.test(record.mime))
+        throw new Error(
+          "DASH 播放清单暂不支持，请使用站点提供的 HLS 或 MP4 视频",
+        );
       const hash = [
         ...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)),
       ]
@@ -133,8 +153,7 @@ export async function archiveResources(
         .join("");
       record.name = hash + "." + extensionFor(record.mime);
       record.bytes = bytes.length;
-      if (/mpegurl|dash\+xml/.test(record.mime))
-        record.warning = "流式媒体仅保存了播放清单，分片与 DRM 内容未归档";
+
       await upload(record.name, bytes, record.mime);
       record.status = "saved";
       if (/css|javascript|ecmascript/.test(record.mime))
@@ -156,5 +175,18 @@ export async function archiveResources(
       error: "资源数量超过 2000，请缩小收藏范围",
       bytes: 0,
     });
+  // A playlist with missing segments is explicitly incomplete, never a success.
+  for (const record of resources.filter(
+    (r) => r.mime === "application/vnd.apple.mpegurl",
+  )) {
+    if (
+      resources.some(
+        (r) =>
+          r.status !== "saved" &&
+          /\.(ts|m4s|m3u8|aac|mp4)(?:\?|$)/i.test(r.url),
+      )
+    )
+      record.warning = "部分视频分片未保存，离线播放可能不完整";
+  }
   return resources;
 }

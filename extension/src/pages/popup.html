@@ -1,37 +1,87 @@
 <!doctype html>
 <html lang="zh-CN">
-  <meta charset="utf-8" /><link rel="stylesheet" href="extension.css" /><title>
-    Glassmark
-  </title>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <link rel="stylesheet" href="extension.css" />
+    <title>Glassmark · 收藏</title>
+  </head>
   <body class="popup">
-    <div class="brand">
-      <span data-icon="logo"></span> <span>Glassmark</span
-      ><small>网页，留在这里。</small>
-    </div>
-    <p id="status">正在连接客户端…</p>
+    <header class="popup-header">
+      <div class="brand"><span data-icon="logo"></span>Glassmark</div>
+      <span class="connection-badge" id="connection-badge">检查连接</span>
+    </header>
+    <p id="status" role="status" aria-live="polite">正在连接客户端…</p>
     <section id="pair" hidden>
+      <h2>连接你的资料库</h2>
+      <p class="muted">
+        打开 Glassmark → 连接与同步，输入 6 位配对码。客户端运行时才能收藏。
+      </p>
       <label
-        >客户端「连接与同步」中的配对码<input
+        >配对码<input
           id="code"
-          autocomplete="off"
-          placeholder="6 位配对码"
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          placeholder="000000"
           maxlength="6" /></label
       ><button id="pairButton">连接客户端</button>
     </section>
-    <section id="actions" hidden>
-      <button data-mode="page">
-        <span data-icon="globe"></span>　收藏整个网页</button
-      ><button data-mode="selection">
-        <span data-icon="pointer"></span>　选择多个区域</button
-      ><button data-mode="thread">
-        <span data-icon="threads"></span>　收藏帖子与讨论串
-      </button>
-      <p class="muted">
-        内容和资源保存在你的电脑。<br />X 默认收集 100 条；Reddit
-        保存已加载评论。
-      </p>
-      <button class="secondary" id="disconnect">断开配对</button>
+    <section class="page-context" id="page-context">
+      <div class="context-icon" id="context-icon">
+        <span data-icon="globe"></span>
+      </div>
+      <div>
+        <small id="page-kind">当前网页</small
+        ><strong id="page-title">读取当前标签页…</strong
+        ><span id="page-host"></span>
+      </div>
     </section>
+    <section id="actions" hidden>
+      <div class="save-destination">
+        <label id="folder-field"
+          >保存位置<select id="destination-folder">
+            <option value="">网页 · 根文件夹</option>
+          </select></label
+        ><label id="tags-field"
+          >标签<input
+            id="destination-tags"
+            list="tag-suggestions"
+            placeholder="添加标签，用逗号分隔"
+            maxlength="300"
+          /><datalist id="tag-suggestions"></datalist
+          ><small>此标签仅归属于当前来源，可直接创建新标签</small></label
+        >
+      </div>
+      <button data-mode="thread" id="save-post">
+        <span data-icon="bookmark"></span
+        ><span id="save-post-label">保存当前帖子与讨论</span>
+      </button>
+      <button data-mode="page" id="save-page">
+        <span data-icon="globe"></span>保存整个网页
+      </button>
+      <button data-mode="selection" class="secondary selection-action">
+        <span data-icon="pointer"></span>选择网页中的多个区域<span
+          class="action-key"
+          >↗</span
+        >
+      </button>
+      <p class="capture-scope" id="capture-scope">
+        保存 HTML、样式与原始脚本，离线安全阅读。
+      </p>
+      <div class="save-inclusions">
+        <span><span data-icon="circleCheck"></span>图片与视频</span
+        ><span><span data-icon="archive"></span>本地归档</span
+        ><span>500 MB 后询问</span>
+      </div>
+    </section>
+    <footer class="popup-footer">
+      <span>你的内容，留在你的电脑</span>
+      <details id="connection-settings">
+        <summary>连接设置</summary>
+        <button class="secondary" id="retry-connection">重新检查连接</button
+        ><button class="secondary" id="disconnect">断开配对</button>
+      </details>
+    </footer>
     <script type="module" src="pages/popup.js"></script>
   </body>
 </html>

@@ -187,3 +187,75 @@ test("social media refuses live and executable URLs outside the archive", async 
   assert.equal(await media.resolve({ resources: [] }, image), image);
   media.release();
 });
+
+test("URL context distinguishes exact social posts, feeds and lookalike hosts", async () => {
+  const { pageContext } = await import("../extension/src/context.js");
+  assert.equal(pageContext("https://x.com/a/status/123/photo/1").postId, "123");
+  assert.equal(
+    pageContext("https://twitter.com/i/web/status/456").isPost,
+    true,
+  );
+  assert.equal(
+    pageContext("https://old.reddit.com/r/webdev/comments/abc/title/comment/")
+      .postId,
+    "abc",
+  );
+  for (const url of [
+    "https://x.com/home",
+    "https://reddit.com/r/webdev",
+    "https://x.com.attacker.test/a/status/123",
+  ])
+    assert.equal(pageContext(url).isPost, false);
+  assert.equal(pageContext("chrome://settings").supported, false);
+});
+test("HLS archive includes one quality, audio, init and every finite segment", async () => {
+  const bodies = {
+    "https://video.test/master.m3u8":
+      '#EXTM3U\n#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="a",URI="audio.m3u8"\n#EXT-X-STREAM-INF:BANDWIDTH=100\nlow.m3u8\n#EXT-X-STREAM-INF:BANDWIDTH=200\nhigh.m3u8',
+    "https://video.test/high.m3u8":
+      '#EXTM3U\n#EXT-X-MAP:URI="init.mp4"\n#EXTINF:2,\nseg.ts\n#EXT-X-ENDLIST',
+    "https://video.test/audio.m3u8":
+      "#EXTM3U\n#EXTINF:2,\naudio.aac\n#EXT-X-ENDLIST",
+  };
+  const uploads = [];
+  const resources = await archiveResources(["https://video.test/master.m3u8"], {
+    approve: async () => true,
+    upload: async (...args) => uploads.push(args),
+    fetcher: async (url) =>
+      new Response(bodies[url] || "segment", {
+        headers: {
+          "content-type": url.endsWith("m3u8")
+            ? "application/vnd.apple.mpegurl"
+            : "application/octet-stream",
+        },
+      }),
+  });
+  assert.equal(resources.length, 6);
+  assert.equal(
+    resources.every((r) => r.status === "saved"),
+    true,
+  );
+  assert.equal(
+    resources.some((r) => r.url.endsWith("low.m3u8")),
+    false,
+  );
+  assert.match(
+    new TextDecoder().decode(uploads[0][1]),
+    /https:\/\/video.test\/high.m3u8/,
+  );
+});
+test("encrypted and live HLS are reported as failed instead of complete videos", async () => {
+  for (const text of [
+    '#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI="secret.key"\n#EXTINF:2,\na.ts\n#EXT-X-ENDLIST',
+    "#EXTM3U\n#EXTINF:2,\nlive.ts",
+  ]) {
+    let uploads = 0;
+    const records = await archiveResources(["https://a.test/a.m3u8"], {
+      approve: async () => true,
+      upload: async () => uploads++,
+      fetcher: async () => new Response(text),
+    });
+    assert.equal(records[0].status, "failed");
+    assert.equal(uploads, 0);
+  }
+});

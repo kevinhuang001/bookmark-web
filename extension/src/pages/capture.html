@@ -12,6 +12,11 @@
       <p class="eyebrow">CAPTURE A MOMENT</p>
       <h1 id="title">准备保存这份灵感</h1>
       <p id="detail">正在确认客户端连接…</p>
+      <div class="steps">
+        <span id="step-collect" class="active"><b>1</b>识别内容</span
+        ><span id="step-media"><b>2</b>归档资源</span
+        ><span id="step-save"><b>3</b>发送到资料库</span>
+      </div>
       <progress id="progress"></progress>
       <p id="stats" class="muted"></p>
       <div id="limit" hidden>
@@ -20,7 +25,8 @@
         ><button class="secondary" id="skip">跳过超限资源</button>
       </div>
       <div class="actions">
-        <button id="cancel" class="secondary">取消收藏</button
+        <button id="retry" hidden>重试收藏</button
+        ><button id="cancel" class="secondary">取消收藏</button
         ><button id="more" hidden>继续收集下一批 100 条（新增收藏）</button>
       </div>
       <details id="report" hidden>

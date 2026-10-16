@@ -10,6 +10,7 @@ export async function fixtureBridge(root) {
   let db = {
     items: [],
     folders: [],
+    tags: [],
     settings: { enabled: false, url: "", username: "", password: "" },
     devices: [],
   };
@@ -85,6 +86,7 @@ export async function fixtureBridge(root) {
         !desktop &&
         !(
           endpoint === "/api/status" ||
+          (endpoint === "/api/capture-options" && req.method === "GET") ||
           (endpoint === "/api/items" && req.method === "POST") ||
           (endpoint.startsWith("/api/blobs/") && req.method === "PUT")
         )
@@ -149,8 +151,8 @@ export async function fixtureBridge(root) {
         const item = {
           ...capture,
           id,
-          folderId: null,
-          tags: [],
+          folderId: capture.folderId || null,
+          tags: capture.tags || [],
           modifiedAt: new Date().toISOString(),
         };
         db.items.unshift(item);
@@ -209,6 +211,28 @@ export async function fixtureBridge(root) {
         await persist();
         return send(200, item);
       }
+      if (endpoint === "/api/tags") {
+        db.tags ||= [];
+        if (req.method === "POST") {
+          const tag = { ...body(), id: randomUUID() };
+          db.tags.push(tag);
+          await persist();
+          return send(200, tag);
+        }
+        return send(200, db.tags);
+      }
+      if (endpoint === "/api/capture-options")
+        return send(200, {
+          folders: db.folders,
+          tags: [
+            ...(db.tags || []),
+            ...db.items
+              .filter((i) => !i.deleted)
+              .flatMap((i) =>
+                (i.tags || []).map((name) => ({ name, platform: i.platform })),
+              ),
+          ],
+        });
       if (endpoint === "/api/folders" && req.method === "GET")
         return send(200, db.folders);
       if (endpoint === "/api/folders" || endpoint.startsWith("/api/folders/")) {

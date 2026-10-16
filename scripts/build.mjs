@@ -10,6 +10,20 @@ const base = {
     "Archive pages, selected regions, X threads and Reddit discussions to your desktop.",
   permissions: ["activeTab", "scripting", "storage"],
   host_permissions: ["<all_urls>"],
+  content_scripts: [
+    {
+      matches: [
+        "https://x.com/*",
+        "https://*.x.com/*",
+        "https://twitter.com/*",
+        "https://*.twitter.com/*",
+        "https://reddit.com/*",
+        "https://*.reddit.com/*",
+      ],
+      js: ["observe-media.js"],
+      run_at: "document_start",
+    },
+  ],
   action: { default_popup: "popup.html", default_title: "收藏到 Glassmark" },
   icons: { 48: "icons/48.png", 128: "icons/128.png" },
 };
@@ -17,10 +31,20 @@ await rm("dist", { recursive: true, force: true });
 await mkdir("dist", { recursive: true });
 await cp("app", "dist/app", { recursive: true });
 await cp("licenses", "dist/app/licenses", { recursive: true });
+await mkdir("dist/app/vendor", { recursive: true });
+await cp("node_modules/hls.js/dist/hls.mjs", "dist/app/vendor/hls.mjs");
+await cp("node_modules/hls.js/LICENSE", "dist/app/licenses/HLS.js-LICENSE.txt");
 for (const browser of ["chromium", "firefox"]) {
   const out = `dist/extension-${browser}`;
   await mkdir(out + "/pages", { recursive: true });
-  for (const name of ["api.js", "archive.js", "background.js", "picker.js"])
+  for (const name of [
+    "api.js",
+    "archive.js",
+    "hls.js",
+    "background.js",
+    "observe-media.js",
+    "picker.js",
+  ])
     await cp("extension/src/" + name, out + "/" + name);
   for (const name of ["popup", "capture"])
     await build({

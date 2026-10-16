@@ -316,7 +316,7 @@ try {
     true,
   );
   assert.ok((await page.locator('[data-icon-source="lucide"]').count()) > 15);
-  assert.equal(await page.locator("#web-folder-section").isVisible(), false);
+  assert.equal(await page.locator("#folders").isVisible(), false);
   assert.equal(await page.locator("#snapshot").count(), 0);
   await page.screenshot({ path: "artifacts/glassmark-x.png" });
   await page.locator(`.x-post[data-open-archive="${xItem.id}"]`).click();
@@ -523,17 +523,15 @@ try {
   );
   await page.locator("#search").fill("生活的质感");
   await page
-    .locator(
-      `[data-tree-folder="${nested.id}"] > .folder-children > [data-item="${articleItem.id}"]`,
-    )
+    .locator(`.global-result[data-global-id="${articleItem.id}"]`)
     .waitFor();
+  await page
+    .locator(`.global-result[data-global-id="${articleItem.id}"]`)
+    .click();
+  await page.locator(`[data-item="${articleItem.id}"]`).waitFor();
   assert.equal(
-    await page
-      .locator(
-        `[data-tree-folder="${firstFolder.id}"] [data-tree-folder="${nested.id}"]`,
-      )
-      .count(),
-    1,
+    await page.locator(".folder-root,#web-folder-section").count(),
+    0,
   );
   await page.locator("#search").fill("");
   await page.waitForTimeout(700);
@@ -543,7 +541,7 @@ try {
       .getAttribute("aria-expanded")) === "false"
   )
     await page.locator(`[data-collapse="${nested.id}"]`).click();
-  pass("search reveals matching webpage files within their ancestor folders");
+  pass("global results open nested webpage files under the Web root");
   await page
     .locator(`[data-item="${articleItem.id}"]`)
     .dragTo(page.locator(`[data-folder="${firstFolder.id}"]`));
@@ -626,7 +624,7 @@ try {
       ({ index, community }) => {
         const post = document.querySelector("shreddit-post");
         post.setAttribute("subreddit-prefixed-name", "r/" + community);
-        post.setAttribute("id", "t3_demo_" + index);
+        post.setAttribute("id", "t3_demo" + index);
         post.querySelector("h1").textContent = index
           ? "Show your personal side projects. What are you building?"
           : "What does your local-first research workflow look like?";
@@ -740,6 +738,148 @@ try {
   pass(
     "webpage preview uses a centered reading column and open-source toolbar icons",
   );
+  // Global search is independent of site search and current source.
+  await page.locator('[data-view="x"]').click();
+  assert.equal(await page.locator("#search").isVisible(), true);
+  await page.locator("#search").fill("What makes a personal archive");
+  await page
+    .locator(`.global-result[data-global-id="${redditItem.id}"]`)
+    .waitFor();
+  await page
+    .locator(`.global-result[data-global-id="${redditItem.id}"]`)
+    .click();
+  assert.equal(await page.locator(".reddit-post-detail").count(), 1);
+  assert.equal(await page.locator("#global-results-back").isVisible(), true);
+  await page.locator("#search").fill("");
+  await page.waitForTimeout(400);
+  await page.locator('[data-view="x"]').click();
+  await page.locator('[data-social-action="new-tag"]').click();
+  await page.locator("#catalog-tag-name").fill("Video lab");
+  await page.getByRole("button", { name: "创建标签", exact: true }).click();
+  await page.locator('.saved-tags [data-tag="Video lab"]').waitFor();
+  const catalog = await get("/api/capture-options");
+  assert.equal(
+    catalog.tags.some((t) => t.platform === "x" && t.name === "Video lab"),
+    true,
+  );
+  pass(
+    "global search reaches Reddit from X while site search and platform tag catalogs stay independent",
+  );
+  // Current-post capture ignores recommendations and preserves downloadable video.
+  await collect("https://x.com/lin/status/1001", "thread", { maxPosts: 3 });
+  await source.evaluate(() => {
+    const main = document.querySelector("main");
+    const boundary = document.createElement("h2");
+    boundary.textContent = "Discover more";
+    main.append(boundary);
+    const unrelated = document.querySelector("article").cloneNode(true);
+    unrelated.querySelector('a[href*="/status/"]').href = "/other/status/9999";
+    main.append(unrelated);
+    document.querySelector("article .photo")?.remove();
+    const v = document.createElement("video");
+    v.src = "http://127.0.0.1:1420/fixtures/video.webm";
+    v.controls = true;
+    document.querySelector("article").append(v);
+  });
+  const videoCapture = await source.evaluate(() =>
+    GlassmarkCapture.collect({ mode: "thread", maxPosts: 3 }),
+  );
+  assert.equal(videoCapture.posts[0].url, "https://x.com/lin/status/1001");
+  assert.equal(
+    videoCapture.posts.some((p) => p.url?.includes("9999")),
+    false,
+  );
+  assert.equal(
+    videoCapture.posts[0].media.some(
+      (m) => m.type === "video" && m.url.endsWith("video.webm"),
+    ),
+    true,
+  );
+  const videoItem = await save({ ...videoCapture, tags: ["Video lab"] });
+  await page.waitForTimeout(3300);
+  await page.locator('.saved-tags [data-tag="Video lab"]').click();
+  await page
+    .locator(`.x-post[data-open-archive="${videoItem.id}"] video`)
+    .waitFor();
+  await page
+    .locator(`.x-post[data-open-archive="${videoItem.id}"] video`)
+    .evaluate(async (v) => {
+      await v.play();
+    });
+  await page.waitForTimeout(400);
+  assert.equal(
+    await page
+      .locator(`.x-post[data-open-archive="${videoItem.id}"] video`)
+      .evaluate((v) => v.currentTime > 0),
+    true,
+  );
+  const hlsResources = await archiveResources(
+    ["http://127.0.0.1:1420/fixtures/hls/video.m3u8"],
+    {
+      approve: async () => true,
+      upload: async (name, bytes, mime) => {
+        await call("/api/blobs/" + name, {
+          method: "PUT",
+          headers: { "Content-Type": mime },
+          body: bytes,
+        });
+      },
+    },
+  );
+  assert.ok(hlsResources.length >= 4);
+  assert.equal(
+    hlsResources.every((r) => r.status === "saved"),
+    true,
+  );
+  const hlsItem = await post("/api/items", {
+    ...videoCapture,
+    title: "Offline HLS video",
+    tags: ["Video lab"],
+    resources: hlsResources,
+    posts: [
+      {
+        ...videoCapture.posts[0],
+        media: [
+          {
+            type: "video",
+            url: "http://127.0.0.1:1420/fixtures/hls/video.m3u8",
+          },
+        ],
+      },
+    ],
+  });
+  await page.waitForTimeout(3300);
+  const hlsVideo = page.locator(
+    `.x-post[data-open-archive="${hlsItem.id}"] video`,
+  );
+  await hlsVideo.waitFor();
+  const canH264 = await hlsVideo.evaluate(
+    (v) => !!v.canPlayType('video/mp4; codecs="avc1.42E01E"'),
+  );
+  if (canH264) {
+    await hlsVideo.evaluate((v) => v.play());
+    await page.waitForTimeout(400);
+    assert.ok(await hlsVideo.evaluate((v) => v.currentTime > 0));
+  }
+  assert.equal(socialRequests.length, 0);
+  pass(
+    "current-post capture excludes recommendations; direct video plays offline and finite HLS includes all segments",
+  );
+  await call("/api/items/" + videoItem.id, { method: "DELETE" });
+  await call("/api/items/" + hlsItem.id, { method: "DELETE" });
+  await page.locator('.saved-tags [data-tag=""]').click();
+  await page.locator("#window-close").hover();
+  assert.equal(
+    await page
+      .locator("#window-close span")
+      .evaluate((e) => getComputedStyle(e).opacity),
+    "1",
+  );
+  assert.equal(
+    await page.locator("#window-close").getAttribute("title"),
+    "关闭窗口",
+  );
+  pass("window controls reveal hover symbols and labelled tooltips");
   assert.deepEqual(errors, []);
   pass("desktop interface has no uncaught JavaScript errors");
   const report = {

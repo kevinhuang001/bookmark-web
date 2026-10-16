@@ -1,6 +1,9 @@
+import { pageContext } from "../context.js";
+import { videoSources } from "./video.js";
 import { platform, adapterFor, extractPost } from "./adapters.js";
 import { serializeElement, snapshotDocument, escapeHtml } from "./serialize.js";
 export async function collect({ mode = "page", maxPosts = 100 } = {}) {
+  globalThis.__glassmarkCaptureCanceled = false;
   const kind = platform(location.hostname);
   const config = adapterFor(kind);
   const warnings = [];
@@ -9,11 +12,80 @@ export async function collect({ mode = "page", maxPosts = 100 } = {}) {
   const fragments = new Map();
   const originals = new Map();
   const originalScroll = scrollY;
+  const context = pageContext(location.href);
   const limit = kind === "reddit" ? 100000 : maxPosts;
+  let rootId = null;
+  const candidates = () => {
+    const scope =
+      document.querySelector('[data-testid="primaryColumn"]') ||
+      document.querySelector("main") ||
+      document.body;
+    let elements = [...scope.querySelectorAll(config.selector)];
+    if (kind === "x") {
+      elements = elements.filter(
+        (el) => !el.parentElement?.closest(config.selector),
+      );
+      const boundary = [...scope.querySelectorAll("h2,[role=heading]")].find(
+        (el) =>
+          /^(discover more|发现更多|探索更多|猜你喜欢|更多帖子)$/i.test(
+            el.textContent.trim(),
+          ),
+      );
+      if (boundary)
+        elements = elements.filter(
+          (el) =>
+            !(
+              boundary.compareDocumentPosition(el) &
+              Node.DOCUMENT_POSITION_FOLLOWING
+            ),
+        );
+      const primary = elements.find(
+        (el) =>
+          extractPost(el, kind).url?.match(/\/status\/(\d+)/)?.[1] ===
+          context.postId,
+      );
+      if (primary) {
+        rootId = extractPost(primary, kind).id;
+        elements = [primary, ...elements.filter((el) => el !== primary)];
+      }
+    } else if (kind === "reddit") {
+      const primary = elements.find(
+        (el) =>
+          !el.matches("shreddit-comment,.thing.comment") &&
+          (el.getAttribute("id") === `t3_${context.postId}` ||
+            el.getAttribute("thingid") === `t3_${context.postId}` ||
+            el
+              .getAttribute("permalink")
+              ?.includes(`/comments/${context.postId}/`) ||
+            extractPost(el, kind).url?.includes(
+              `/comments/${context.postId}/`,
+            )),
+      );
+      if (primary) {
+        rootId = extractPost(primary, kind).id;
+        elements = [
+          primary,
+          ...elements.filter(
+            (el) =>
+              el.matches("shreddit-comment,.thing.comment") &&
+              (!el.getAttribute("postid") ||
+                el.getAttribute("postid") === `t3_${context.postId}`),
+          ),
+        ];
+      } else elements = [];
+    }
+    return elements;
+  };
   function accumulate(elements) {
     for (const element of elements) {
       const post = extractPost(element, kind);
       if (posts.has(post.id) || posts.size >= limit) continue;
+      for (const media of post.media || []) {
+        for (const url of [media.url, media.poster, ...(media.sources || [])])
+          if (url && /^https?:/.test(url)) resources.add(url);
+      }
+      const capture = serializeElement(element);
+      capture.resources.forEach((r) => resources.add(r));
       if (
         kind === "reddit" &&
         element.parentElement?.closest(config.selector)
@@ -21,7 +93,6 @@ export async function collect({ mode = "page", maxPosts = 100 } = {}) {
         posts.set(post.id, post);
         continue;
       }
-      const capture = serializeElement(element);
       posts.set(post.id, post);
       fragments.set(post.id, capture.html);
       originals.set(post.id, element.outerHTML);
@@ -35,10 +106,13 @@ export async function collect({ mode = "page", maxPosts = 100 } = {}) {
       throw new Error("请先打开一条 X 帖子的详情页");
     if (kind === "reddit" && !/\/comments\//.test(location.pathname))
       throw new Error("请先打开 Reddit 讨论详情页");
+    window.scrollTo(0, 0);
+    await new Promise((resolve) => setTimeout(resolve, 250));
     let unchanged = 0;
     do {
+      if (globalThis.__glassmarkCaptureCanceled) throw new Error("已取消收藏");
       const previous = posts.size;
-      accumulate(document.querySelectorAll(config.selector));
+      accumulate(candidates());
       if (kind === "reddit" || posts.size >= limit) break;
       unchanged = posts.size === previous ? unchanged + 1 : 0;
       if (unchanged >= 5) break;
@@ -46,7 +120,7 @@ export async function collect({ mode = "page", maxPosts = 100 } = {}) {
       await new Promise((resolve) => setTimeout(resolve, 900));
     } while (posts.size < limit);
     window.scrollTo(0, originalScroll);
-    if (!posts.size)
+    if (!posts.size || !rootId)
       throw new Error("没有识别到帖子，请等待页面加载，或使用区域收藏");
     const shell = document.querySelector(config.selector)?.parentElement;
     if (shell) {
@@ -91,6 +165,8 @@ export async function collect({ mode = "page", maxPosts = 100 } = {}) {
         if (!posts.has(post.id)) posts.set(post.id, post);
       }
   }
+  if (mode !== "thread")
+    videoSources(document.body).forEach((u) => resources.add(u));
   // Preserve the font faces actually loaded by this page, including their sources.
   let fontCss = "";
   const loaded = [...document.fonts].filter((face) => face.status === "loaded");
@@ -159,7 +235,7 @@ export async function collect({ mode = "page", maxPosts = 100 } = {}) {
     version: 1,
     title: document.title || location.hostname,
     url: location.href,
-    platform: kind,
+    platform: mode === "thread" ? kind : "web",
     mode,
     capturedAt: new Date().toISOString(),
     text:
@@ -177,9 +253,14 @@ export async function collect({ mode = "page", maxPosts = 100 } = {}) {
       getComputedStyle(document.body).backgroundColor,
     ).replace("</head>", `<style>${fontCss}</style></head>`),
     original,
+    videos: mode === "thread" ? [] : videoSources(document.body),
     resources: [...new Set([...resources, ...sourceResources])],
-    posts: [...posts.values()],
+    posts: rootId
+      ? [posts.get(rootId), ...posts.values()].filter(
+          (p, i, a) => p && a.findIndex((x) => x?.id === p.id) === i,
+        )
+      : [...posts.values()],
     warnings: [...new Set(warnings)],
-    scope: { maxPosts, capturedPosts: posts.size },
+    scope: { maxPosts, capturedPosts: posts.size, rootPostId: rootId },
   };
 }

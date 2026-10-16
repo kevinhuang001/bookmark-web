@@ -943,3 +943,41 @@
     flex-wrap: wrap;
   }
 }
+
+.saved-tags {
+  margin-top: 25px;
+  padding: 0 7px;
+}
+.saved-tags > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.saved-tags h2 {
+  font-size: 11px;
+  color: #657581;
+  font-weight: 500;
+}
+.saved-tags button {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  border: 0;
+  background: none;
+  text-align: left;
+  padding: 9px;
+  border-radius: 9px;
+  font-size: 12px;
+  color: #425968;
+}
+.saved-tags > button {
+  width: 100%;
+}
+.saved-tags button.active,
+.saved-tags button:hover {
+  background: #eff3f4;
+}
+.saved-tags .icon {
+  width: 15px;
+  height: 15px;
+}

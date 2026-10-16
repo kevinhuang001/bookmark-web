@@ -1,3 +1,4 @@
+import { videoSources } from "./video.js";
 /** DOM adapters deliberately use the user's rendered session, never private APIs. */
 export function platform(host) {
   if (/(^|\.)(x\.com|twitter\.com)$/.test(host)) return "x";
@@ -32,15 +33,26 @@ export function adapterFor(kind, doc = document) {
 }
 export function extractPost(el, kind, doc = document) {
   const config = adapterFor(kind, doc);
+  const timeLink = el.querySelector("time")?.closest("a[href]");
   const rawLink =
-    config.link && el.querySelector(config.link)?.getAttribute("href");
+    el.getAttribute("permalink") ||
+    (kind === "x" ? timeLink?.getAttribute("href") : null) ||
+    (config.link &&
+      [...el.querySelectorAll(config.link)]
+        .find(
+          (a) =>
+            !a.parentElement?.closest('[role="link"][tabindex]') ||
+            a.querySelector("time"),
+        )
+        ?.getAttribute("href"));
   const permalink = rawLink
     ? new URL(rawLink, doc.URL).href.split("?")[0]
     : null;
   const id =
     el.getAttribute("thingid") ||
+    el.getAttribute("thing-id") ||
     el.getAttribute("id") ||
-    permalink ||
+    (kind === "x" ? permalink?.match(/\/status\/(\d+)/)?.[1] : permalink) ||
     el.getAttribute("permalink") ||
     el.textContent.trim().slice(0, 160);
   const username = el.querySelector('[data-testid="User-Name"]');
@@ -57,7 +69,10 @@ export function extractPost(el, kind, doc = document) {
     username?.querySelector('a:not([href*="/status/"])')?.textContent.trim() ||
     author.split("@")[0].replace(/[✓✔]/g, "").trim();
   const media = [];
-  for (const image of el.querySelectorAll("img")) {
+  const owned = (node) =>
+    !node.parentElement?.closest("shreddit-comment,.thing.comment") ||
+    node.parentElement.closest("shreddit-comment,.thing.comment") === el;
+  for (const image of [...el.querySelectorAll("img")].filter(owned)) {
     const url = image.currentSrc || image.src;
     if (
       url &&
@@ -65,18 +80,28 @@ export function extractPost(el, kind, doc = document) {
         url,
       ) &&
       !image.closest(
-        '[data-testid*="UserAvatar"],[data-testid="Tweet-User-Avatar"]',
+        '[data-testid*="UserAvatar"],[data-testid="Tweet-User-Avatar"],[data-testid="videoComponent"]',
       )
     )
       media.push({ type: "image", url, alt: image.alt || "" });
   }
-  for (const video of el.querySelectorAll("video"))
+  const sources = videoSources(el, doc);
+  for (const video of [...el.querySelectorAll("video,shreddit-player")].filter(
+    owned,
+  )) {
+    const direct = video.currentSrc || video.src || "";
+    const playable = /^https?:/.test(direct)
+      ? direct
+      : sources.find((u) => /\.m3u8(?:\?|$)/.test(u)) || sources[0] || direct;
+    const hls = sources.find((u) => /\.m3u8(?:\?|$)/.test(u));
     media.push({
       type: "video",
-      url: video.currentSrc || video.src,
-      poster: video.poster || "",
+      url: hls || playable,
+      poster: video.poster || video.getAttribute("poster") || "",
       alt: "视频",
+      sources,
     });
+  }
   const read = (selector) =>
     el.querySelector(selector)?.textContent.trim() || "";
   const stats =
@@ -102,7 +127,7 @@ export function extractPost(el, kind, doc = document) {
             el.getAttribute("score") || el.getAttribute("data-score") || "",
           comments: el.getAttribute("comment-count") || "",
         };
-  const body = el.querySelector(config.body);
+  const body = [...el.querySelectorAll(config.body)].find(owned);
   const profileImage = el.querySelector(
     'img[src*="profile_images"],[data-testid*="UserAvatar"] img,[data-testid="Tweet-User-Avatar"] img',
   );
@@ -137,7 +162,11 @@ export function extractPost(el, kind, doc = document) {
     isComment: el.matches("shreddit-comment,.thing.comment"),
     parentId:
       el.getAttribute("parentid") || el.getAttribute("parent-id") || null,
-    url: permalink,
+    url:
+      permalink ||
+      (el.getAttribute("permalink")
+        ? new URL(el.getAttribute("permalink"), doc.URL).href
+        : null),
     depth: Number(el.getAttribute("depth") || 0),
     postedAt:
       el.querySelector("time")?.getAttribute("datetime") ||

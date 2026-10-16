@@ -52,7 +52,7 @@ try {
   ).json();
   await popup.locator("#code").fill(pairing.code);
   await popup.locator("#pairButton").click();
-  await popup.locator("#actions").waitFor({ state: "visible" });
+  await popup.locator("#connection-badge.online").waitFor();
   const source = await context.newPage();
   await source.goto("http://127.0.0.1:1420/fixtures/article.html");
   const tabId = await worker.evaluate(async () => {

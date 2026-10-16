@@ -46,7 +46,7 @@ async fn authorize(State(state):State<AppState>,req:Request,next:Next)->Response
     let desktop=token==state.token;
     let paired=if !desktop {state.store.db.lock().unwrap().query_row("SELECT 1 FROM devices WHERE token=?1",[token],|r|r.get::<_,i32>(0)).is_ok()}else{false};
     if !desktop&&!paired{return StatusCode::UNAUTHORIZED.into_response();}
-    let allowed=req.uri().path()=="/api/status" || (req.uri().path()=="/api/items"&&req.method()==Method::POST) || (req.uri().path().starts_with("/api/blobs/")&&req.method()==Method::PUT);
+    let allowed=req.uri().path()=="/api/status" || (req.uri().path()=="/api/capture-options"&&req.method()==Method::GET) || (req.uri().path()=="/api/items"&&req.method()==Method::POST) || (req.uri().path().starts_with("/api/blobs/")&&req.method()==Method::PUT);
     if !desktop&&!allowed{return StatusCode::FORBIDDEN.into_response();}
     next.run(req).await
 }
@@ -54,9 +54,10 @@ pub fn router(state:AppState)->Router{
     let api=Router::new().route("/api/status",get(status)).route("/api/pairing",post(pairing)).route("/api/devices",get(devices)).route("/api/devices/{token}",axum::routing::delete(revoke))
         .route("/api/items",get(items).post(capture)).route("/api/items/{id}",put(update_item).delete(delete_item)).route("/api/items/{id}/content/{file}",get(content)).route("/api/items/{id}/assets/{name}",get(asset))
         .route("/api/blobs/{name}",put(blob)).route("/api/folders",get(folders).post(create_folder)).route("/api/folders/{id}",put(update_folder))
+        .route("/api/capture-options",get(capture_options)).route("/api/tags",get(tags).post(create_tag))
         .route("/api/settings",get(settings).put(save_settings)).route("/api/sync",post(synchronize)).layer(middleware::from_fn_with_state(state.clone(),authorize));
     let cors=CorsLayer::new().allow_origin(AllowOrigin::predicate(|origin:&HeaderValue,_|origin.to_str().is_ok_and(trusted_origin))).allow_headers([axum::http::header::AUTHORIZATION,axum::http::header::CONTENT_TYPE]).allow_methods([Method::GET,Method::POST,Method::PUT,Method::DELETE,Method::OPTIONS]);
-    Router::new().route("/health",get(||async{Json(json!({"app":"glassmark","version":"0.2.0"}))})).route("/pair",post(pair)).merge(api)
+    Router::new().route("/health",get(||async{Json(json!({"app":"glassmark","version":env!("CARGO_PKG_VERSION")}))})).route("/pair",post(pair)).merge(api)
         .layer(DefaultBodyLimit::max(2*1024*1024*1024)).layer(cors).layer(middleware::from_fn(boundary)).with_state(state)
 }
 async fn status(State(state):State<AppState>)->Json<Value>{Json(json!({"connected":true,"sync":state.sync_status.lock().unwrap().clone(),"running":state.syncing.load(Ordering::SeqCst)}))}
@@ -81,6 +82,21 @@ async fn update_item(State(state):State<AppState>,Path(id):Path<String>,Json(pat
     let saved=state.store.event("item",value)?;state.schedule_sync();Ok(Json(saved))
 }
 async fn delete_item(State(state):State<AppState>,Path(id):Path<String>)->Result<Json<Value>>{safe_id(&id)?;let mut value=state.store.get(&id)?;value["deleted"]=json!(true);state.store.event("item",value)?;state.schedule_sync();Ok(Json(json!({"ok":true})))}
+async fn tags(State(state):State<AppState>)->Result<Json<Value>>{Ok(Json(json!(state.store.list("tag","")?)))}
+async fn create_tag(State(state):State<AppState>,Json(mut value):Json<Value>)->Result<Json<Value>>{
+    let name=value["name"].as_str().unwrap_or("").trim().to_owned();
+    if name.is_empty()||name.len()>100||!["web","x","reddit"].contains(&value["platform"].as_str().unwrap_or("")){return Err("Invalid tag".to_string().into());}
+    value["name"]=json!(name);value["id"]=json!(Uuid::new_v4());
+    if let Some(existing)=state.store.list("tag","")?.into_iter().find(|t|t["name"]==value["name"]&&t["platform"]==value["platform"]){return Ok(Json(existing));}
+    let saved=state.store.event("tag",value)?;state.schedule_sync();Ok(Json(saved))
+}
+async fn capture_options(State(state):State<AppState>)->Result<Json<Value>>{
+    let mut tags=state.store.list("tag","")?;
+    for item in state.store.list("item","")?{
+        if let Some(names)=item["tags"].as_array(){for name in names{if !tags.iter().any(|t|t["name"]==*name&&t["platform"]==item["platform"]){tags.push(json!({"name":name,"platform":item["platform"]}));}}}
+    }
+    Ok(Json(json!({"folders":state.store.list("folder","")?,"tags":tags})))
+}
 async fn folders(State(state):State<AppState>)->Result<Json<Value>>{Ok(Json(json!(state.store.list("folder","")?)))}
 fn validate_folder(state:&AppState,value:&Value)->store::Result<()>{
     if value["name"].as_str().is_none_or(|s|s.trim().is_empty()||s.len()>100){return Err("文件夹名称需要 1–100 个字节".into());}
@@ -121,6 +137,7 @@ pub async fn serve(state:AppState)->store::Result<()>{
     }
     #[tokio::test]async fn extension_cannot_read_library_or_settings(){let (_dir,state)=setup();state.store.db.lock().unwrap().execute("INSERT INTO devices VALUES('paired','Chromium')",[]).unwrap();let router=router(state);
         assert_eq!(router.clone().oneshot(request("/api/status",Some("paired"))).await.unwrap().status(),StatusCode::OK);
+        assert_eq!(router.clone().oneshot(request("/api/capture-options",Some("paired"))).await.unwrap().status(),StatusCode::OK);
         for path in ["/api/items","/api/settings","/api/pairing"]{assert_eq!(router.clone().oneshot(request(path,Some("paired"))).await.unwrap().status(),StatusCode::FORBIDDEN);}
     }
     #[test]fn folders_reject_self_and_ancestor_cycles(){let (_dir,state)=setup();let a=state.store.event("folder",json!({"name":"a"})).unwrap();let b=state.store.event("folder",json!({"name":"b","parentId":a["id"]})).unwrap();let mut changed=a;changed["parentId"]=b["id"].clone();assert!(validate_folder(&state,&changed).is_err());}

@@ -6,10 +6,15 @@ export async function staticServer(connection) {
   const mime = {
     ".html": "text/html; charset=utf-8",
     ".js": "text/javascript",
+    ".mjs": "text/javascript",
     ".css": "text/css",
     ".svg": "image/svg+xml",
     ".woff2": "font/woff2",
     ".png": "image/png",
+    ".webm": "video/webm",
+    ".m3u8": "application/vnd.apple.mpegurl",
+    ".m4s": "video/mp4",
+    ".mp4": "video/mp4",
     ".json": "application/json",
   };
   const server = http.createServer(async (req, res) => {
@@ -33,16 +38,18 @@ export async function staticServer(connection) {
         return res.end(JSON.stringify(connection));
       }
       let file =
-        url.pathname === "/"
-          ? "app/index.html"
-          : url.pathname.startsWith("/fixtures/")
-            ? "tests" + url.pathname
-            : url.pathname.startsWith("/test-fonts/")
-              ? "node_modules/@fontsource/noto-sans-sc/" +
-                url.pathname.slice(12)
-              : url.pathname.startsWith("/extension/")
-                ? "dist/extension-chromium/" + url.pathname.slice(11)
-                : "app" + url.pathname;
+        url.pathname === "/vendor/hls.mjs"
+          ? "node_modules/hls.js/dist/hls.mjs"
+          : url.pathname === "/"
+            ? "app/index.html"
+            : url.pathname.startsWith("/fixtures/")
+              ? "tests" + url.pathname
+              : url.pathname.startsWith("/test-fonts/")
+                ? "node_modules/@fontsource/noto-sans-sc/" +
+                  url.pathname.slice(12)
+                : url.pathname.startsWith("/extension/")
+                  ? "dist/extension-chromium/" + url.pathname.slice(11)
+                  : "app" + url.pathname;
       const resolved = path.resolve(file);
       if (!resolved.startsWith(process.cwd() + path.sep))
         throw new Error("Invalid path");

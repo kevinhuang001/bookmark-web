@@ -56,7 +56,7 @@ function savedSidebar(kind, options) {
       ),
     ),
   ];
-  return `<aside class="saved-site-sidebar ${kind}-saved-sidebar" aria-label="${reddit ? "Reddit 已保存导航" : "X 书签导航"}"><div class="saved-site-brand">${icon(kind)}${reddit ? "<span>reddit</span>" : ""}</div><button class="saved-nav-entry active" data-social-action="bookmarks">${icon("bookmark")}<span>${reddit ? "已保存" : "书签"}</span><small>${options.items.length}</small></button><form class="saved-search" role="search">${icon("search")}<input type="search" name="q" aria-label="搜索 ${reddit ? "Reddit" : "X"} 收藏" placeholder="搜索${reddit ? "已保存" : "书签"}" value="${esc(options.query)}"><button type="submit" aria-label="搜索收藏">${icon("arrowRight")}</button></form>${reddit && communities.length ? `<div class="saved-communities"><h2>已保存的社区</h2><button class="${!options.filters.community ? "active" : ""}" data-social-action="community" data-community="">全部社区</button>${communities.map((c) => `<button class="${options.filters.community === c ? "active" : ""}" data-social-action="community" data-community="${esc(c)}">r/${esc(c)}</button>`).join("")}</div>` : ""}<p class="saved-local-note">${icon("archive")}本地收藏</p></aside>`;
+  return `<aside class="saved-site-sidebar ${kind}-saved-sidebar" aria-label="${reddit ? "Reddit 已保存导航" : "X 书签导航"}"><div class="saved-site-brand">${icon(kind)}${reddit ? "<span>reddit</span>" : ""}</div><button class="saved-nav-entry active" data-social-action="bookmarks">${icon("bookmark")}<span>${reddit ? "已保存" : "书签"}</span><small>${options.items.length}</small></button><form class="saved-search" role="search">${icon("search")}<input type="search" name="q" aria-label="搜索 ${reddit ? "Reddit" : "X"} 收藏" placeholder="搜索${reddit ? "已保存" : "书签"}" value="${esc(options.query)}"><button type="submit" aria-label="搜索收藏">${icon("arrowRight")}</button></form>${reddit && communities.length ? `<div class="saved-communities"><h2>已保存的社区</h2><button class="${!options.filters.community ? "active" : ""}" data-social-action="community" data-community="">全部社区</button>${communities.map((c) => `<button class="${options.filters.community === c ? "active" : ""}" data-social-action="community" data-community="${esc(c)}">r/${esc(c)}</button>`).join("")}</div>` : ""}<div class="saved-tags"><div><h2>标签</h2><button data-social-action="new-tag" aria-label="新建标签">${icon("plus")}</button></div><button class="${!options.tag ? "active" : ""}" data-social-action="tag-filter" data-tag="">全部收藏</button>${(options.tags || []).map((t) => `<button class="${options.tag === t ? "active" : ""}" data-social-action="tag-filter" data-tag="${esc(t)}">${icon("tag")}<span>${esc(t)}</span></button>`).join("")}</div><p class="saved-local-note">${icon("archive")}本地收藏</p></aside>`;
 }
 function discussionScope(item) {
   const count = Math.max(0, (item.posts?.length || 1) - 1);
@@ -111,14 +111,14 @@ function redditShell(items, options) {
 }
 export async function renderSocial(
   root,
-  { kind, items, selected, query, filters, callbacks },
+  { kind, items, selected, query, filters, callbacks, tags = [], tag = null },
 ) {
   releaseSocial();
   media = new ArchiveMedia();
   root.innerHTML =
     kind === "x"
-      ? xShell(items, { selected, query, filters })
-      : redditShell(items, { selected, query, filters });
+      ? xShell(items, { selected, query, filters, tags, tag })
+      : redditShell(items, { selected, query, filters, tags, tag });
   root.onclick = (e) => {
     const action = e.target.closest("[data-social-action]");
     if (action) {

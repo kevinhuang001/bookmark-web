@@ -1,4 +1,6 @@
 import { connect, json, request, mutate } from "./api.js";
+import { ArchiveMedia } from "./media.js";
+let webMedia;
 import { preview, releasePreview } from "./preview.js";
 import { renderSocial, releaseSocial } from "./social.js";
 import { icon, hydrateIcons } from "./icons.js";
@@ -21,6 +23,9 @@ const state = {
   tag: null,
   selected: null,
   query: "",
+  globalMode: false,
+  siteQueries: { x: "", reddit: "" },
+  tagCatalog: [],
   generation: 0,
   previewController: null,
   viewKey: "",
@@ -79,7 +84,7 @@ function visible() {
   });
 }
 async function switchView(view) {
-  const changed = state.view !== view;
+  state.globalMode = false;
   if (state.view === view && view !== "web") {
     state.selected = null;
     state.rawSnapshot = false;
@@ -104,40 +109,38 @@ async function switchView(view) {
   }
   localStorage.setItem("glassmark-view", view);
   state.viewKey = "";
-  if (changed && state.query) {
-    state.query = "";
-    $("search").value = "";
-    await refresh();
-    return;
-  }
   if (view === "web" && visible().length) state.selected = visible()[0].id;
   revealSelected();
-  render();
+  await refresh();
 }
 function renderPlatforms() {
-  $("platforms").innerHTML = [
+  $("social-platforms").innerHTML = [
     ["x", "X", "Twitter"],
     ["reddit", "Reddit", ""],
-    ["web", "网页", ""],
   ]
     .map(
       ([view, name, sub]) =>
         `<button data-view="${view}" class="platform-entry ${state.view === view ? "active" : ""}"><span class="platform-symbol ${view}">${icon(view === "web" ? "globe" : view)}</span><span>${name}${sub ? `<small>${sub}</small>` : ""}</span><b>${state.allItems.filter((i) => itemPlatform(i) === view).length}</b></button>`,
     )
     .join("");
-  for (const button of $("platforms").querySelectorAll("button"))
+  $("web-root-button").className =
+    "platform-entry " + (state.view === "web" ? "active" : "");
+  $("web-root-button").innerHTML =
+    `<span class="platform-symbol web">${icon("globe")}</span><span>网页</span><b>${state.allItems.filter((i) => itemPlatform(i) === "web").length}</b>`;
+  $("folders").hidden = state.view !== "web";
+  for (const button of $("platforms").querySelectorAll("[data-view]"))
     button.onclick = guarded(() => switchView(button.dataset.view));
   document.body.dataset.view = state.view;
-  $("web-folder-section").hidden = state.view !== "web";
+  $("global-results-back").hidden = !state.query || state.globalMode;
   $("sidebar").classList.toggle("social-sidebar", state.view !== "web");
 }
 function renderFolders() {
   const webItems = state.allItems.filter((i) => itemPlatform(i) === "web");
-  const matches = state.items.filter(
+  const matches = state.allItems.filter(
     (i) =>
       itemPlatform(i) === "web" && (!state.tag || i.tags?.includes(state.tag)),
   );
-  const filtered = Boolean(state.query || state.tag);
+  const filtered = Boolean(state.tag);
   function files(parent, depth) {
     return matches
       .filter((i) => (i.folderId || null) === parent)
@@ -163,7 +166,7 @@ function renderFolders() {
       .join("");
   }
   $("folders").innerHTML =
-    `<button class="folder folder-root ${!state.folder ? "active" : ""}" data-folder="">${icon("globe")}<span>全部网页</span><small>${webItems.length}</small></button>${walk()}${files(null, 0)}${matches.length ? "" : '<div class="tree-empty">没有找到网页</div>'}`;
+    `${walk()}${files(null, 0)}${matches.length ? "" : '<div class="tree-empty">从浏览器收藏网页</div>'}`;
   $("breadcrumb-current").textContent = state.tag
     ? "# " + state.tag
     : folderName();
@@ -172,8 +175,9 @@ function renderFolders() {
       state.selected = button.dataset.item;
       state.folder =
         matches.find((i) => i.id === state.selected)?.folderId || null;
-      renderFolders();
-      renderReader();
+      state.globalMode = false;
+      state.items = state.allItems;
+      render();
     };
     button.ondragstart = (e) =>
       e.dataTransfer.setData("text/glassmark-id", button.dataset.item);
@@ -221,11 +225,12 @@ function renderFolders() {
     button.onclick = () => editFolder(button.dataset.rename);
   const tags = [
     ...new Set(
-      state.items
+      state.allItems
         .filter((i) => itemPlatform(i) === state.view)
         .flatMap((item) => item.tags || []),
     ),
   ];
+  $("tags").hidden = state.view !== "web";
   $("tags").innerHTML = tags
     .map(
       (tag) =>
@@ -248,7 +253,47 @@ function revealSelected() {
     id = state.folders.find((f) => f.id === id)?.parentId;
   }
 }
+function renderGlobalResults() {
+  releaseSocial();
+  releasePreview();
+  webMedia?.release();
+  state.previewController?.abort();
+  const key =
+    "global|" +
+    state.query +
+    state.items.map((i) => i.id + i.modifiedAt).join();
+  $("reader").classList.remove("social-reader");
+  $("toolbar").hidden = false;
+  $("breadcrumb-current").textContent = "全局搜索";
+  for (const id of ["move", "tag-button", "info", "delete"])
+    $(id).disabled = true;
+  if (state.viewKey === key) return;
+  state.viewKey = key;
+  $("reader").innerHTML =
+    `<section class="global-results"><p class="eyebrow">SEARCH YOUR LIBRARY</p><h1>${escape(state.query)}</h1><p>${state.items.length} 份收藏 · 网页、X 与 Reddit</p>${state.items.map((i) => `<button class="global-result" data-global-id="${i.id}">${icon(itemPlatform(i) === "web" ? "file" : itemPlatform(i))}<span><strong>${escape(i.title)}</strong><small>${platformLabel[itemPlatform(i)]} · ${escape(domain(i))} · ${(i.tags || []).map((t) => "#" + escape(t)).join(" ")}</small><p>${escape((i.text || "").slice(0, 140))}</p></span></button>`).join("") || "<p>没有找到匹配的内容</p>"}</section>`;
+  $("reader").onclick = guarded(async (e) => {
+    const button = e.target.closest("[data-global-id]");
+    if (!button) return;
+    const item = state.items.find((i) => i.id === button.dataset.globalId);
+    if (!item) return;
+    state.globalMode = false;
+    state.view = itemPlatform(item);
+    state.folder = item.folderId || null;
+    state.tag = null;
+    state.siteQueries[state.view] = "";
+    state.selected = item.id;
+    state.rawSnapshot = false;
+    state.viewKey = "";
+    await refresh();
+    revealSelected();
+    render();
+  });
+}
 async function renderReader() {
+  if (state.globalMode && state.query) {
+    renderGlobalResults();
+    return;
+  }
   const social = state.view !== "web" && !state.rawSnapshot;
   $("reader").classList.toggle("social-reader", social);
   $("toolbar").hidden = social;
@@ -264,6 +309,7 @@ async function renderReader() {
       state.query +
       "|" +
       JSON.stringify(state.filters) +
+      JSON.stringify(state.tagCatalog) +
       "|" +
       String(state.tag) +
       "|" +
@@ -272,13 +318,25 @@ async function renderReader() {
     state.viewKey = key;
     state.previewController?.abort();
     releasePreview();
+    webMedia?.release();
     for (const id of ["move", "tag-button", "info", "delete"])
       $(id).disabled = true;
     await renderSocial($("reader"), {
       kind: state.view,
       items,
       selected: state.selected,
-      query: state.query,
+      query: state.siteQueries[state.view] || "",
+      tags: [
+        ...new Set([
+          ...state.tagCatalog
+            .filter((t) => t.platform === state.view)
+            .map((t) => t.name),
+          ...state.allItems
+            .filter((i) => itemPlatform(i) === state.view)
+            .flatMap((i) => i.tags || []),
+        ]),
+      ],
+      tag: state.tag,
       filters: state.filters,
       callbacks: { action: guarded(socialAction) },
     });
@@ -298,6 +356,7 @@ async function renderReader() {
     (item ? item.id + "|" + item.modifiedAt : "empty");
   if (state.viewKey === key) return;
   state.viewKey = key;
+  webMedia?.release();
   state.previewController?.abort();
   state.previewController = new AbortController();
   const signal = state.previewController.signal;
@@ -325,6 +384,15 @@ async function renderReader() {
     frame.src = url;
     frame.hidden = false;
     $("preview-loading").remove();
+    const streams = (item.videos || []).filter((u) => /\.m3u8(?:\?|$)/.test(u));
+    if (streams.length) {
+      const section = document.createElement("section");
+      section.className = "archived-videos";
+      section.innerHTML = `<h2>离线视频</h2>${streams.map((u) => `<div class="social-media"><video controls preload="metadata" data-archive-id="${item.id}" data-archive-media="${escape(u)}"></video><span class="media-fallback">视频未能归档或当前系统不支持播放</span></div>`).join("")}`;
+      $("reader").append(section);
+      webMedia = new ArchiveMedia();
+      await webMedia.hydrate(section, [item]);
+    }
   } catch (error) {
     if (error.name !== "AbortError" && $("preview-loading"))
       $("preview-loading").textContent = "预览失败：" + error.message;
@@ -337,15 +405,20 @@ function render() {
 }
 async function refresh() {
   const generation = ++state.generation;
-  const [items, folders, allItems] = await Promise.all([
-    json("/api/items?q=" + encodeURIComponent(state.query)),
+  const query = state.globalMode
+    ? state.query
+    : state.siteQueries[state.view] || "";
+  const [items, folders, allItems, catalog] = await Promise.all([
+    json("/api/items?q=" + encodeURIComponent(query)),
     json("/api/folders"),
-    state.query ? json("/api/items") : Promise.resolve(null),
+    query ? json("/api/items") : Promise.resolve(null),
+    json("/api/tags"),
   ]);
   if (generation !== state.generation) return;
   state.items = items;
   state.allItems = allItems || items;
   state.folders = folders;
+  state.tagCatalog = catalog;
   if (state.view === "web" && !state.selected && visible().length) {
     state.selected = visible()[0].id;
     revealSelected();
@@ -376,19 +449,44 @@ async function socialAction(action, data = {}) {
     state.filters.community = "";
     state.feedScroll[state.view] = 0;
     state.viewKey = "";
-    if (state.query) {
-      state.query = "";
-      $("search").value = "";
-      await refresh();
-    } else render();
+    state.tag = null;
+    state.siteQueries[state.view] = "";
+    await refresh();
     return;
   }
   if (action === "search") {
-    state.query = String(data.query || "").trim();
-    $("search").value = state.query;
+    state.siteQueries[state.view] = String(data.query || "").trim();
+    state.globalMode = false;
     state.selected = null;
     state.feedScroll[state.view] = 0;
     await refresh();
+    return;
+  }
+  if (action === "tag-filter") {
+    state.tag = data.tag || null;
+    state.selected = null;
+    state.viewKey = "";
+    render();
+    return;
+  }
+  if (action === "new-tag") {
+    modal(
+      "新建 " + platformLabel[state.view] + " 标签",
+      '<label>标签名称<input id="catalog-tag-name" maxlength="100" placeholder="例如：设计灵感"></label>',
+      [
+        {
+          label: "创建标签",
+          primary: true,
+          run: async () => {
+            const name = $("catalog-tag-name").value.trim();
+            if (!name) throw new Error("请输入标签名称");
+            await mutate("/api/tags", { name, platform: state.view });
+            $("dialog").close();
+            await refresh();
+          },
+        },
+      ],
+    );
     return;
   }
   if (action === "back") {
@@ -705,7 +803,8 @@ $("sync-button").onclick = guarded(async () => {
 let timer;
 $("search").oninput = () => {
   clearTimeout(timer);
-  state.query = $("search").value;
+  state.query = $("search").value.trim();
+  state.globalMode = Boolean(state.query);
   timer = setTimeout(
     guarded(async () => {
       state.selected = null;
@@ -717,7 +816,18 @@ $("search").oninput = () => {
 document.addEventListener("keydown", (e) => {
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
     e.preventDefault();
-    (document.querySelector(".saved-search input") || $("search")).focus();
+    $("search").focus();
+  }
+});
+$("global-results-back").onclick = guarded(async () => {
+  state.globalMode = true;
+  state.selected = null;
+  await refresh();
+});
+$("search").onkeydown = guarded(async (e) => {
+  if (e.key === "Enter") {
+    state.globalMode = Boolean(state.query);
+    await refresh();
   }
 });
 let busy = false;
@@ -760,6 +870,18 @@ if (globalThis.__TAURI__) {
   $("window-close").onclick = () => win.close();
   $("window-minimize").onclick = () => win.minimize();
   $("window-maximize").onclick = () => win.toggleMaximize();
+  document.addEventListener("mousedown", (e) => {
+    if (
+      e.button !== 0 ||
+      !e.target.closest(".window-drag-handle") ||
+      e.target.closest("button,input,select,a,label,form")
+    )
+      return;
+    e.preventDefault();
+    if (e.detail === 2)
+      win.toggleMaximize().catch((error) => toast(error.message));
+    else win.startDragging().catch((error) => toast(error.message));
+  });
 }
 
 if (globalThis.__TAURI__ && /Mac|Windows/.test(navigator.userAgent))
