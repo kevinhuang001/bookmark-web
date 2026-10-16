@@ -33,7 +33,9 @@ async function init() {
   $("page-kind").textContent = context.isPost
     ? context.platform === "x"
       ? "X · 帖子与讨论"
-      : "Reddit · 帖子与评论"
+      : context.platform === "xiaohongshu"
+        ? "小红书 · 笔记与评论"
+        : "Reddit · 帖子与评论"
     : "网页内容";
   $("context-icon").innerHTML = icon(
     context.isPost ? context.platform : "globe",
@@ -42,20 +44,14 @@ async function init() {
   if (live && !context.supported)
     error("此页面不能收藏，请打开一个 HTTP/HTTPS 网页");
   $("save-post").hidden = !context.isPost;
-  $("save-page").classList.toggle("secondary", context.isPost);
+  $("save-page").hidden = context.isPost;
+  document.querySelector(".selection-action").hidden = context.isPost;
   $("save-post-label").textContent =
     context.platform === "x"
       ? "保存当前帖子与回复"
       : "保存当前帖子与已加载评论";
   $("folder-field").hidden = context.isPost;
   $("tags-field").hidden = !context.isPost;
-  $("capture-scope").textContent = context.isPost
-    ? context.platform === "x"
-      ? "锁定当前主帖，自动加载最多 100 条帖子；完成后可继续收集。"
-      : "锁定当前主帖，包含页面已加载的全部评论与回复。"
-    : context.platform !== "web"
-      ? "当前不是帖子详情页。若需收藏讨论，请先点进一条帖子。"
-      : "保存正文、排版与媒体，支持多个区域与视频。";
   try {
     const health = await fetch(BASE + "/health", {
       signal: AbortSignal.timeout(1500),
@@ -64,11 +60,6 @@ async function init() {
     if (live) {
       const options = await (await request("/api/capture-options")).json();
       const config = options.preferences || {};
-      if (context.isPost && context.platform === "x")
-        $("capture-scope").textContent =
-          `锁定当前主帖，最多 ${config.maxPosts || 100} 条，自动加载最多 ${config.autoLoadSeconds || 20} 秒；可随时保存已加载内容。`;
-      $("budget-hint").textContent =
-        `${config.downloadLimitMb || 500} MB 后询问 · ${config.downloadConcurrency || 6} 路并发`;
       const stored = await api.storage.local.get("capturePreferences");
       const prefs = stored.capturePreferences || {};
       const folders = options.folders || [];

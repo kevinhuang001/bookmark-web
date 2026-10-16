@@ -11,7 +11,11 @@ export function pageContext(value) {
         ? u.pathname.match(/^\/(?:i\/web|[^/]+)\/status\/(\d+)(?:\/|$)/)
         : site === "reddit"
           ? u.pathname.match(/\/comments\/([a-z\d]+)(?:\/|$)/i)
-          : null;
+          : site === "xiaohongshu"
+            ? u.pathname.match(
+                /^\/(?:explore|discovery\/item)\/([a-z\d]+)(?:\/|$)/i,
+              )
+            : null;
     return {
       supported: true,
       platform: site,

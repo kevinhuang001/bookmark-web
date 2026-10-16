@@ -457,3 +457,84 @@ body.popup {
   border-color: #8aadc3;
   background: #edf4f9;
 }
+
+[hidden] {
+  display: none !important;
+}
+#pair {
+  padding: 18px;
+  background: #f3f7fa;
+  border: 1px solid #dce5ec;
+  border-radius: 14px;
+  margin: 14px 0;
+}
+.pair-heading {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.pair-heading > span {
+  display: grid;
+  place-items: center;
+  background: #e0ecf4;
+  color: #477b9b;
+  padding: 10px;
+  border-radius: 12px;
+}
+.pair-heading h2 {
+  margin: 0 0 4px;
+  font-size: 16px;
+}
+.pair-heading small {
+  color: #7c8e9d;
+  font-size: 11px;
+}
+#pair #code {
+  text-align: center;
+  font:
+    600 20px ui-monospace,
+    monospace;
+  letter-spacing: 5px;
+  padding: 11px;
+}
+#connection-settings {
+  margin-top: 12px;
+  border: 1px solid #dfe6ec;
+  border-radius: 12px;
+  padding: 0 12px;
+  background: #f7f9fb;
+}
+#connection-settings summary {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 12px 0;
+  list-style: none;
+  cursor: pointer;
+  color: #4b6578;
+}
+#connection-settings summary::-webkit-details-marker {
+  display: none;
+}
+.connection-chevron {
+  margin-left: auto;
+}
+#connection-settings[open] .connection-chevron {
+  transform: rotate(180deg);
+}
+#connection-settings button {
+  margin: 6px 0 10px;
+  padding: 9px;
+  font-size: 12px;
+}
+#connection-settings #disconnect {
+  color: #a45353;
+  background: #fff;
+  border: 1px solid #eddede;
+}
+.popup-footer {
+  display: block;
+}
+.popup-footer > span {
+  display: block;
+}

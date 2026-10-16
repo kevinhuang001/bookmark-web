@@ -975,3 +975,74 @@
   width: 15px;
   height: 15px;
 }
+.note-timeline {
+  min-width: 0;
+  flex: 1;
+  background: #fafafa;
+  overflow: auto;
+}
+.note-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 18px;
+  padding: 22px;
+}
+.note-post {
+  background: white;
+  padding: 20px;
+  border: 1px solid #eaeaea;
+  border-radius: 16px;
+  cursor: pointer;
+  min-width: 0;
+}
+.note-timeline > .note-post {
+  margin: 22px;
+}
+.note-author {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 13px;
+}
+.note-author > span:not(.social-avatar) {
+  color: #999;
+  font-size: 11px;
+}
+.note-author .post-menu {
+  margin-left: auto;
+}
+.note-post h2 {
+  font-size: 17px;
+  margin: 18px 0;
+  color: #272727;
+}
+.note-body {
+  font-size: 14px;
+  line-height: 1.9;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin-top: 16px;
+}
+.note-metrics {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #858585;
+  margin-top: 18px;
+  font-size: 12px;
+}
+.note-metrics .icon {
+  width: 17px;
+  height: 17px;
+}
+.note-metrics button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  background: none;
+  color: inherit;
+}
+.xiaohongshu-saved-sidebar .saved-site-brand {
+  color: #ec4155;
+}

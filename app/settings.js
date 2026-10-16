@@ -17,11 +17,17 @@ export async function openSettings({ modal, folders, onSaved, toast }) {
     ["about", "info", "关于"],
   ];
   let active = "general";
+  prefs.visiblePlatforms ||= ["web", "x", "reddit", "xiaohongshu"];
   const control = (name, key, type = "number", min, max) =>
     `<label class="settings-row"><span>${name}</span><input aria-label="${name}" data-pref="${key}" type="${type}" ${type === "checkbox" ? (prefs[key] ? "checked" : "") : `value="${esc(prefs[key])}" min="${min}" max="${max}" step="1" required`}></label>`;
   const section = (title, body, note = "") =>
     `<section class="settings-section"><h3>${title}</h3><div class="settings-card">${body}</div>${note ? `<p class="settings-note">${note}</p>` : ""}</section>`;
   function collect() {
+    const platforms = document.querySelectorAll("[data-platform-pref]");
+    if (platforms.length)
+      prefs.visiblePlatforms = [...platforms]
+        .filter((i) => i.checked)
+        .map((i) => i.dataset.platformPref);
     for (const input of document.querySelectorAll(
       "#settings-panel [data-pref]",
     ))
@@ -84,6 +90,21 @@ export async function openSettings({ modal, folders, onSaved, toast }) {
           control("显示保存时间", "showSavedTime", "checkbox") +
             control("显示资源状态", "showMediaStats", "checkbox") +
             control("删除收藏前确认", "confirmDelete", "checkbox"),
+        ) +
+        section(
+          "侧边栏平台",
+          [
+            ["web", "网页"],
+            ["x", "X"],
+            ["reddit", "Reddit"],
+            ["xiaohongshu", "小红书"],
+          ]
+            .map(
+              ([id, name]) =>
+                `<label class="settings-row"><span>${name}</span><input type="checkbox" data-platform-pref="${id}" ${prefs.visiblePlatforms.includes(id) ? "checked" : ""}></label>`,
+            )
+            .join(""),
+          "选择侧边栏显示的来源。隐藏后仍可通过全局搜索查看收藏。",
         ) +
         section(
           "网页默认保存位置",
@@ -153,7 +174,7 @@ export async function openSettings({ modal, folders, onSaved, toast }) {
       body =
         section(
           "配对浏览器",
-          `<div class="pairing-card"><div><strong>在扩展中输入配对码</strong><p>5 分钟内有效</p></div><strong id="pairing-code">${esc(pairing.code)}</strong></div>`,
+          `<div class="pairing-card"><div><strong>在扩展中输入配对码</strong><p>5 分钟内有效</p></div><div class="pairing-code-actions"><strong id="pairing-code">${esc(pairing.code)}</strong><button type="button" id="copy-pairing-code" class="secondary" aria-label="复制配对码">${icon("copy")}复制</button></div></div>`,
           "客户端必须保持运行，扩展才能保存内容。",
         ) +
         section(
@@ -170,10 +191,21 @@ export async function openSettings({ modal, folders, onSaved, toast }) {
         "Glassmark",
         '<div class="about-app">' +
           icon("logo") +
-          "<h3>Glassmark 0.5.1</h3><p>把值得回看的内容留在本机。</p></div>",
+          "<h3>Glassmark 0.5.2</h3><p>把值得回看的内容留在本机。</p></div>",
         "网页保存一份内容文件；帖子保存正文、评论和媒体。Chromium、Firefox 与 Windows / macOS / Linux。",
       );
     panel.innerHTML = `<h2>${heading}</h2>${body}`;
+    const copyCode = panel.querySelector("#copy-pairing-code");
+    if (copyCode)
+      copyCode.onclick = async () => {
+        try {
+          await navigator.clipboard.writeText(pairing.code);
+          copyCode.innerHTML = icon("check") + "已复制";
+          toast("配对码已复制");
+        } catch {
+          toast("复制失败，请选中配对码手动复制");
+        }
+      };
     for (const button of document.querySelectorAll("[data-settings-category]"))
       button.onclick = () => {
         collect();

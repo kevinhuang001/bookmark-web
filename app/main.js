@@ -11,20 +11,22 @@ const $ = (id) => document.getElementById(id);
 const state = {
   items: [],
   allItems: [],
-  view: ["web", "x", "reddit"].includes(localStorage.getItem("glassmark-view"))
+  view: ["web", "x", "reddit", "xiaohongshu"].includes(
+    localStorage.getItem("glassmark-view"),
+  )
     ? localStorage.getItem("glassmark-view")
     : "web",
   editing: null,
   filters: { threads: false, sort: "recent", author: "", community: "" },
   collapsed: new Set(),
-  feedScroll: { x: 0, reddit: 0 },
+  feedScroll: { x: 0, reddit: 0, xiaohongshu: 0 },
   folders: [],
   folder: null,
   tag: null,
   selected: null,
   query: "",
   globalMode: false,
-  siteQueries: { x: "", reddit: "" },
+  siteQueries: { x: "", reddit: "", xiaohongshu: "" },
   tagCatalog: [],
   preferences: {},
   generation: 0,
@@ -40,7 +42,12 @@ const escape = (value) =>
         c
       ],
   );
-const platformLabel = { x: "X", reddit: "Reddit", web: "网页" };
+const platformLabel = {
+  x: "X",
+  reddit: "Reddit",
+  web: "网页",
+  xiaohongshu: "小红书",
+};
 const fmt = (bytes) =>
   bytes >= 1024 ** 2
     ? (bytes / 1024 ** 2).toFixed(1) + " MB"
@@ -116,7 +123,18 @@ function renderPlatforms() {
   $("social-platforms").innerHTML = [
     ["x", "X", "Twitter"],
     ["reddit", "Reddit", ""],
+    ["xiaohongshu", "小红书", ""],
   ]
+    .filter(([view]) =>
+      (
+        state.preferences.visiblePlatforms || [
+          "web",
+          "x",
+          "reddit",
+          "xiaohongshu",
+        ]
+      ).includes(view),
+    )
     .map(
       ([view, name, sub]) =>
         `<button data-view="${view}" class="platform-entry ${state.view === view ? "active" : ""}"><span class="platform-symbol ${view}">${icon(view === "web" ? "globe" : view)}</span><span>${name}${sub ? `<small>${sub}</small>` : ""}</span><b>${state.allItems.filter((i) => itemPlatform(i) === view).length}</b></button>`,
@@ -126,7 +144,11 @@ function renderPlatforms() {
     "platform-entry " + (state.view === "web" ? "active" : "");
   $("web-root-button").innerHTML =
     `<span class="platform-symbol web">${icon("globe")}</span><span>网页</span><b>${state.allItems.filter((i) => itemPlatform(i) === "web").length}</b>`;
-  $("folders").hidden = state.view !== "web";
+  const showWeb = (state.preferences.visiblePlatforms || ["web"]).includes(
+    "web",
+  );
+  document.querySelector(".web-root-row").hidden = !showWeb;
+  $("folders").hidden = state.view !== "web" || !showWeb;
   for (const button of $("platforms").querySelectorAll("[data-view]"))
     button.onclick = guarded(() => switchView(button.dataset.view));
   document.body.dataset.view = state.view;
@@ -271,7 +293,7 @@ function renderGlobalResults() {
   if (state.viewKey === key) return;
   state.viewKey = key;
   $("reader").innerHTML =
-    `<section class="global-results"><p class="eyebrow">SEARCH YOUR LIBRARY</p><h1>${escape(state.query)}</h1><p>${state.items.length} 份收藏 · 网页、X 与 Reddit</p>${state.items.map((i) => `<button class="global-result" data-global-id="${i.id}">${icon(itemPlatform(i) === "web" ? "file" : itemPlatform(i))}<span><strong>${escape(i.title)}</strong><small>${platformLabel[itemPlatform(i)]} · ${escape(domain(i))} · ${(i.tags || []).map((t) => "#" + escape(t)).join(" ")}</small><p>${escape((i.text || "").slice(0, 140))}</p></span></button>`).join("") || "<p>没有找到匹配的内容</p>"}</section>`;
+    `<section class="global-results"><p class="eyebrow">SEARCH YOUR LIBRARY</p><h1>${escape(state.query)}</h1><p>${state.items.length} 份收藏 · 网页与平台内容</p>${state.items.map((i) => `<button class="global-result" data-global-id="${i.id}">${icon(itemPlatform(i) === "web" ? "file" : itemPlatform(i))}<span><strong>${escape(i.title)}</strong><small>${platformLabel[itemPlatform(i)]} · ${escape(domain(i))} · ${(i.tags || []).map((t) => "#" + escape(t)).join(" ")}</small><p>${escape((i.text || "").slice(0, 140))}</p></span></button>`).join("") || "<p>没有找到匹配的内容</p>"}</section>`;
   $("reader").onclick = guarded(async (e) => {
     clearTimeout(timer);
     state.generation++;

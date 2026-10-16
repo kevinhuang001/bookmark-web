@@ -17,6 +17,7 @@ const base = {
         "https://*.x.com/*",
         "https://twitter.com/*",
         "https://*.twitter.com/*",
+        "https://www.xiaohongshu.com/*",
         "https://reddit.com/*",
         "https://*.reddit.com/*",
       ],

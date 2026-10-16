@@ -1,6 +1,7 @@
 /** Vendor a small, licensed subset; runtime works without a CDN or npm resolver. */
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 const aliases = {
+  copy: "copy",
   file: "file-text",
   search: "search",
   bookmark: "bookmark",
@@ -51,7 +52,7 @@ for (const [name, file] of Object.entries(aliases)) {
     .replace(/\s+/g, " ");
 }
 const brands = {};
-for (const name of ["x", "reddit"]) {
+for (const name of ["x", "reddit", "xiaohongshu"]) {
   const svg = await readFile(
     `node_modules/simple-icons/icons/${name}.svg`,
     "utf8",

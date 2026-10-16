@@ -1,3 +1,5 @@
+import { pageContext } from "../extension/src/context.js";
+import { itemPlatform } from "../app/library.js";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { platform } from "../extension/src/capture/adapters.js";
@@ -309,4 +311,28 @@ test("concurrent downloads share a single budget approval gate", async () => {
   assert.equal(state.total, 9);
   assert.equal(asked, 1);
   assert.equal(maximum, 1);
+});
+
+test("Xiaohongshu note context supports both detail routes and rejects lookalikes", () => {
+  assert.equal(platform("www.xiaohongshu.com"), "xiaohongshu");
+  assert.equal(platform("xiaohongshu.com.attacker.test"), "web");
+  for (const path of ["/explore/abc123", "/discovery/item/abc123"]) {
+    const c = pageContext(
+      "https://www.xiaohongshu.com" + path + "?xsec_token=test",
+    );
+    assert.equal(c.platform, "xiaohongshu");
+    assert.equal(c.isPost, true);
+    assert.equal(c.postId, "abc123");
+  }
+  assert.equal(
+    pageContext("https://www.xiaohongshu.com/explore").isPost,
+    false,
+  );
+  assert.equal(
+    itemPlatform({
+      platform: "xiaohongshu",
+      url: "https://www.xiaohongshu.com/explore/abc123",
+    }),
+    "xiaohongshu",
+  );
 });

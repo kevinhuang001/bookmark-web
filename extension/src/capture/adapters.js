@@ -3,6 +3,7 @@ import { videoSources } from "./video.js";
 export function platform(host) {
   if (/(^|\.)(x\.com|twitter\.com)$/.test(host)) return "x";
   if (/(^|\.)reddit\.com$/.test(host)) return "reddit";
+  if (/(^|\.)xiaohongshu\.com$/.test(host)) return "xiaohongshu";
   return "web";
 }
 export function adapterFor(kind, doc = document) {
@@ -21,6 +22,13 @@ export function adapterFor(kind, doc = document) {
       link: 'a[href*="/comments/"]',
       title: "Reddit · 讨论",
     },
+    xiaohongshu: {
+      selector: ".note-detail-mask .note-container,.note-container",
+      body: "#detail-desc,.note-text,.desc",
+      author: ".author-container .username,.author .username",
+      link: 'a[href*="/explore/"],a[href*="/discovery/item/"]',
+      title: "小红书 · 笔记",
+    },
     web: {
       selector: "body",
       body: "body",
@@ -32,6 +40,7 @@ export function adapterFor(kind, doc = document) {
   return configs[kind] || configs.web;
 }
 export function extractPost(el, kind, doc = document) {
+  if (kind === "xiaohongshu") return extractNote(el, doc);
   const config = adapterFor(kind, doc);
   const timeLink = el.querySelector("time")?.closest("a[href]");
   const rawLink =
@@ -195,6 +204,59 @@ export function extractPost(el, kind, doc = document) {
       null,
     stats,
     media,
+    capturedAt: new Date().toISOString(),
+  };
+}
+
+function extractNote(el, doc) {
+  const comment = el.matches(".comment-item");
+  const text = (selector) =>
+    el.querySelector(selector)?.textContent.trim() || "";
+  const avatar = el.querySelector(
+    ".author-container img,.author img,.avatar img,img.avatar",
+  );
+  const media = [
+    ...el.querySelectorAll(
+      comment ? ".comment-content img" : ".swiper-slide img,.note-slider img",
+    ),
+  ]
+    .map((i) => ({
+      type: "image",
+      url: i.currentSrc || i.src || i.dataset.src,
+      alt: i.alt || "",
+    }))
+    .filter((m) => /^https?:/.test(m.url));
+  for (const v of el.querySelectorAll("video")) {
+    const sources = videoSources(el, doc);
+    media.push({
+      type: "video",
+      url: sources[0] || v.currentSrc || v.src,
+      poster: v.poster || "",
+      sources,
+    });
+  }
+  return {
+    id: comment
+      ? el.id || text(".content,.note-text")
+      : new URL(doc.URL).pathname,
+    isComment: comment,
+    depth: comment ? 1 : 0,
+    author: text(".author-container .username,.author .username,.author .name"),
+    authorName: text(
+      ".author-container .username,.author .username,.author .name",
+    ),
+    avatarUrl: avatar?.currentSrc || avatar?.src || "",
+    title: comment ? "" : text("#detail-title,.note-title"),
+    text: text(
+      comment ? ".content,.note-text" : "#detail-desc,.note-text,.desc",
+    ),
+    url: comment ? null : doc.URL,
+    stats: {
+      likes: text(".like-wrapper .count,.like .count"),
+      comments: text(".chat-wrapper .count"),
+      saves: text(".collect-wrapper .count"),
+    },
+    media: media.filter((m, i, a) => a.findIndex((x) => x.url === m.url) === i),
     capturedAt: new Date().toISOString(),
   };
 }

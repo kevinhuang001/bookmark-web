@@ -531,9 +531,70 @@ try {
   await page.locator('[data-settings-category="connection"]').click();
   await page.locator("#pairing-code").waitFor();
   assert.match(await page.locator("#pairing-code").textContent(), /^\d{6}$/);
+  // Settings must fit compact laptop windows; only the middle panel scrolls.
+  const oldViewport = page.viewportSize();
+  for (const viewport of [
+    { width: 960, height: 640 },
+    { width: 1280, height: 720 },
+  ]) {
+    await page.setViewportSize(viewport);
+    const bounds = await page.locator("#dialog").evaluate((el) => {
+      const dialog = el.getBoundingClientRect();
+      const footer = el
+        .querySelector(".dialog-actions")
+        .getBoundingClientRect();
+      const header = el.querySelector(".dialog-header").getBoundingClientRect();
+      return {
+        bottom: dialog.bottom,
+        footer: footer.bottom,
+        header: header.height,
+        height: innerHeight,
+      };
+    });
+    assert.ok(bounds.footer <= bounds.bottom && bounds.bottom <= bounds.height);
+    assert.ok(bounds.header <= 60);
+    await expect(
+      page.getByRole("button", { name: "保存设置", exact: true }),
+    ).toBeInViewport();
+  }
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: async (text) => {
+          globalThis.copiedPairing = text;
+        },
+      },
+    });
+  });
+  await page.getByRole("button", { name: "复制配对码", exact: true }).click();
+  assert.equal(
+    await page.evaluate(() => globalThis.copiedPairing),
+    await page.locator("#pairing-code").textContent(),
+  );
+  await page.setViewportSize(oldViewport);
   if (recording) await page.waitForTimeout(2500);
   await page.screenshot({ path: "artifacts/glassmark-settings.png" });
   await page.getByRole("button", { name: "关闭", exact: true }).click();
+  await page.locator("#settings").click();
+  await page.locator('[data-platform-pref="reddit"]').uncheck();
+  await page.getByRole("button", { name: "保存设置", exact: true }).click();
+  await expect(page.locator('button[data-view="reddit"]')).toHaveCount(0);
+  await expect(page.locator('button[data-view="xiaohongshu"]')).toBeVisible();
+  await page.reload();
+  await page.addStyleTag({ url: "/test-fonts/400.css" });
+  await page.addStyleTag({
+    content:
+      "body,button,input,select{font-family: 'Noto Sans SC', sans-serif!important}",
+  });
+  await page.evaluate(() => document.fonts.ready);
+  await expect(page.locator('button[data-view="reddit"]')).toHaveCount(0);
+  await page.locator("#settings").click();
+  await page.locator('[data-platform-pref="reddit"]').check();
+  await page.getByRole("button", { name: "保存设置", exact: true }).click();
+  pass(
+    "compact settings keep actions visible; pairing copies exact digits; sidebar platform choices persist",
+  );
   // A hostile archive must remain inert and make no network requests.
   const hostile = await post("/api/items", {
     version: 2,
@@ -1022,6 +1083,109 @@ try {
     false,
   );
   pass("post menus delete persistent content from the feed and search index");
+  await source.route("https://www.xiaohongshu.com/**", (route) =>
+    route.fulfill({
+      contentType: "text/html",
+      path: "tests/fixtures/xiaohongshu.html",
+    }),
+  );
+  const note = await collect(
+    "https://www.xiaohongshu.com/explore/abc123?xsec_token=test",
+    "thread",
+  );
+  assert.equal(note.platform, "xiaohongshu");
+  assert.equal(note.posts.length, 2);
+  assert.equal(note.posts[0].title, "山间的一天");
+  assert.equal(note.posts[1].isComment, true);
+  assert.equal(note.posts[0].media.length, 2);
+  assert.ok(note.posts[0].avatarUrl.endsWith("avatar.svg"));
+  assert.doesNotMatch(note.text, /推荐笔记/);
+  const noteItem = await save(note);
+  await page.waitForTimeout(3300);
+  await page.locator('button[data-view="xiaohongshu"]').click();
+  await expect(page.locator(".note-post")).toHaveCount(1);
+  await page.locator(".note-post").click();
+  await expect(page.locator(".reddit-comment")).toHaveCount(1);
+  assert.equal(await page.locator(".show-thread").count(), 0);
+  await page.getByRole("searchbox", { name: "搜索 小红书 收藏" }).fill("山间");
+  await page
+    .getByRole("searchbox", { name: "搜索 小红书 收藏" })
+    .press("Enter");
+  await expect(page.locator(".note-post")).toHaveCount(1);
+  await page.screenshot({ path: "artifacts/glassmark-xiaohongshu.png" });
+  await call("/api/items/" + noteItem.id, { method: "DELETE" });
+  pass(
+    "Xiaohongshu captures only the open note and loaded comments, archives media, opens detail and searches locally",
+  );
+  const popup = await context.newPage();
+  popup.on("pageerror", (e) => errors.push(e.message));
+  await popup.addInitScript(
+    ({ token }) => {
+      globalThis.browser = {
+        tabs: {
+          query: async () => [
+            {
+              id: 1,
+              title: "测试页面",
+              url:
+                sessionStorage.getItem("popup-source") ||
+                "https://x.com/a/status/123",
+            },
+          ],
+        },
+        storage: {
+          local: {
+            get: async (key) =>
+              key === "connection" ? { connection: { token } } : {},
+            remove: async () => {},
+          },
+        },
+      };
+    },
+    { token: connection.token },
+  );
+  for (const url of [
+    "https://x.com/a/status/123",
+    "https://www.reddit.com/r/test/comments/abc/post/",
+    "https://www.xiaohongshu.com/explore/abc123",
+    "https://example.com/article",
+  ]) {
+    await popup.goto("http://localhost:1420/extension/popup.html");
+    await popup.evaluate(
+      (url) => sessionStorage.setItem("popup-source", url),
+      url,
+    );
+    await popup.reload();
+    await expect(popup.locator("#actions")).toBeVisible();
+    const isPost = !url.includes("example.com");
+    if (isPost) {
+      await expect(popup.locator("#save-post")).toBeVisible();
+      await expect(popup.locator("#save-page")).toBeHidden();
+      await expect(popup.locator(".selection-action")).toBeHidden();
+    } else {
+      await expect(popup.locator("#save-post")).toBeHidden();
+      await expect(popup.locator("#save-page")).toBeVisible();
+      await expect(popup.locator(".selection-action")).toBeVisible();
+    }
+    assert.doesNotMatch(
+      await popup.locator("body").innerText(),
+      /锁定当前主帖|500 MB|路并发|图片与视频|本地归档/,
+    );
+  }
+  await popup.locator("#connection-settings summary").click();
+  await expect(popup.locator("#retry-connection")).toBeVisible();
+  await popup.setViewportSize({ width: 380, height: 740 });
+  await popup.addStyleTag({ url: "/test-fonts/400.css" });
+  await popup.addStyleTag({
+    content:
+      "body,button,input,select{font-family: 'Noto Sans SC', sans-serif!important}",
+  });
+  await popup.evaluate(() => document.fonts.ready);
+  await popup.screenshot({ path: "artifacts/glassmark-popup.png" });
+  await popup.close();
+  pass(
+    "popup exposes only post actions on X, Reddit and Xiaohongshu; webpages retain both capture modes and connection settings expand",
+  );
   assert.deepEqual(errors, []);
   pass("desktop interface has no uncaught JavaScript errors");
   const report = {

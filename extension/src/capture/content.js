@@ -92,6 +92,17 @@ export async function collect({
         ];
       } else elements = [];
     }
+    if (kind === "xiaohongshu") {
+      const primary = elements.find((el) =>
+        el.querySelector("#detail-desc,#detail-title,.note-content"),
+      );
+      if (!primary) return [];
+      rootId = extractPost(primary, kind).id;
+      elements = [
+        primary,
+        ...primary.querySelectorAll(".comments-container .comment-item"),
+      ];
+    }
     return elements;
   };
   function accumulate(elements) {
@@ -113,6 +124,8 @@ export async function collect({
   }
   let parts;
   if (mode === "thread" && kind !== "web") {
+    if (kind === "xiaohongshu" && !context.isPost)
+      throw new Error("请先打开一篇小红书笔记详情");
     if (kind === "x" && !/\/status\/\d+/.test(location.pathname))
       throw new Error("请先打开一条 X 帖子的详情页");
     if (kind === "reddit" && !/\/comments\//.test(location.pathname))
