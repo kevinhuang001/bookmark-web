@@ -407,3 +407,7 @@ body.popup {
   background: #f3f6f8;
   border-radius: 10px;
 }
+
+.popup #destination-tags {
+  letter-spacing: normal;
+}

@@ -20,7 +20,7 @@ const context = await browser.newContext({
   viewport: { width: 1600, height: 1000 },
   timezoneId: "Asia/Shanghai",
   recordVideo: {
-    dir: "artifacts/demo-v3-raw",
+    dir: "artifacts/demo-v4-raw",
     size: { width: 1600, height: 1000 },
   },
 });
@@ -72,82 +72,154 @@ try {
     await page.evaluate(() => document.fonts.ready);
     await page.waitForTimeout(ms);
   };
-  await page.locator('[data-view="x"]').click();
+  const caption = async (text) =>
+    page.evaluate((text) => {
+      document.querySelector("#demo-caption").textContent = text;
+    }, text);
+  await page.locator('button[data-view="x"]').click();
   await page.locator(".x-post").first().waitFor();
-  await page.evaluate(() => document.fonts.ready);
   await writeFile(
     "artifacts/demo-trim-start.txt",
     String((Date.now() - recordingEpoch) / 1000),
   );
-  await pause(2600);
+  await caption(
+    "v0.4 · 全局搜索始终可见，站内搜索独立保留 · 测试数据 / 非原生系统效果",
+  );
+  await pause(1800);
+  await page.locator("#search").fill("What makes a personal archive");
+  await page.locator(".global-result").first().waitFor();
+  await pause(1700);
+  await page.locator(".global-result").first().click();
+  await page.locator(".reddit-post-detail").waitFor();
+  await caption("跨来源打开 Reddit 收藏与已归档评论 · 测试数据");
+  await pause(1700);
   await page
     .locator("#reader")
     .evaluate((el) => el.scrollTo({ top: 450, behavior: "smooth" }));
-  await pause(2200);
-  const rootPost = page
-    .locator(".x-post")
-    .filter({ has: page.getByText("Lin", { exact: true }) })
-    .first();
-  await rootPost.scrollIntoViewIfNeeded();
-  await pause(800);
-  await rootPost.locator(".x-post-text").click();
-  await page.locator(".x-reply").first().waitFor();
-  await pause(2400);
-  await page.getByRole("button", { name: "返回信息流", exact: true }).click();
-  await pause(700);
-  await page.locator('[data-view="reddit"]').click();
-  await page.locator(".reddit-post").first().waitFor();
-  await pause(2600);
-  await page
-    .locator("#reader")
-    .evaluate((el) => el.scrollTo({ top: 360, behavior: "smooth" }));
   await pause(1600);
-  await page
-    .locator(".reddit-post")
-    .filter({
-      has: page.getByRole("heading", {
-        name: "What makes a personal archive actually useful?",
-        exact: true,
-      }),
-    })
-    .locator("h1")
-    .click();
-  await page.locator(".reddit-comment").first().waitFor();
-  await pause(2800);
-  await page.getByRole("button", { name: "返回信息流", exact: true }).click();
-  const community = await page
-    .locator(".saved-community option")
-    .nth(1)
-    .getAttribute("value");
-  await page.locator(".saved-community").selectOption(community);
-  await pause(1600);
-  await page.locator('[data-view="web"]').click();
-  await page.locator("#snapshot").waitFor({ state: "visible" });
-  await pause(2400);
-  const parent = page.locator("[data-folder]").filter({ hasText: "灵感花园" });
-  await parent.click();
-  const collapse = page.locator("[data-collapse]").first();
-  await collapse.click();
-  await pause(800);
-  await collapse.click();
-  await pause(1000);
-  await page.locator("[data-folder]").filter({ hasText: "网页设计" }).click();
-  await page.locator(".tree-file").first().click();
-  await pause(1800);
-  await page.locator("#search").pressSequentially("生活", { delay: 180 });
-  await pause(1800);
   await page.locator("#search").fill("");
+  await pause(400);
+  await page.locator('button[data-view="x"]').click();
+  await page.locator('[data-social-action="new-tag"]').click();
+  await page.locator("#catalog-tag-name").fill("设计灵感");
+  await page.getByRole("button", { name: "创建标签", exact: true }).click();
+  await caption("X 与 Reddit 各自建立标签，扩展保存时可直接指定 · 测试数据");
+  await pause(1400);
+  await page.locator('.saved-tags [data-tag="设计灵感"]').click();
+  await pause(1000);
+  await page.locator('.saved-tags [data-tag=""]').click();
+  await page.locator("#window-close").hover();
+  await caption(
+    "窗口按钮显示悬停符号与提示；顶部留有独立拖动区 · 原生拖动需实机验收",
+  );
+  await pause(1600);
+  await page.locator('button[data-view="web"]').click();
+  await page.locator("#snapshot").waitFor({ state: "visible" });
+  await caption("网页入口即根文件夹，文件直接位于目录层级中 · 测试数据");
+  await pause(1700);
+  await page.locator("[data-collapse]").first().click();
+  await pause(600);
+  await page.locator("[data-collapse]").first().click();
   await pause(700);
-  await page.locator('[data-view="x"]').click();
-  await page.locator("#reader").evaluate((el) => (el.scrollTop = 0));
-  await pause(2000);
-  await page.screenshot({ path: "artifacts/glassmark-v3-x.png" });
-  await page.locator('[data-view="reddit"]').click();
-  await pause(1200);
-  await page.screenshot({ path: "artifacts/glassmark-v3-reddit.png" });
-  await page.locator('[data-view="web"]').click();
-  await pause(1200);
-  await page.screenshot({ path: "artifacts/glassmark-v3-web.png" });
+  const videoItem = bridge.db.items.find((i) =>
+    i.resources?.some((r) => r.mime?.includes("webm")),
+  );
+  if (videoItem) {
+    videoItem.deleted = false;
+    videoItem.tags = ["Video lab"];
+    await page.waitForTimeout(3300);
+    await page.locator('button[data-view="x"]').click();
+    await page.locator('.saved-tags [data-tag="Video lab"]').click();
+    const video = page.locator("video").first();
+    await video.waitFor();
+    await video.evaluate((v) => v.play());
+    await caption(
+      "实际从归档中播放视频；HLS 点播同时保存清单、音轨和分片 · 测试媒体",
+    );
+    await pause(2400);
+    await page.locator('.saved-tags [data-tag=""]').click();
+  }
+  // The extension UI below uses the actual bundled popup and the test bridge.
+  // Browser APIs are supplied by a preview harness; no capture is simulated.
+  await page.addInitScript(
+    ({ connection, folderId }) => {
+      if (!location.pathname.includes("/extension/popup.html")) return;
+      const data = {
+        connection,
+        capturePreferences: { folderId, x: { tags: ["设计灵感"] } },
+      };
+      globalThis.chrome = {
+        storage: {
+          local: {
+            get: async (key) => ({ [key]: data[key] }),
+            set: async (patch) => Object.assign(data, patch),
+            remove: async (key) => delete data[key],
+          },
+        },
+        tabs: {
+          query: async () => [
+            {
+              id: 1,
+              url: "https://x.com/lin/status/1001",
+              title: "Lin 的设计手记 / X",
+            },
+          ],
+        },
+      };
+    },
+    { connection: bridge.connection, folderId: bridge.db.folders[0]?.id },
+  );
+  await page.evaluate(() => {
+    const backdrop = document.createElement("div");
+    backdrop.id = "extension-preview";
+    backdrop.style.cssText =
+      "position:fixed;inset:0;background:#18324565;z-index:5000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(3px)";
+    const iframe = document.createElement("iframe");
+    iframe.src = "/extension/popup.html";
+    iframe.style.cssText =
+      "width:368px;height:690px;border:0;border-radius:18px;box-shadow:0 20px 80px #0004;background:#fafbfc";
+    backdrop.append(iframe);
+    document.body.append(backdrop);
+  });
+  await page
+    .frameLocator("#extension-preview iframe")
+    .locator("#save-post")
+    .waitFor();
+  const popupFrame = page
+    .frames()
+    .find((f) => f.url().includes("/extension/popup.html"));
+  await popupFrame.addStyleTag({ url: "/test-fonts/400.css" });
+  await popupFrame.addStyleTag({ url: "/test-fonts/700.css" });
+  await popupFrame.addStyleTag({
+    content:
+      "body,button,input,select{font-family:'Noto Sans SC',sans-serif!important}",
+  });
+  await popupFrame.evaluate(async () => {
+    await document.fonts.load(
+      '400 13px "Noto Sans SC"',
+      document.body.innerText,
+    );
+    await document.fonts.load(
+      '700 13px "Noto Sans SC"',
+      document.body.innerText,
+    );
+    await document.fonts.ready;
+  });
+  await caption(
+    "扩展界面预览：自动识别当前帖子、标签保存位置、视频说明与连接状态 · 浏览器 API 使用测试替身",
+  );
+  await pause(2700);
+  await page.screenshot({ path: "artifacts/glassmark-v4-extension.png" });
+  await page.evaluate(() =>
+    document.querySelector("#extension-preview").remove(),
+  );
+  await page.locator('button[data-view="x"]').click();
+  await pause(500);
+  await page.screenshot({ path: "artifacts/glassmark-v4-x.png" });
+  await caption(
+    "Glassmark v0.4 · 新界面与归档交互演示 · 浏览器预览不代表原生玻璃合成效果",
+  );
+  await pause(1400);
 } finally {
   const video = page.video();
   await context.close();

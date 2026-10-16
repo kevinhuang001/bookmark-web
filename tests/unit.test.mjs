@@ -259,3 +259,15 @@ test("encrypted and live HLS are reported as failed instead of complete videos",
     assert.equal(uploads, 0);
   }
 });
+
+test("explicit webpage capture of a social URL stays in Web folders", async () => {
+  const { itemPlatform } = await import("../app/library.js");
+  assert.equal(
+    itemPlatform({
+      platform: "web",
+      mode: "page",
+      url: "https://x.com/a/status/1",
+    }),
+    "web",
+  );
+});

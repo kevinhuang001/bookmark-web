@@ -1,6 +1,6 @@
 /** One classification rule shared by navigation, folder counts and feed rendering. */
 export function itemPlatform(item) {
-  if (["x", "reddit"].includes(item.platform)) return item.platform;
+  if (["web", "x", "reddit"].includes(item.platform)) return item.platform;
   try {
     const host = new URL(item.url).hostname;
     if (/(^|\.)(x\.com|twitter\.com)$/.test(host)) return "x";

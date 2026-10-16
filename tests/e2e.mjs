@@ -1,3 +1,4 @@
+import { expect } from "@playwright/test";
 import assert from "node:assert/strict";
 import { readFile, writeFile, mkdir, rm, symlink } from "node:fs/promises";
 import { spawn } from "node:child_process";
@@ -287,12 +288,13 @@ try {
     GlassmarkCapture.collect({ mode: "page" }),
   );
   assert.equal(wholeSocial.posts.length, 3);
+  assert.equal(wholeSocial.platform, "web");
   pass(
     "social metadata preserves author, media and metrics for both thread and full-page capture",
   );
   const xItem = await save(x);
   pass("X adapter preserves a main post and replies with their UI");
-  await page.locator('[data-view="x"]').click();
+  await page.locator('button[data-view="x"]').click();
   await page
     .locator(`.x-post[data-open-archive="${xItem.id}"]`)
     .waitFor({ timeout: 20000 });
@@ -370,7 +372,7 @@ try {
   pass(
     "Reddit captures loaded post and comments without requesting hidden comments",
   );
-  await page.locator('[data-view="reddit"]').click();
+  await page.locator('button[data-view="reddit"]').click();
   await page
     .locator(`.reddit-post[data-open-archive="${redditItem.id}"]`)
     .waitFor({ timeout: 20000 });
@@ -436,7 +438,7 @@ try {
   const duplicate = await save({ ...article, resources: [] });
   assert.notEqual(duplicate.id, articleItem.id);
   pass("repeated captures create independent archive IDs");
-  await page.locator('[data-view="web"]').click();
+  await page.locator('button[data-view="web"]').click();
   await page.locator("[data-item]").first().waitFor();
   await page.locator("#search").fill("生活的质感");
   await page.waitForTimeout(700);
@@ -648,7 +650,7 @@ try {
     );
   }
   await page.waitForTimeout(3300);
-  await page.locator('[data-view="x"]').click();
+  await page.locator('button[data-view="x"]').click();
   await page.locator(".x-post").first().waitFor();
   assert.equal(await page.locator(".x-post").count(), 4);
   const socialRequests = [];
@@ -676,8 +678,8 @@ try {
     "X saved navigation searches local bookmarks without restoring home or explore",
   );
   await page.screenshot({ path: "artifacts/glassmark-x.png" });
-  await page.locator('[data-view="reddit"]').click();
-  assert.equal(await page.locator(".reddit-post").count(), 3);
+  await page.locator('button[data-view="reddit"]').click();
+  await expect(page.locator(".reddit-post")).toHaveCount(3);
   assert.equal(
     await page
       .locator(
@@ -697,11 +699,11 @@ try {
   await page.locator(".saved-community").selectOption("webdev");
   assert.equal(await page.locator(".reddit-post").count(), 1);
   await page.locator(".saved-community").selectOption("");
-  assert.equal(await page.locator(".reddit-post").count(), 3);
+  await expect(page.locator(".reddit-post")).toHaveCount(3);
   await page.locator('.saved-communities [data-community="webdev"]').click();
   assert.equal(await page.locator(".reddit-post").count(), 1);
   await page.locator(".reddit-saved-sidebar .saved-nav-entry").click();
-  assert.equal(await page.locator(".reddit-post").count(), 3);
+  await expect(page.locator(".reddit-post")).toHaveCount(3);
   await page
     .getByRole("searchbox", { name: "搜索 Reddit 收藏" })
     .fill("What makes a personal archive");
@@ -723,7 +725,8 @@ try {
   pass(
     "multi-post social feeds filter authors and communities and display only archived media",
   );
-  await page.locator('[data-view="web"]').click();
+  await page.locator('button[data-view="web"]').click();
+  await page.locator(".preview-frame").waitFor();
   const centered = await page.locator(".preview-frame").evaluate((el) => {
     const frame = el.getBoundingClientRect(),
       reader = document.querySelector("#reader").getBoundingClientRect();
@@ -739,7 +742,7 @@ try {
     "webpage preview uses a centered reading column and open-source toolbar icons",
   );
   // Global search is independent of site search and current source.
-  await page.locator('[data-view="x"]').click();
+  await page.locator('button[data-view="x"]').click();
   assert.equal(await page.locator("#search").isVisible(), true);
   await page.locator("#search").fill("What makes a personal archive");
   await page
@@ -748,11 +751,11 @@ try {
   await page
     .locator(`.global-result[data-global-id="${redditItem.id}"]`)
     .click();
-  assert.equal(await page.locator(".reddit-post-detail").count(), 1);
+  await expect(page.locator(".reddit-post-detail")).toHaveCount(1);
   assert.equal(await page.locator("#global-results-back").isVisible(), true);
   await page.locator("#search").fill("");
   await page.waitForTimeout(400);
-  await page.locator('[data-view="x"]').click();
+  await page.locator('button[data-view="x"]').click();
   await page.locator('[data-social-action="new-tag"]').click();
   await page.locator("#catalog-tag-name").fill("Video lab");
   await page.getByRole("button", { name: "创建标签", exact: true }).click();
@@ -764,6 +767,17 @@ try {
   );
   pass(
     "global search reaches Reddit from X while site search and platform tag catalogs stay independent",
+  );
+  await collect("https://x.com/lin/status/1001", "thread", { maxPosts: 3 });
+  await source.evaluate(() =>
+    history.replaceState(null, "", "/chen/status/1002"),
+  );
+  const currentRoot = await source.evaluate(() =>
+    GlassmarkCapture.collect({ mode: "thread", maxPosts: 3 }),
+  );
+  assert.equal(currentRoot.posts[0].url, "https://x.com/chen/status/1002");
+  pass(
+    "the URL-selected post is primary even when an ancestor appears first in the DOM",
   );
   // Current-post capture ignores recommendations and preserves downloadable video.
   await collect("https://x.com/lin/status/1001", "thread", { maxPosts: 3 });

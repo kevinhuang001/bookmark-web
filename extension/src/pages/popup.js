@@ -25,7 +25,7 @@ async function init() {
   $("connection-badge").classList.toggle("online", live);
   $("status").textContent = live
     ? "已就绪 · 收藏将发送到 Glassmark"
-    : "请打开客户端并连接，收藏操作已停用";
+    : "客户端未连接，请打开客户端后收藏";
   [currentTab] = await api.tabs.query({ active: true, currentWindow: true });
   context = pageContext(currentTab?.url);
   $("page-title").textContent = currentTab?.title || "当前标签页";
