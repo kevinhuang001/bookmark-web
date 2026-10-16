@@ -42,15 +42,12 @@
           >保存位置<select id="destination-folder">
             <option value="">网页 · 根文件夹</option>
           </select></label
-        ><label id="tags-field"
-          >标签<input
-            id="destination-tags"
-            list="tag-suggestions"
-            placeholder="添加标签，用逗号分隔"
-            maxlength="300"
-          /><datalist id="tag-suggestions"></datalist
-          ><small>此标签仅归属于当前来源，可直接创建新标签</small></label
         >
+        <fieldset id="tags-field">
+          <legend>标签（可多选）</legend>
+          <div id="destination-tags" class="popup-tag-choices"></div>
+          <small>在客户端管理此来源的标签</small>
+        </fieldset>
       </div>
       <button data-mode="thread" id="save-post">
         <span data-icon="bookmark"></span
@@ -66,12 +63,12 @@
         >
       </button>
       <p class="capture-scope" id="capture-scope">
-        保存 HTML、样式与原始脚本，离线安全阅读。
+        保存正文、排版与全部可下载媒体。
       </p>
       <div class="save-inclusions">
         <span><span data-icon="circleCheck"></span>图片与视频</span
         ><span><span data-icon="archive"></span>本地归档</span
-        ><span>500 MB 后询问</span>
+        ><span id="budget-hint">按客户端设置保存</span>
       </div>
     </section>
     <footer class="popup-footer">

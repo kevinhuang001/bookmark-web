@@ -1,5 +1,5 @@
 import { hlsPlaylist } from "./hls.js";
-/** Resource graph and rewrites shared by capture, source exports and tests. */
+/** Bounded concurrent media downloads and local content rewrites. */
 export const DEFAULT_BUDGET = 500 * 1024 * 1024;
 export function dependencies(text, mime, base) {
   const found = new Set();
@@ -14,12 +14,6 @@ export function dependencies(text, mime, base) {
       add(match[1]);
     for (const match of text.matchAll(/@import\s*["']([^"']+)["']/g))
       add(match[1]);
-  }
-  if (/javascript|ecmascript/.test(mime)) {
-    for (const match of text.matchAll(
-      /(?:\bfrom\s*|\bimport\s*\(?\s*)["']([^"']+)["']/g,
-    ))
-      if (/^(\.|\/|https?:)/.test(match[1])) add(match[1]);
   }
   return [...found];
 }
@@ -62,12 +56,23 @@ export function rewrite(text, resources, relative = "assets/") {
 export async function readBounded(response, state, approve, signal) {
   const chunks = [];
   let size = 0;
-  async function permit(bytes) {
-    if (state.total + bytes > state.limit) {
-      if (!(await approve(state.total + bytes)))
-        throw new Error("超过下载上限，已跳过此资源");
-      state.limit = Math.max(state.limit + DEFAULT_BUDGET, state.total + bytes);
-    }
+  async function permit(bytes, commit = false) {
+    const turn = (state.gate || Promise.resolve()).then(async () => {
+      if (signal?.aborted) throw new Error("已取消");
+      if (state.total + bytes > state.limit) {
+        if (state.declined || !(await approve(state.total + bytes))) {
+          state.declined = true;
+          throw new Error("超过下载上限，已跳过此资源");
+        }
+        state.limit = Math.max(
+          state.limit + (state.step || DEFAULT_BUDGET),
+          state.total + bytes,
+        );
+      }
+      if (commit) state.total += bytes;
+    });
+    state.gate = turn.catch(() => {});
+    await turn;
   }
   const length = Number(response.headers.get("content-length") || 0);
   if (length) await permit(length);
@@ -77,8 +82,7 @@ export async function readBounded(response, state, approve, signal) {
       if (signal?.aborted) throw new Error("已取消");
       const { done, value } = await reader.read();
       if (done) break;
-      await permit(value.byteLength);
-      state.total += value.byteLength;
+      await permit(value.byteLength, true);
       size += value.byteLength;
       chunks.push(value);
     }
@@ -95,41 +99,60 @@ export async function readBounded(response, state, approve, signal) {
 }
 export async function archiveResources(
   urls,
-  { upload, approve, progress, signal, fetcher = fetch },
+  {
+    upload,
+    approve,
+    progress,
+    signal,
+    fetcher = fetch,
+    concurrency = 6,
+    budget = DEFAULT_BUDGET,
+    resourceLimit = 2000,
+    imageTimeoutSeconds = 15,
+    videoTimeoutSeconds = 90,
+  },
 ) {
   const queue = [...new Set(urls)];
   const seen = new Set();
   const resources = [];
-  const state = { total: 0, limit: DEFAULT_BUDGET };
-  while (queue.length && seen.size < 2000) {
-    const url = queue.shift();
-    if (seen.has(url)) continue;
-    seen.add(url);
+  const state = { total: 0, limit: budget, step: budget };
+  let completed = 0;
+  const active = new Set();
+  const report = (url) =>
+    progress?.({
+      done: completed,
+      total: seen.size + queue.length,
+      bytes: state.total,
+      url,
+      active: active.size,
+    });
+  async function process(url) {
     if (signal?.aborted) throw new Error("已取消收藏");
     const record = { url, status: "failed", bytes: 0 };
     resources.push(record);
     if (!/^https?:/.test(url)) {
       record.error = "该资源不是可下载的 HTTP 地址";
-      continue;
+      return;
     }
-    progress?.({
-      done: seen.size,
-      total: seen.size + queue.length,
-      bytes: state.total,
-      url,
-    });
+    report(url);
     try {
       const response = await fetcher(url, {
-        credentials: "omit",
+        credentials: "include",
         redirect: "follow",
         signal: AbortSignal.any([
           signal || new AbortController().signal,
-          AbortSignal.timeout(90000),
+          AbortSignal.timeout(
+            /\.(mp4|webm|m3u8|ts|m4s)(?:\?|$)/i.test(url)
+              ? videoTimeoutSeconds * 1000
+              : imageTimeoutSeconds * 1000,
+          ),
         ]),
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       record.mime =
         response.headers.get("content-type") || "application/octet-stream";
+      if (/text\/html/i.test(record.mime))
+        throw new Error("资源返回了网页或登录页，未保存为媒体");
       let bytes = await readBounded(response, state, approve, signal);
       if (/mpegurl/i.test(record.mime) || /\.m3u8(?:\?|$)/i.test(url)) {
         const playlist = hlsPlaylist(
@@ -156,7 +179,7 @@ export async function archiveResources(
 
       await upload(record.name, bytes, record.mime);
       record.status = "saved";
-      if (/css|javascript|ecmascript/.test(record.mime))
+      if (/css/.test(record.mime))
         for (const dependency of dependencies(
           new TextDecoder().decode(bytes),
           record.mime,
@@ -168,11 +191,35 @@ export async function archiveResources(
       record.error = error.message;
     }
   }
+  while ((queue.length || active.size) && !signal?.aborted) {
+    while (
+      queue.length &&
+      active.size < Math.max(1, Math.min(concurrency, 12)) &&
+      seen.size < resourceLimit
+    ) {
+      const url = queue.shift();
+      if (seen.has(url)) continue;
+      seen.add(url);
+      const job = process(url).finally(() => {
+        active.delete(job);
+        completed++;
+        report(url);
+      });
+      active.add(job);
+    }
+    if (active.size)
+      await Promise.race(active).catch((error) => {
+        if (!signal?.aborted) throw error;
+      });
+    else break;
+  }
+  await Promise.allSettled(active);
+  if (signal?.aborted) throw new Error("已取消收藏");
   if (queue.length)
     resources.push({
       url: "resource-limit",
       status: "failed",
-      error: "资源数量超过 2000，请缩小收藏范围",
+      error: "资源数量超过设置上限，请缩小收藏范围",
       bytes: 0,
     });
   // A playlist with missing segments is explicitly incomplete, never a success.

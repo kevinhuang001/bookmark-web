@@ -1,3 +1,4 @@
+pub mod preferences;
 pub mod store;
 pub mod sync;
 use axum::{body::Bytes,extract::{Path,Query,Request,State,DefaultBodyLimit},http::{HeaderValue,Method,StatusCode},middleware::{self,Next},response::{IntoResponse,Response},routing::{get,post,put},Json,Router};
@@ -54,7 +55,7 @@ pub fn router(state:AppState)->Router{
     let api=Router::new().route("/api/status",get(status)).route("/api/pairing",post(pairing)).route("/api/devices",get(devices)).route("/api/devices/{token}",axum::routing::delete(revoke))
         .route("/api/items",get(items).post(capture)).route("/api/items/{id}",put(update_item).delete(delete_item)).route("/api/items/{id}/content/{file}",get(content)).route("/api/items/{id}/assets/{name}",get(asset))
         .route("/api/blobs/{name}",put(blob)).route("/api/folders",get(folders).post(create_folder)).route("/api/folders/{id}",put(update_folder))
-        .route("/api/capture-options",get(capture_options)).route("/api/tags",get(tags).post(create_tag))
+        .route("/api/preferences",get(preferences).put(save_preferences)).route("/api/capture-options",get(capture_options)).route("/api/tags",get(tags).post(create_tag))
         .route("/api/settings",get(settings).put(save_settings)).route("/api/sync",post(synchronize)).layer(middleware::from_fn_with_state(state.clone(),authorize));
     let cors=CorsLayer::new().allow_origin(AllowOrigin::predicate(|origin:&HeaderValue,_|origin.to_str().is_ok_and(trusted_origin))).allow_headers([axum::http::header::AUTHORIZATION,axum::http::header::CONTENT_TYPE]).allow_methods([Method::GET,Method::POST,Method::PUT,Method::DELETE,Method::OPTIONS]);
     Router::new().route("/health",get(||async{Json(json!({"app":"glassmark","version":env!("CARGO_PKG_VERSION")}))})).route("/pair",post(pair)).merge(api)
@@ -95,7 +96,7 @@ async fn capture_options(State(state):State<AppState>)->Result<Json<Value>>{
     for item in state.store.list("item","")?{
         if let Some(names)=item["tags"].as_array(){for name in names{if !tags.iter().any(|t|t["name"]==*name&&t["platform"]==item["platform"]){tags.push(json!({"name":name,"platform":item["platform"]}));}}}
     }
-    Ok(Json(json!({"folders":state.store.list("folder","")?,"tags":tags})))
+    Ok(Json(json!({"folders":state.store.list("folder","")?,"tags":tags,"preferences":preferences::Preferences::read(&state.store)})))
 }
 async fn folders(State(state):State<AppState>)->Result<Json<Value>>{Ok(Json(json!(state.store.list("folder","")?)))}
 fn validate_folder(state:&AppState,value:&Value)->store::Result<()>{
@@ -110,12 +111,14 @@ async fn blob(State(state):State<AppState>,Path(name):Path<String>,bytes:Bytes)-
     if !valid_asset(&name)||format!("{:x}",Sha256::digest(&bytes))!=name.split('.').next().unwrap(){return Err("Invalid resource digest".to_string().into());}
     let path=state.store.root.join("blobs").join(name);if !path.exists(){atomic_write(&path,&bytes)?;}Ok(Json(json!({"ok":true})))
 }
-async fn content(State(state):State<AppState>,Path((id,file)):Path<(String,String)>)->Result<Response>{safe_id(&id)?;if !["snapshot.html","source.html","posts.json","manifest.json"].contains(&file.as_str()){return Err("Invalid file".to_string().into());}
+async fn content(State(state):State<AppState>,Path((id,file)):Path<(String,String)>)->Result<Response>{safe_id(&id)?;if !["content.html","manifest.json"].contains(&file.as_str()){return Err("Invalid file".to_string().into());}
     if file=="manifest.json"{return Ok(Json(state.store.get(&id)?).into_response());}
     let bytes=fs::read(state.store.root.join("archives").join(id).join(&file)).map_err(|e|e.to_string())?;
     Ok(([("content-type","text/plain; charset=utf-8"),("x-content-type-options","nosniff")],bytes).into_response())
 }
 async fn asset(State(state):State<AppState>,Path((id,name)):Path<(String,String)>)->Result<Response>{safe_id(&id)?;if !valid_asset(&name){return Err("Invalid resource name".to_string().into());}let bytes=fs::read(state.store.root.join("archives").join(id).join("assets").join(name)).map_err(|e|e.to_string())?;Ok(([("content-type","application/octet-stream"),("x-content-type-options","nosniff")],bytes).into_response())}
+async fn preferences(State(state):State<AppState>)->Json<preferences::Preferences>{Json(preferences::Preferences::read(&state.store))}
+async fn save_preferences(State(state):State<AppState>,Json(value):Json<preferences::Preferences>)->Result<Json<Value>>{value.save(&state.store)?;Ok(Json(json!({"ok":true})))}
 async fn settings(State(state):State<AppState>)->Json<Value>{let mut value=serde_json::to_value(sync::SyncConfig::read(&state.store)).unwrap();value["hasPassword"]=json!(!value["password"].as_str().unwrap_or("").is_empty());value.as_object_mut().unwrap().remove("password");Json(value)}
 async fn save_settings(State(state):State<AppState>,Json(mut value):Json<Value>)->Result<Json<Value>>{if value["password"].as_str().is_none_or(|s|s.is_empty()){value["password"]=json!(sync::SyncConfig::read(&state.store).password);}let config:sync::SyncConfig=serde_json::from_value(value).map_err(|e|e.to_string())?;config.save(&state.store)?;state.schedule_sync();Ok(Json(json!({"ok":true})))}
 async fn synchronize(State(state):State<AppState>)->Result<Json<Value>>{Ok(Json(state.synchronize().await?))}

@@ -20,7 +20,7 @@ const context = await browser.newContext({
   viewport: { width: 1600, height: 1000 },
   timezoneId: "Asia/Shanghai",
   recordVideo: {
-    dir: "artifacts/demo-v4-raw",
+    dir: "artifacts/demo-v5-raw",
     size: { width: 1600, height: 1000 },
   },
 });
@@ -83,7 +83,7 @@ try {
     String((Date.now() - recordingEpoch) / 1000),
   );
   await caption(
-    "v0.4 · 全局搜索始终可见，站内搜索独立保留 · 测试数据 / 非原生系统效果",
+    "v0.5 · 全局搜索始终可见，站内搜索独立保留 · 测试数据 / 非原生系统效果",
   );
   await pause(1800);
   await page.locator("#search").fill("What makes a personal archive");
@@ -114,7 +114,7 @@ try {
   );
   await pause(1600);
   await page.locator('button[data-view="web"]').click();
-  await page.locator("#snapshot").waitFor({ state: "visible" });
+  await page.locator("#saved-page").waitFor({ state: "visible" });
   await caption("网页入口即根文件夹，文件直接位于目录层级中 · 测试数据");
   await pause(1700);
   await page.locator("[data-collapse]").first().click();
@@ -209,15 +209,15 @@ try {
     "扩展界面预览：自动识别当前帖子、标签保存位置、视频说明与连接状态 · 浏览器 API 使用测试替身",
   );
   await pause(2700);
-  await page.screenshot({ path: "artifacts/glassmark-v4-extension.png" });
+  await page.screenshot({ path: "artifacts/glassmark-v5-extension.png" });
   await page.evaluate(() =>
     document.querySelector("#extension-preview").remove(),
   );
   await page.locator('button[data-view="x"]').click();
   await pause(500);
-  await page.screenshot({ path: "artifacts/glassmark-v4-x.png" });
+  await page.screenshot({ path: "artifacts/glassmark-v5-x.png" });
   await caption(
-    "Glassmark v0.4 · 新界面与归档交互演示 · 浏览器预览不代表原生玻璃合成效果",
+    "Glassmark v0.5 · 新界面与归档交互演示 · 浏览器预览不代表原生玻璃合成效果",
   );
   await pause(1400);
 } finally {

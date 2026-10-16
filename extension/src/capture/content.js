@@ -1,17 +1,34 @@
 import { pageContext } from "../context.js";
 import { videoSources } from "./video.js";
 import { platform, adapterFor, extractPost } from "./adapters.js";
-import { serializeElement, snapshotDocument, escapeHtml } from "./serialize.js";
-export async function collect({ mode = "page", maxPosts = 100 } = {}) {
+import { serializeElement, contentDocument, escapeHtml } from "./serialize.js";
+export async function collect({
+  mode = "page",
+  maxPosts = 100,
+  autoLoadSeconds = 20,
+  includeImages = true,
+  includeAvatars = true,
+  includeVideos = true,
+} = {}) {
   globalThis.__glassmarkCaptureCanceled = false;
   const kind = platform(location.hostname);
   const config = adapterFor(kind);
   const warnings = [];
   const resources = new Set();
   const posts = new Map();
-  const fragments = new Map();
-  const originals = new Map();
   const originalScroll = scrollY;
+  const started = performance.now();
+  let control;
+  let finish = false;
+  const notify = () => {
+    const message = `已识别 ${posts.size} 条帖子 / 评论`;
+    if (control) control.querySelector("span").textContent = message;
+    try {
+      globalThis.chrome?.runtime
+        ?.sendMessage({ type: "capture-progress", count: posts.size })
+        .catch(() => {});
+    } catch {}
+  };
   const context = pageContext(location.href);
   const limit = kind === "reddit" ? 100000 : maxPosts;
   let rootId = null;
@@ -44,6 +61,7 @@ export async function collect({ mode = "page", maxPosts = 100 } = {}) {
           extractPost(el, kind).url?.match(/\/status\/(\d+)/)?.[1] ===
           context.postId,
       );
+      if (!primary && !rootId) return [];
       if (primary) {
         rootId = extractPost(primary, kind).id;
         elements = [primary, ...elements.filter((el) => el !== primary)];
@@ -80,24 +98,17 @@ export async function collect({ mode = "page", maxPosts = 100 } = {}) {
     for (const element of elements) {
       const post = extractPost(element, kind);
       if (posts.has(post.id) || posts.size >= limit) continue;
+      post.media = (post.media || []).filter((m) =>
+        m.type === "video" ? includeVideos : includeImages,
+      );
+      if (!includeAvatars) post.avatarUrl = "";
       for (const media of post.media || []) {
         for (const url of [media.url, media.poster, ...(media.sources || [])])
           if (url && /^https?:/.test(url)) resources.add(url);
       }
-      const capture = serializeElement(element);
-      capture.resources.forEach((r) => resources.add(r));
-      if (
-        kind === "reddit" &&
-        element.parentElement?.closest(config.selector)
-      ) {
-        posts.set(post.id, post);
-        continue;
-      }
+      if (post.avatarUrl && /^https?:/.test(post.avatarUrl))
+        resources.add(post.avatarUrl);
       posts.set(post.id, post);
-      fragments.set(post.id, capture.html);
-      originals.set(post.id, element.outerHTML);
-      capture.resources.forEach((r) => resources.add(r));
-      warnings.push(...capture.warnings);
     }
   }
   let parts;
@@ -106,40 +117,63 @@ export async function collect({ mode = "page", maxPosts = 100 } = {}) {
       throw new Error("请先打开一条 X 帖子的详情页");
     if (kind === "reddit" && !/\/comments\//.test(location.pathname))
       throw new Error("请先打开 Reddit 讨论详情页");
-    window.scrollTo(0, 0);
-    await new Promise((resolve) => setTimeout(resolve, 250));
-    let unchanged = 0;
-    do {
-      if (globalThis.__glassmarkCaptureCanceled) throw new Error("已取消收藏");
-      const previous = posts.size;
+    control = document.createElement("div");
+    control.setAttribute("data-glassmark-ui", "");
+    control.style.cssText =
+      "position:fixed;top:16px;right:16px;z-index:2147483647;padding:14px 16px;border-radius:14px;background:#fff;color:#253c4d;box-shadow:0 5px 35px #0003;font:13px/1.6 system-ui;display:flex;gap:12px;align-items:center";
+    control.innerHTML =
+      '<strong>Glassmark</strong><span>正在识别主帖…</span><button type="button">保存已加载内容</button><button type="button">取消</button>';
+    control.querySelectorAll("button")[0].onclick = () => {
+      finish = true;
+    };
+    control.querySelectorAll("button")[1].onclick = () => {
+      globalThis.__glassmarkCaptureCanceled = true;
+    };
+    document.documentElement.append(control);
+    try {
       accumulate(candidates());
-      if (kind === "reddit" || posts.size >= limit) break;
-      unchanged = posts.size === previous ? unchanged + 1 : 0;
-      if (unchanged >= 5) break;
-      window.scrollBy(0, Math.max(600, innerHeight * 0.8));
-      await new Promise((resolve) => setTimeout(resolve, 900));
-    } while (posts.size < limit);
-    window.scrollTo(0, originalScroll);
-    if (!posts.size || !rootId)
-      throw new Error("没有识别到帖子，请等待页面加载，或使用区域收藏");
-    const shell = document.querySelector(config.selector)?.parentElement;
-    if (shell) {
-      const style = getComputedStyle(shell);
-      const shellStyle = [
-        "width",
-        "max-width",
-        "padding",
-        "box-sizing",
-        "border-left",
-        "border-right",
-        "background-color",
-      ]
-        .map((key) => `${key}:${style.getPropertyValue(key)}`)
-        .join(";");
-      parts = [
-        `<div style="${escapeHtml(shellStyle)};margin:0 auto;max-width:100%">${[...fragments.values()].join("")}</div>`,
-      ];
-    } else parts = [...fragments.values()];
+      notify();
+      if (!rootId) {
+        window.scrollTo(0, 0);
+        for (let attempt = 0; attempt < 10 && !rootId; attempt++) {
+          await new Promise((r) => setTimeout(r, 300));
+          if (globalThis.__glassmarkCaptureCanceled)
+            throw new Error("已取消收藏");
+          accumulate(candidates());
+          notify();
+        }
+      }
+      if (!rootId)
+        throw new Error(
+          "未识别到当前主帖，请等待帖子详情加载完成后重试；登录或访问限制也可能导致内容不可见",
+        );
+      let unchanged = 0;
+      while (
+        kind === "x" &&
+        posts.size < limit &&
+        !finish &&
+        performance.now() - started < autoLoadSeconds * 1000
+      ) {
+        if (globalThis.__glassmarkCaptureCanceled)
+          throw new Error("已取消收藏");
+        window.scrollBy(0, Math.max(600, innerHeight * 0.8));
+        await new Promise((resolve) => setTimeout(resolve, 700));
+        const before = posts.size;
+        accumulate(candidates());
+        notify();
+        unchanged = posts.size === before ? unchanged + 1 : 0;
+        if (unchanged >= 3) break;
+      }
+      if (globalThis.__glassmarkCaptureCanceled) throw new Error("已取消收藏");
+      if (performance.now() - started >= autoLoadSeconds * 1000)
+        warnings.push(
+          "已保存当前收集到的内容；自动加载达到设置的时长上限，可继续收集更多回复",
+        );
+    } finally {
+      control.remove();
+      window.scrollTo(0, originalScroll);
+    }
+    parts = [];
     warnings.push(
       kind === "x"
         ? `保存了 ${posts.size} 条已加载帖子；隐藏、受限或未加载的回复不包含在内`
@@ -153,7 +187,11 @@ export async function collect({ mode = "page", maxPosts = 100 } = {}) {
     if (!roots.length || roots.some((el) => !el.isConnected))
       throw new Error("选择已失效，请重新选择区域");
     parts = roots.map((el) => {
-      const capture = serializeElement(el);
+      const capture = serializeElement(el, {
+        includeImages,
+        includeAvatars,
+        includeVideos,
+      });
       capture.resources.forEach((r) => resources.add(r));
       warnings.push(...capture.warnings);
       return capture.html;
@@ -165,7 +203,7 @@ export async function collect({ mode = "page", maxPosts = 100 } = {}) {
         if (!posts.has(post.id)) posts.set(post.id, post);
       }
   }
-  if (mode !== "thread")
+  if (mode !== "thread" && includeVideos)
     videoSources(document.body).forEach((u) => resources.add(u));
   // Preserve the font faces actually loaded by this page, including their sources.
   let fontCss = "";
@@ -193,46 +231,15 @@ export async function collect({ mode = "page", maxPosts = 100 } = {}) {
       } else if (rule.cssRules) visit(rule.cssRules, base);
     }
   };
-  for (const sheet of document.styleSheets) {
+  for (const sheet of mode === "thread" ? [] : document.styleSheets) {
     try {
       visit(sheet.cssRules, sheet.href || document.baseURI);
     } catch {
-      warnings.push(
-        "部分跨域样式表无法直接读取字体声明，原始 CSS 仍会尝试归档",
-      );
+      warnings.push("部分跨域字体无法读取，正文仍按保存的排版显示");
     }
   }
-  const sourceResources = [
-    ...document.querySelectorAll('script[src],link[rel="stylesheet"]'),
-  ].map((el) => el.src || el.href);
-  for (const entry of performance.getEntriesByType("resource"))
-    if (
-      entry.initiatorType === "script" ||
-      /\.(?:m?js|css)(?:$|\?)/.test(entry.name)
-    )
-      sourceResources.push(entry.name);
-  if (document.querySelector("iframe"))
-    warnings.push("跨域嵌入框架未展开归档，请单独打开其中的页面收藏");
-  warnings.push(
-    "归档保存当前已加载内容；服务端接口、未加载的动态模块和受限资源不保证可离线运行",
-  );
-  const rawParts =
-    mode === "thread" && kind !== "web"
-      ? [...originals.values()]
-      : mode === "selection"
-        ? (globalThis.__glassmarkSelection || []).map((el) => el.outerHTML)
-        : null;
-  const original =
-    "<!doctype html>\n" +
-    (rawParts
-      ? "<html><head>" +
-        document.head.innerHTML +
-        "</head><body>" +
-        rawParts.join("\n") +
-        "</body></html>"
-      : document.documentElement.outerHTML);
   return {
-    version: 1,
+    version: 2,
     title: document.title || location.hostname,
     url: location.href,
     platform: mode === "thread" ? kind : "web",
@@ -247,14 +254,17 @@ export async function collect({ mode = "page", maxPosts = 100 } = {}) {
           )
             .map((el) => el.innerText)
             .join("\n\n"),
-    snapshot: snapshotDocument(
-      parts,
-      document.title,
-      getComputedStyle(document.body).backgroundColor,
-    ).replace("</head>", `<style>${fontCss}</style></head>`),
-    original,
-    videos: mode === "thread" ? [] : videoSources(document.body),
-    resources: [...new Set([...resources, ...sourceResources])],
+    content:
+      mode === "thread"
+        ? null
+        : contentDocument(
+            parts,
+            document.title,
+            getComputedStyle(document.body).backgroundColor,
+          ).replace("</head>", `<style>${fontCss}</style></head>`),
+    videos:
+      mode === "thread" || !includeVideos ? [] : videoSources(document.body),
+    resources: [...resources],
     posts: rootId
       ? [posts.get(rootId), ...posts.values()].filter(
           (p, i, a) => p && a.findIndex((x) => x?.id === p.id) === i,

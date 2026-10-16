@@ -49,6 +49,7 @@ export function extractPost(el, kind, doc = document) {
     ? new URL(rawLink, doc.URL).href.split("?")[0]
     : null;
   const id =
+    (kind === "x" ? permalink?.match(/\/status\/(\d+)/)?.[1] : null) ||
     el.getAttribute("thingid") ||
     el.getAttribute("thing-id") ||
     el.getAttribute("id") ||
@@ -76,6 +77,10 @@ export function extractPost(el, kind, doc = document) {
     const url = image.currentSrc || image.src;
     if (
       url &&
+      (kind !== "x" ||
+        image.closest('[data-testid="tweetPhoto"],.photo') ||
+        /pbs\.twimg\.com\/media\//.test(url) ||
+        (image.naturalWidth > 80 && image.naturalHeight > 60)) &&
       !/profile_images|avatar|emoji|community[_-]?icon|snoovatar|award|badge/i.test(
         url,
       ) &&
@@ -101,6 +106,17 @@ export function extractPost(el, kind, doc = document) {
       alt: "视频",
       sources,
     });
+  }
+  const seenMedia = new Set();
+  for (let i = media.length - 1; i >= 0; i--) {
+    const m = media[i];
+    let key = m.url;
+    try {
+      const u = new URL(m.url);
+      if (u.hostname === "pbs.twimg.com") key = u.origin + u.pathname;
+    } catch {}
+    if (seenMedia.has(key)) media.splice(i, 1);
+    else seenMedia.add(key);
   }
   const read = (selector) =>
     el.querySelector(selector)?.textContent.trim() || "";
@@ -129,7 +145,7 @@ export function extractPost(el, kind, doc = document) {
         };
   const body = [...el.querySelectorAll(config.body)].find(owned);
   const profileImage = el.querySelector(
-    'img[src*="profile_images"],[data-testid*="UserAvatar"] img,[data-testid="Tweet-User-Avatar"] img',
+    'img[src*="profile_images"],[data-testid*="UserAvatar"] img,[data-testid="Tweet-User-Avatar"] img,img[src*="avatar"],img[src*="snoovatar"],[slot="authorIcon"] img,.author img',
   );
   const main =
     el.closest("shreddit-post") || doc.querySelector("shreddit-post");
@@ -144,7 +160,12 @@ export function extractPost(el, kind, doc = document) {
     author,
     authorName: kind === "x" ? firstName : author,
     authorHandle: handle,
-    avatarUrl: profileImage?.currentSrc || profileImage?.src || "",
+    avatarUrl:
+      el.getAttribute("author-icon") ||
+      el.getAttribute("icon-url") ||
+      profileImage?.currentSrc ||
+      profileImage?.src ||
+      "",
     verified: !!el.querySelector('[data-testid="icon-verified"],.verified'),
     text: (
       body?.innerText ||

@@ -34,7 +34,7 @@ function mediaMarkup(post, item) {
   return `<div class="social-media-grid media-count-${records.length}">${records.map((m) => `<div class="social-media media-loading ${m.type === "video" ? "video-media" : ""}">${m.type === "video" ? `<video controls preload="metadata" data-archive-id="${item.id}" data-archive-media="${esc(m.url)}"></video>` : `<img loading="lazy" alt="${esc(m.alt || "收藏的图片")}" data-archive-id="${item.id}" data-archive-media="${esc(m.url)}">`}<span class="media-fallback">媒体未归档</span></div>`).join("")}</div>`;
 }
 function menu(item) {
-  return `<details class="post-menu"><summary aria-label="更多收藏操作">${icon("more")}</summary><div><button data-social-action="snapshot" data-id="${item.id}">原始网页快照</button><button data-social-action="tags" data-id="${item.id}">编辑标签</button><button data-social-action="info" data-id="${item.id}">归档详情</button></div></details>`;
+  return `<details class="post-menu"><summary aria-label="更多收藏操作">${icon("more")}</summary><div><button data-social-action="tags" data-id="${item.id}">编辑标签</button><button data-social-action="info" data-id="${item.id}">保存详情</button><button class="danger" data-social-action="delete" data-id="${item.id}">删除收藏</button></div></details>`;
 }
 function xActions(post, item) {
   const stats = post.stats || {};
@@ -65,7 +65,7 @@ function discussionScope(item) {
 function xShell(items, options) {
   const selected = items.find((i) => i.id === options.selected);
   const rows = feedItems(items, options.filters);
-  return `<div class="x-shell">${savedSidebar("x", { ...options, items })}<section class="x-timeline"><header class="x-feed-header">${selected ? `<div class="x-detail-title"><button data-social-action="back" aria-label="返回信息流">${icon("back")}</button><strong>帖子</strong><button class="x-snapshot-link" data-social-action="snapshot" data-id="${selected.id}">原始快照</button></div>` : `<div class="x-bookmarks-title"><div><strong>书签</strong><span>X · ${items.length} 份收藏</span></div>${icon("bookmark")}</div>`}</header>
+  return `<div class="x-shell">${savedSidebar("x", { ...options, items })}<section class="x-timeline"><header class="x-feed-header">${selected ? `<div class="x-detail-title"><button data-social-action="back" aria-label="返回信息流">${icon("back")}</button><strong>帖子</strong></div>` : `<div class="x-bookmarks-title"><div><strong>书签</strong><span>X · ${items.length} 份收藏</span></div>${icon("bookmark")}</div>`}</header>
  ${
    selected
      ? xPost(rootPost(selected), selected, { detail: true }) +
@@ -99,7 +99,7 @@ function redditShell(items, options) {
   ];
   return `<div class="reddit-shell">${savedSidebar("reddit", { ...options, items })}<div class="reddit-main"><header class="reddit-bookmarks-header"><div class="reddit-bookmarks-title">${icon("reddit")}<div><strong>已保存</strong><span>Reddit · ${items.length} 份收藏</span></div></div>${icon("bookmark")}</header><div class="reddit-layout"><section class="reddit-timeline">${
     selected
-      ? `<div class="reddit-detail-nav"><button data-social-action="back" aria-label="返回信息流">${icon("back")}</button><span>r/${esc(rootPost(selected).community || communityFromUrl(selected.url))}</span><button data-social-action="snapshot" data-id="${selected.id}">原始快照</button></div>${redditPost(selected, true)}${discussionScope(selected)}<div class="reddit-comments-title"><h2>评论 <span>${Math.max(0, (selected.posts?.length || 1) - 1)}</span></h2><span>已收藏的讨论</span></div>${
+      ? `<div class="reddit-detail-nav"><button data-social-action="back" aria-label="返回信息流">${icon("back")}</button><span>r/${esc(rootPost(selected).community || communityFromUrl(selected.url))}</span></div>${redditPost(selected, true)}${discussionScope(selected)}<div class="reddit-comments-title"><h2>评论 <span>${Math.max(0, (selected.posts?.length || 1) - 1)}</span></h2><span>已收藏的讨论</span></div>${
           (selected.posts || [])
             .slice(1)
             .map((p) => redditComment(p, selected))

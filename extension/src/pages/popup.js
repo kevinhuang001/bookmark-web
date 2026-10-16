@@ -34,7 +34,7 @@ async function init() {
     ? context.platform === "x"
       ? "X · 帖子与讨论"
       : "Reddit · 帖子与评论"
-    : "网页快照";
+    : "网页内容";
   $("context-icon").innerHTML = icon(
     context.isPost ? context.platform : "globe",
   );
@@ -55,7 +55,7 @@ async function init() {
       : "锁定当前主帖，包含页面已加载的全部评论与回复。"
     : context.platform !== "web"
       ? "当前不是帖子详情页。若需收藏讨论，请先点进一条帖子。"
-      : "保存 HTML、计算样式和原始脚本，支持多个区域与视频归档。";
+      : "保存正文、排版与媒体，支持多个区域与视频。";
   try {
     const health = await fetch(BASE + "/health", {
       signal: AbortSignal.timeout(1500),
@@ -63,6 +63,12 @@ async function init() {
     $("pair").hidden = !health.ok || live;
     if (live) {
       const options = await (await request("/api/capture-options")).json();
+      const config = options.preferences || {};
+      if (context.isPost && context.platform === "x")
+        $("capture-scope").textContent =
+          `锁定当前主帖，最多 ${config.maxPosts || 100} 条，自动加载最多 ${config.autoLoadSeconds || 20} 秒；可随时保存已加载内容。`;
+      $("budget-hint").textContent =
+        `${config.downloadLimitMb || 500} MB 后询问 · ${config.downloadConcurrency || 6} 路并发`;
       const stored = await api.storage.local.get("capturePreferences");
       const prefs = stored.capturePreferences || {};
       const folders = options.folders || [];
@@ -86,19 +92,25 @@ async function init() {
               `<option value="${esc(f.id)}">${esc(folderPath(f))}</option>`,
           )
           .join("");
-      $("destination-folder").value = prefs.folderId || "";
-      $("destination-tags").value = (prefs[context.platform]?.tags || []).join(
-        ", ",
-      );
-      $("tag-suggestions").innerHTML = [
+      $("destination-folder").value =
+        prefs.folderId === undefined
+          ? config.defaultFolderId || ""
+          : prefs.folderId || "";
+      const selected = new Set(prefs[context.platform]?.tags || []);
+      const names = [
         ...new Set(
           (options.tags || [])
             .filter((t) => t.platform === context.platform)
             .map((t) => t.name),
         ),
-      ]
-        .map((t) => `<option value="${esc(t)}"></option>`)
-        .join("");
+      ];
+      $("destination-tags").innerHTML =
+        names
+          .map(
+            (t) =>
+              `<label><input type="checkbox" value="${esc(t)}" ${selected.has(t) ? "checked" : ""}><span>${esc(t)}</span></label>`,
+          )
+          .join("") || '<p class="muted">还没有标签，可先在客户端新建。</p>';
     }
   } catch (e) {
     $("pair").hidden = true;
@@ -151,14 +163,9 @@ for (const button of document.querySelectorAll("[data-mode]"))
       const mode = button.dataset.mode;
       const tags =
         context.isPost && mode === "thread"
-          ? [
-              ...new Set(
-                $("destination-tags")
-                  .value.split(/[,，]/)
-                  .map((t) => t.trim())
-                  .filter(Boolean),
-              ),
-            ]
+          ? [...$("destination-tags").querySelectorAll("input:checked")].map(
+              (i) => i.value,
+            )
           : [];
       if (tags.some((t) => new TextEncoder().encode(t).length > 100))
         throw new Error("每个标签不能超过 100 字节");
@@ -185,6 +192,7 @@ for (const button of document.querySelectorAll("[data-mode]"))
         });
       else
         await api.tabs.create({
+          active: mode !== "thread",
           url:
             api.runtime.getURL("capture.html") +
             "?tab=" +

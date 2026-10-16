@@ -87,18 +87,11 @@
           <span>Glassmark</span>
         </div>
         <header id="toolbar" class="window-drag-handle">
-          <button
-            id="snapshot-back"
-            class="icon-button"
-            aria-label="返回信息流"
-            hidden
-          >
-            <span data-icon="back"></span>
-          </button>
           <div class="breadcrumb">
             <span>资料库</span><span>／</span
             ><span id="breadcrumb-current">全部网页</span>
           </div>
+          <div id="page-metadata" class="page-metadata" hidden></div>
           <div class="toolbar-actions">
             <button
               id="move"
@@ -135,10 +128,16 @@
       </main>
     </div>
     <dialog id="dialog">
-      <form method="dialog">
+      <form method="dialog" novalidate>
         <div class="dialog-header">
           <h2 id="dialog-title"></h2>
-          <button class="icon-button" value="cancel" aria-label="关闭">
+          <button
+            class="icon-button"
+            type="button"
+            id="dialog-close"
+            value="cancel"
+            aria-label="关闭"
+          >
             <span data-icon="close"></span>
           </button>
         </div>

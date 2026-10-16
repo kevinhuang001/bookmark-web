@@ -4,10 +4,10 @@ export function releasePreview() {
   for (const url of active) URL.revokeObjectURL(url);
   active = [];
 }
-/** A separate, opaque-origin sandbox renders untrusted archives without IPC or scripts. */
+/** A script-disabled sandbox renders saved content; same-origin preserves local Blob media access. */
 export async function preview(item, signal) {
   let html = await (
-    await request(`/api/items/${item.id}/content/snapshot.html`, { signal })
+    await request(`/api/items/${item.id}/content/content.html`, { signal })
   ).text();
   const local = [];
   try {

@@ -1,39 +1,30 @@
-# 验收与验证
+# 验证
 
 ## 自动化检查
 
-| 检查                                                                        | 环境与范围                                                                                                                                          |
-| --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm run check`                                                             | 所有应用、扩展和脚本的 JavaScript 语法                                                                                                              |
-| `npm test`                                                                  | 19 项归档、平台归类、依赖下载、预算及媒体隔离单元测试                                                                                               |
-| `cargo test --manifest-path core/Cargo.toml`                                | Rust 持久化、配对、搜索、路径边界及 WebDAV 双目录同步                                                                                               |
-| `cargo clippy --manifest-path core/Cargo.toml --all-targets -- -D warnings` | 后端静态检查                                                                                                                                        |
-| `npm run test:e2e`                                                          | 配对与授权、整页与选区、X 虚拟滚动、Reddit 108 条已保存评论的完整显示、目录文件、拖动、中文搜索、标签、站点书签导航与搜索、居中预览、脚本和网络隔离 |
-| `node tests/extension.e2e.mjs`                                              | 安装 Chromium MV3 扩展，连接原生 Rust 服务，捕获、上传并验证客户端关闭后停用                                                                        |
-| `node tests/firefox.e2e.mjs`                                                | Firefox 捕获引擎与扩展清单；不包含已安装 Firefox 附加组件的测试                                                                                     |
-| 三平台 Tauri 构建                                                           | Windows x64 EXE/MSI、Linux x64 AppImage/DEB、macOS Apple Silicon + Intel 通用 DMG                                                                   |
+- `npm run check`：应用、扩展和脚本语法。
+- `npm test`：URL 识别、资源图、预算拒绝、并发上限、共享预算门、媒体隔离与 HLS 点播。
+- `cargo test --locked --manifest-path core/Cargo.toml`：权限、持久化、搜索、标签、偏好范围、单份内容存储与 WebDAV 同步。
+- `npm run test:e2e`：网页与选区、结构化帖子、头像、评论、全局与站内搜索、目录、标签选择、删除、分组设置、空文件夹取消、沉浸阅读和媒体播放。
+- `node tests/extension.e2e.mjs`：安装真实 Chromium MV3 扩展，配对并向生产 Rust 后端保存网页及 X 讨论，验证客户端关闭后停用。
+- `node tests/firefox.e2e.mjs`：Firefox 捕获引擎与清单；不代表已安装附加组件测试。
+- 三平台构建：macOS 通用 DMG、Windows EXE / MSI、Linux AppImage / DEB。
 
-完整运行记录见 [Actions](https://github.com/kevinhuang001/bookmark-web/actions)。每个发布版本附有 `e2e-report.json`、`extension-report.json`、`firefox-report.json` 以及 `SHA256SUMS.txt`；`e2e-report.json` 中的 `backend: native-rust` 表示该次测试使用真实 Rust 后端。
+CI 在浏览器测试中设置 `GLASSMARK_BRIDGE_BIN`，使用生产 Rust 服务。没有该参数的本地前端测试使用开发服务，报告明确标记 `fixture-bridge`。
 
-本地可设置 `GLASSMARK_PORTABLE_CHROMIUM=1` 运行同一套界面检查；没有 `GLASSMARK_BRIDGE_BIN` 时使用开发测试服务，报告标识 `fixture-bridge`。CI 为浏览器测试设置真实 bridge 路径。
+## 结果
 
-## 评论保存范围
+[Actions](https://github.com/kevinhuang001/bookmark-web/actions) 保存每次提交的检查结果。每个成功发布版本附带 `e2e-report.json`、`extension-report.json`、`firefox-report.json` 和 `SHA256SUMS.txt`。
 
-X 默认收集主帖和最多 100 条帖子／回复，可在扩展进度页继续收集。Reddit 保存主帖和当前已加载的全部评论。客户端详情页显示本次归档中的全部回复／评论，并显示实际保存条数。测试覆盖超过 100 条已保存评论时的数量、最后一条可见性和详情返回。
+## 实机验收
 
-## 桌面实机验收
+1. 安装客户端与扩展，在分组设置中配对。
+2. 空名称打开新建文件夹，验证关闭、取消、Esc 和遮罩关闭。
+3. 在设置中修改并发、MB 上限、帖子数量与自动加载时间，检查下一次任务使用新配置。
+4. 收藏带作者头像、GIF、图片和视频的真实页面，断网验证媒体与正文。
+5. 对真实 X / Reddit 登录会话收藏主帖和已加载评论，核对实际保存数量、取消、立即保存及错误报告。
+6. 在网页中验证阅读区占满，元数据只显示于顶部面包屑旁。
+7. 在网页工具栏和帖子菜单删除内容，检查搜索与其他设备同步移除。
+8. 在 Windows/macOS 实机检查圆角、底层玻璃与拖动。浏览器录屏不能验证系统合成器的原生外形。
 
-1. 安装对应平台的发布包并配对浏览器扩展。
-2. 关闭客户端，确认扩展不能收藏；重新启动后检查恢复。
-3. 对真实网页完成整页和多区域收藏，断网检查排版、媒体和目录操作。
-4. 在真实 X / Reddit 登录会话收藏帖子，核对已加载范围、归档报告、讨论详情和原始快照。
-5. 在 macOS 26 检查 Liquid Glass、Windows 检查 Acrylic、Linux 检查回退视觉和窗口操作。
-6. 在两个设备配置测试 WebDAV，验证增量同步、标签、文件夹、删除及离线冲突合并。
-
-构建和自动化检查不替代真实站点登录会话与各操作系统上的视觉验收。演示素材来自 `tests/fixtures/`，录屏标注测试服务与原生运行范围。
-
-### v0.4 回归
-
-新增 URL 范围识别、HLS 质量/音轨/分片依赖与加密/直播拒绝测试；浏览器测试覆盖当前主帖优先、推荐区排除、实际 WebM 离线播放、HLS 归档与系统支持时的播放、跨来源全局搜索、平台标签目录和窗口按钮悬停提示。
-
-Windows/macOS 底层桌面透光与原生拖动需要安装包实机确认，浏览器录屏不代表系统合成效果。X/Reddit 的登录态和 DOM 会持续变化，测试固定页面不能代替真实站点会话验收。
+浏览器回归使用固定测试页面，不代替不断变化的真实站点登录会话。视频支持直接媒体及有限、未加密 HLS；不支持直播、DRM 或没有可下载地址的 blob 内容。

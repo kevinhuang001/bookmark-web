@@ -16,7 +16,10 @@ export const escapeHtml = (value) =>
       ],
   );
 /** Capture a rendering, including inherited styles, pseudo elements and open shadow roots. */
-export function serializeElement(root) {
+export function serializeElement(
+  root,
+  { includeImages = true, includeAvatars = true, includeVideos = true } = {},
+) {
   const resources = new Set();
   const warnings = [];
   let count = 0;
@@ -30,6 +33,7 @@ export function serializeElement(root) {
   const cssUrls = (css) =>
     css.replace(/url\(["']?([^"')]+)["']?\)/g, (_, value) => {
       if (/^data:/.test(value)) return `url("${value}")`;
+      if (!includeImages && !value.startsWith("#")) return "none";
       const url = absolute(value);
       const parsed = new URL(url, document.baseURI);
       if (
@@ -60,6 +64,13 @@ export function serializeElement(root) {
       return "";
     if (++count > 60000)
       throw new Error("页面超过 60000 个元素，请选择较小区域后重试");
+    if (node instanceof HTMLImageElement) {
+      const avatar =
+        /avatar|profile_images|snoovatar/i.test(node.currentSrc || node.src) ||
+        node.closest('[data-testid*="UserAvatar"]');
+      if (avatar ? !includeAvatars : !includeImages) return "";
+    }
+    if (!includeVideos && ["VIDEO", "AUDIO"].includes(node.tagName)) return "";
     const computed = getComputedStyle(node);
     if (computed.display === "none") return "";
     let clone = node.cloneNode(false);
@@ -90,10 +101,14 @@ export function serializeElement(root) {
         .join(";"),
     );
     if (node instanceof HTMLImageElement) {
-      const url = node.currentSrc || node.src;
+      const url =
+        node.currentSrc ||
+        node.getAttribute("data-src") ||
+        node.getAttribute("data-original") ||
+        (node.getAttribute("src") ? node.src : "");
       if (url) {
         if (!url.startsWith("data:")) resources.add(url);
-        clone.setAttribute("src", url);
+        clone.setAttribute("src", absolute(url));
       }
       clone.removeAttribute("loading");
     }
@@ -150,7 +165,7 @@ export function serializeElement(root) {
   }
   return { html: walk(root), resources: [...resources], warnings };
 }
-export function snapshotDocument(parts, title, background = "#fff") {
+export function contentDocument(parts, title, background = "#fff") {
   return (
     '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src &apos;none&apos;; img-src &apos;self&apos; data: blob:; media-src &apos;self&apos; data: blob:; font-src &apos;self&apos; data: blob:; style-src &apos;unsafe-inline&apos;; script-src &apos;none&apos;; connect-src &apos;none&apos;; form-action &apos;none&apos;"><title>' +
     escapeHtml(title) +

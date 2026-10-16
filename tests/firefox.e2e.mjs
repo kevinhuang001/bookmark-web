@@ -14,9 +14,9 @@ try {
   const capture = await page.evaluate(() =>
     GlassmarkCapture.collect({ mode: "page" }),
   );
-  assert.match(capture.snapshot, /FIELDNOTES/);
-  assert.match(capture.original, /article.js/);
-  assert.doesNotMatch(capture.snapshot, /<script/);
+  assert.match(capture.content, /FIELDNOTES/);
+  assert.equal(capture.version, 2);
+  assert.doesNotMatch(capture.content, /<script/);
   const manifest = JSON.parse(
     await readFile("dist/extension-firefox/manifest.json", "utf8"),
   );

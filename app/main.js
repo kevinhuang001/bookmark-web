@@ -1,3 +1,4 @@
+import { openSettings } from "./settings.js";
 import { connect, json, request, mutate } from "./api.js";
 import { ArchiveMedia } from "./media.js";
 let webMedia;
@@ -13,7 +14,6 @@ const state = {
   view: ["web", "x", "reddit"].includes(localStorage.getItem("glassmark-view"))
     ? localStorage.getItem("glassmark-view")
     : "web",
-  rawSnapshot: false,
   editing: null,
   filters: { threads: false, sort: "recent", author: "", community: "" },
   collapsed: new Set(),
@@ -26,6 +26,7 @@ const state = {
   globalMode: false,
   siteQueries: { x: "", reddit: "" },
   tagCatalog: [],
+  preferences: {},
   generation: 0,
   previewController: null,
   viewKey: "",
@@ -87,7 +88,6 @@ async function switchView(view) {
   state.globalMode = false;
   if (state.view === view && view !== "web") {
     state.selected = null;
-    state.rawSnapshot = false;
     state.filters = {
       threads: false,
       sort: "recent",
@@ -97,7 +97,6 @@ async function switchView(view) {
   } else {
     state.view = view;
     state.selected = null;
-    state.rawSnapshot = false;
     state.folder = null;
     state.tag = null;
     state.filters = {
@@ -254,6 +253,8 @@ function revealSelected() {
   }
 }
 function renderGlobalResults() {
+  $("page-metadata").hidden = true;
+  $("reader").classList.remove("immersive-web");
   releaseSocial();
   releasePreview();
   webMedia?.release();
@@ -272,6 +273,8 @@ function renderGlobalResults() {
   $("reader").innerHTML =
     `<section class="global-results"><p class="eyebrow">SEARCH YOUR LIBRARY</p><h1>${escape(state.query)}</h1><p>${state.items.length} 份收藏 · 网页、X 与 Reddit</p>${state.items.map((i) => `<button class="global-result" data-global-id="${i.id}">${icon(itemPlatform(i) === "web" ? "file" : itemPlatform(i))}<span><strong>${escape(i.title)}</strong><small>${platformLabel[itemPlatform(i)]} · ${escape(domain(i))} · ${(i.tags || []).map((t) => "#" + escape(t)).join(" ")}</small><p>${escape((i.text || "").slice(0, 140))}</p></span></button>`).join("") || "<p>没有找到匹配的内容</p>"}</section>`;
   $("reader").onclick = guarded(async (e) => {
+    clearTimeout(timer);
+    state.generation++;
     const button = e.target.closest("[data-global-id]");
     if (!button) return;
     const item = state.items.find((i) => i.id === button.dataset.globalId);
@@ -282,7 +285,6 @@ function renderGlobalResults() {
     state.tag = null;
     state.siteQueries[state.view] = "";
     state.selected = item.id;
-    state.rawSnapshot = false;
     state.viewKey = "";
     await refresh();
     revealSelected();
@@ -294,10 +296,14 @@ async function renderReader() {
     renderGlobalResults();
     return;
   }
-  const social = state.view !== "web" && !state.rawSnapshot;
+  const social = state.view !== "web";
+  $("page-metadata").hidden = social || !state.selected;
+  $("reader").classList.toggle(
+    "immersive-web",
+    !social && Boolean(state.selected),
+  );
   $("reader").classList.toggle("social-reader", social);
   $("toolbar").hidden = social;
-  $("snapshot-back").hidden = !state.rawSnapshot;
   if (social) {
     const items = visible();
     const key =
@@ -352,7 +358,7 @@ async function renderReader() {
   const item = state.items.find((i) => i.id === state.selected);
   const key =
     state.view +
-    "|snapshot|" +
+    "|content|" +
     (item ? item.id + "|" + item.modifiedAt : "empty");
   if (state.viewKey === key) return;
   state.viewKey = key;
@@ -372,14 +378,16 @@ async function renderReader() {
   $("move").disabled = state.view !== "web";
   const saved = item.resources.filter((r) => r.status === "saved");
   const failed = item.resources.length - saved.length;
-  $("reader").innerHTML =
-    `<section class="reader-heading"><div class="eyebrow">${escape(platformLabel[item.platform] || "网页")} <span>／</span> ${new Date(item.capturedAt).toLocaleString("zh-CN", { hour12: false })}</div><h1>${escape(item.title)}</h1><div class="reader-meta"><span class="archive-pill">${icon("circleCheck")}离线快照</span><span>${saved.length} 个资源 · ${fmt(saved.reduce((n, r) => n + r.bytes, 0))}</span>${failed ? `<button id="resource-warning" class="text-button">${failed} 个资源未保存</button>` : ""}<button id="source-link" class="source-link">${escape(domain(item))} ${icon("external")}</button></div><div class="reader-tags">${item.tags.map((t) => `<span># ${escape(t)}</span>`).join("")}</div></section><div class="preview-frame"><div class="preview-chrome"><span>${icon("globe")}</span><span>${escape(item.url)}</span><span>原站快照</span></div><div id="preview-loading">正在还原页面…</div><iframe id="snapshot" title="收藏网页的离线快照" sandbox="" referrerpolicy="no-referrer" hidden></iframe></div>`;
+  $("page-metadata").innerHTML =
+    `<span class="page-title" title="${escape(item.title)}">${escape(item.title)}</span><button id="source-link" class="text-button" title="${escape(item.url)}">${escape(domain(item))}</button><span ${state.preferences.showSavedTime === false ? "hidden" : ""}>${new Date(item.capturedAt).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}</span><button id="resource-warning" ${state.preferences.showMediaStats === false ? "hidden" : ""} class="text-button ${failed ? "has-failures" : ""}" title="查看保存详情">${saved.length} 个资源 · ${fmt(saved.reduce((n, r) => n + r.bytes, 0))}${failed ? ` · ${failed} 个失败` : ""}</button>`;
   $("source-link").onclick = () => showSourceLink(item.url);
-  if ($("resource-warning")) $("resource-warning").onclick = guarded(showInfo);
+  $("resource-warning").onclick = guarded(showInfo);
+  $("reader").innerHTML =
+    '<div class="preview-frame"><div id="preview-loading">正在加载保存内容…</div><iframe id="saved-page" title="保存的网页内容" sandbox="allow-same-origin" referrerpolicy="no-referrer" hidden></iframe></div>';
   try {
     const url = await preview(item, signal);
     if (signal.aborted) return;
-    const frame = $("snapshot");
+    const frame = $("saved-page");
     if (!frame) return;
     frame.src = url;
     frame.hidden = false;
@@ -408,17 +416,19 @@ async function refresh() {
   const query = state.globalMode
     ? state.query
     : state.siteQueries[state.view] || "";
-  const [items, folders, allItems, catalog] = await Promise.all([
+  const [items, folders, allItems, catalog, preferences] = await Promise.all([
     json("/api/items?q=" + encodeURIComponent(query)),
     json("/api/folders"),
     query ? json("/api/items") : Promise.resolve(null),
     json("/api/tags"),
+    json("/api/preferences"),
   ]);
   if (generation !== state.generation) return;
   state.items = items;
   state.allItems = allItems || items;
   state.folders = folders;
   state.tagCatalog = catalog;
+  state.preferences = preferences;
   if (state.view === "web" && !state.selected && visible().length) {
     state.selected = visible()[0].id;
     revealSelected();
@@ -438,13 +448,11 @@ async function socialAction(action, data = {}) {
     }
     state.feedScroll[state.view] = $("reader").scrollTop;
     state.selected = item.id;
-    state.rawSnapshot = false;
     renderReader();
     return;
   }
   if (action === "bookmarks") {
     state.selected = null;
-    state.rawSnapshot = false;
     state.filters.author = "";
     state.filters.community = "";
     state.feedScroll[state.view] = 0;
@@ -491,14 +499,6 @@ async function socialAction(action, data = {}) {
   }
   if (action === "back") {
     state.selected = null;
-    state.rawSnapshot = false;
-    state.viewKey = "";
-    render();
-    return;
-  }
-  if (action === "snapshot" && item) {
-    state.selected = item.id;
-    state.rawSnapshot = true;
     state.viewKey = "";
     render();
     return;
@@ -506,6 +506,10 @@ async function socialAction(action, data = {}) {
   if (action === "info" && item) {
     state.editing = item.id;
     await showInfo();
+    return;
+  }
+  if (action === "delete" && item) {
+    confirmDelete(item);
     return;
   }
   if (action === "tags" && item) {
@@ -551,15 +555,13 @@ async function socialAction(action, data = {}) {
   state.viewKey = "";
   render();
 }
-$("snapshot-back").onclick = () => {
-  state.rawSnapshot = false;
-  state.viewKey = "";
-  render();
-};
 function modal(title, body, actions = []) {
+  $("dialog").classList.remove("settings-window");
   $("dialog-title").textContent = title;
   $("dialog-body").innerHTML = body;
-  $("dialog-actions").innerHTML = "";
+  $("dialog-actions").innerHTML =
+    '<button type="button" id="dialog-cancel" class="secondary">取消</button>';
+  $("dialog-cancel").onclick = () => $("dialog").close();
   for (const action of actions) {
     const button = document.createElement("button");
     button.type = "button";
@@ -648,32 +650,62 @@ function showSourceLink(url) {
     ],
   );
 }
+function tagChoices(item) {
+  const kind = itemPlatform(item);
+  return [
+    ...new Set([
+      ...state.tagCatalog.filter((t) => t.platform === kind).map((t) => t.name),
+      ...state.allItems
+        .filter((i) => itemPlatform(i) === kind)
+        .flatMap((i) => i.tags || []),
+      ...(item.tags || []),
+    ]),
+  ].sort();
+}
 function editTags() {
   const item = selected();
   if (!item) return;
+  const chosen = new Set(item.tags || []);
+  const draw = () => {
+    $("tag-choices").innerHTML =
+      tagChoices(item)
+        .map(
+          (tag) =>
+            `<label class="tag-choice"><input type="checkbox" name="item-tag" value="${escape(tag)}" ${chosen.has(tag) ? "checked" : ""}>${icon("tag")}<span>${escape(tag)}</span></label>`,
+        )
+        .join("") || '<p class="subtle">还没有标签，请先新建标签，再勾选。</p>';
+    for (const input of $("tag-choices").querySelectorAll("input"))
+      input.onchange = () =>
+        input.checked ? chosen.add(input.value) : chosen.delete(input.value);
+  };
   modal(
-    "编辑标签",
-    `<label>用逗号分隔多个标签<input id="tag-input" value="${escape(item.tags.join(", "))}" placeholder="设计, 稍后阅读"></label>`,
+    "选择标签",
+    '<p class="subtle">可多选，取消勾选即可移除标签。</p><div id="tag-choices" class="tag-choices"></div><details class="new-tag-inline"><summary>新建标签</summary><label>名称<input id="new-item-tag" maxlength="100" placeholder="标签名称"></label><button type="button" id="create-item-tag" class="secondary">创建并选中</button></details>',
     [
       {
         label: "保存标签",
         primary: true,
         run: async () => {
-          const tags = [
-            ...new Set(
-              $("tag-input")
-                .value.split(/[,，]/)
-                .map((t) => t.trim())
-                .filter(Boolean),
-            ),
-          ];
-          await mutate("/api/items/" + item.id, { tags }, "PUT");
+          await mutate("/api/items/" + item.id, { tags: [...chosen] }, "PUT");
           $("dialog").close();
           await refresh();
         },
       },
     ],
   );
+  draw();
+  $("create-item-tag").onclick = guarded(async () => {
+    const name = $("new-item-tag").value.trim();
+    if (!name) throw new Error("请输入标签名称");
+    const tag = await mutate("/api/tags", {
+      name,
+      platform: itemPlatform(item),
+    });
+    state.tagCatalog.push(tag);
+    chosen.add(name);
+    $("new-item-tag").value = "";
+    draw();
+  });
 }
 function moveItem() {
   const item = selected();
@@ -716,83 +748,77 @@ async function showInfo() {
   const failures = item.resources.filter((r) => r.status !== "saved");
   modal(
     "归档详情",
-    `<div class="detail-grid"><span>来源</span><span>${escape(item.url)}</span><span>保存范围</span><span>${escape(item.mode)} · ${item.posts?.length || 0} 个帖子/评论</span><span>归档时间</span><span>${escape(item.capturedAt)}</span></div><h3>保存记录</h3><ul class="report-list">${[...(item.warnings || []), ...item.resources.filter((r) => r.warning).map((r) => r.warning), ...failures.map((r) => r.url + " — " + r.error)].map((w) => `<li>${escape(w)}</li>`).join("") || "<li>本次请求的资源均已保存</li>"}</ul><p class="subtle">原始脚本归档保存；离线预览禁用脚本和网络请求。</p>`,
+    `<div class="detail-grid"><span>来源</span><span>${escape(item.url)}</span><span>保存范围</span><span>${escape(item.mode)} · ${item.posts?.length || 0} 个帖子/评论</span><span>归档时间</span><span>${escape(item.capturedAt)}</span></div><h3>保存记录</h3><ul class="report-list">${[...(item.warnings || []), ...item.resources.filter((r) => r.warning).map((r) => r.warning), ...failures.map((r) => r.url + " — " + r.error)].map((w) => `<li>${escape(w)}</li>`).join("") || "<li>本次请求的资源均已保存</li>"}</ul><p class="subtle">正文、评论与媒体保存在本机；网页保留一份用于阅读的内容文件。</p>`,
     [
-      { label: "导出 HTML 源码", run: () => download(item, "source.html") },
+      ...(itemPlatform(item) === "web"
+        ? [{ label: "导出网页内容", run: () => download(item, "content.html") }]
+        : []),
       { label: "导出资源清单", run: () => download(item, "manifest.json") },
     ],
   );
 }
 async function showSettings() {
-  state.settingsOpen = true;
-  const [settings, pairing, devices, status] = await Promise.all([
-    json("/api/settings"),
-    mutate("/api/pairing", {}),
-    json("/api/devices"),
-    json("/api/status"),
-  ]);
-  modal(
-    "连接与同步",
-    `<section class="pairing-card"><div><h3>连接浏览器插件</h3><p>在插件中输入配对码，有效期 5 分钟</p></div><strong id="pairing-code">${escape(pairing.code)}</strong></section><div class="devices">${devices.map((d) => `<div>${escape(d.name)}<button type="button" class="text-button revoke" data-token="${d.token}">撤销配对</button></div>`).join("") || '<p class="subtle">尚无已配对的浏览器</p>'}</div><hr><h3>WebDAV</h3><p class="subtle">启动、内容变更后和每分钟自动同步。远端文件可直接读取。</p><label class="toggle-row"><span>启用自动同步</span><input id="dav-enabled" type="checkbox" ${settings.enabled ? "checked" : ""}></label><label>服务器目录地址<input id="dav-url" type="url" placeholder="https://dav.example.com/archive/" value="${escape(settings.url)}"></label><div class="form-columns"><label>用户名<input id="dav-username" value="${escape(settings.username)}" autocomplete="username"></label><label>密码或应用密码<input id="dav-password" type="password" autocomplete="new-password" placeholder="${settings.hasPassword ? "已保存，留空保留" : "输入密码"}"></label></div><p id="sync-feedback" class="subtle">${escape(status.sync?.error || "")}</p>`,
-    [
-      {
-        label: "立即同步",
-        run: async () => {
-          const result = await mutate("/api/sync", {});
-          $("sync-feedback").textContent = result.error || "同步完成";
-        },
-      },
-      {
-        label: "保存设置",
-        primary: true,
-        run: async () => {
-          await mutate(
-            "/api/settings",
-            {
-              enabled: $("dav-enabled").checked,
-              url: $("dav-url").value.trim(),
-              username: $("dav-username").value,
-              password: $("dav-password").value,
-            },
-            "PUT",
-          );
-          toast("设置已保存");
-          $("dialog").close();
-        },
-      },
-    ],
-  );
-  for (const button of document.querySelectorAll(".revoke"))
-    button.onclick = guarded(async () => {
-      await json("/api/devices/" + button.dataset.token, { method: "DELETE" });
-      button.closest("div").remove();
-      toast("已撤销配对");
-    });
+  await openSettings({
+    modal,
+    folders: state.folders,
+    onSaved: refresh,
+    toast,
+  });
 }
 $("settings").onclick = guarded(showSettings);
 $("new-folder").onclick = guarded(createFolder);
 $("tag-button").onclick = guarded(editTags);
 $("move").onclick = guarded(moveItem);
 $("info").onclick = guarded(showInfo);
-$("delete").onclick = guarded(async () => {
-  const item = selected();
+function confirmDelete(item) {
   if (!item) return;
+  if (state.preferences.confirmDelete === false) {
+    json("/api/items/" + item.id, { method: "DELETE" })
+      .then(async () => {
+        state.selected = null;
+        state.viewKey = "";
+        await refresh();
+        toast("收藏已删除");
+      })
+      .catch((e) => toast(e.message));
+    return;
+  }
   modal(
     "删除这份收藏？",
-    `<p>「${escape(item.title)}」将从资料库移除。删除记录会同步到其他设备。</p>`,
+    `<p>「${escape(item.title)}」将从资料库、搜索结果和标签中移除。删除记录会同步到其他设备。</p>`,
     [
       {
         label: "删除收藏",
         run: async () => {
           await json("/api/items/" + item.id, { method: "DELETE" });
           state.selected = null;
+          state.editing = null;
           state.viewKey = "";
           $("dialog").close();
           await refresh();
+          toast("收藏已删除");
         },
       },
     ],
   );
+}
+$("delete").onclick = () => confirmDelete(selected());
+$("dialog").querySelector("form").onsubmit = (e) => {
+  e.preventDefault();
+  $("dialog-actions").querySelector(".primary")?.click();
+};
+$("dialog-close").onclick = () => $("dialog").close();
+$("dialog").addEventListener("click", (e) => {
+  if (e.target === $("dialog")) {
+    const r = $("dialog").getBoundingClientRect();
+    if (
+      e.clientX < r.left ||
+      e.clientX > r.right ||
+      e.clientY < r.top ||
+      e.clientY > r.bottom
+    )
+      $("dialog").close();
+  }
 });
 $("sync-button").onclick = guarded(async () => {
   toast("正在同步…");
@@ -803,6 +829,7 @@ $("sync-button").onclick = guarded(async () => {
 let timer;
 $("search").oninput = () => {
   clearTimeout(timer);
+  state.generation++;
   state.query = $("search").value.trim();
   state.globalMode = Boolean(state.query);
   timer = setTimeout(
@@ -867,6 +894,15 @@ async function poll() {
 
 if (globalThis.__TAURI__) {
   const win = globalThis.__TAURI__.window.getCurrentWindow();
+  if (/Windows/.test(navigator.userAgent))
+    document.documentElement.classList.add("native-windows");
+  const updateCorners = async () =>
+    document.documentElement.classList.toggle(
+      "native-maximized",
+      await win.isMaximized(),
+    );
+  win.onResized(updateCorners);
+  updateCorners();
   $("window-close").onclick = () => win.close();
   $("window-minimize").onclick = () => win.minimize();
   $("window-maximize").onclick = () => win.toggleMaximize();

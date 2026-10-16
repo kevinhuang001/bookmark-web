@@ -410,7 +410,7 @@ button {
   letter-spacing: 1px;
   font-size: 8px;
 }
-#snapshot {
+#saved-page {
   border: 0;
   flex: 1;
   width: 100%;
@@ -1399,4 +1399,357 @@ body[data-view="reddit"] #sidebar .search {
 }
 .archived-videos .media-unavailable .media-fallback {
   display: block;
+}
+
+/* One outer clipping surface: child rectangles can no longer escape the corners. */
+html,
+body {
+  border-radius: 20px;
+  overflow: hidden;
+}
+#app {
+  border-radius: 20px;
+  overflow: hidden;
+  clip-path: inset(0 round 20px);
+}
+#sidebar,
+#main {
+  border-radius: 0;
+  resize: none;
+}
+#sidebar::before,
+#sidebar::after {
+  border-radius: 0;
+}
+.native-maximized #app,
+.native-maximized body,
+.native-maximized {
+  border-radius: 0;
+  clip-path: none;
+}
+.tag-choices {
+  display: grid;
+  gap: 8px;
+  max-height: 310px;
+  overflow: auto;
+  margin: 16px 0;
+}
+#dialog-body .tag-choice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #e0e7ec;
+  border-radius: 10px;
+  padding: 12px;
+  margin: 0;
+  cursor: pointer;
+}
+.tag-choice input {
+  width: 17px;
+  height: 17px;
+  accent-color: #45738e;
+}
+.tag-choice .icon {
+  width: 16px;
+  height: 16px;
+  color: #7990a0;
+}
+.tag-choice:has(input:checked) {
+  background: #edf4fa;
+  border-color: #8cb1ca;
+}
+.new-tag-inline {
+  margin-top: 14px;
+  font-size: 12px;
+  color: #5d7688;
+}
+.post-menu .danger {
+  color: #be463f;
+}
+
+:root {
+  --window-radius: 20px;
+}
+:root.native-windows {
+  --window-radius: 8px;
+}
+html,
+body,
+#app {
+  border-radius: var(--window-radius);
+  overflow: hidden;
+}
+#app {
+  clip-path: inset(0 round var(--window-radius));
+}
+.native-maximized,
+.native-maximized body,
+.native-maximized #app {
+  border-radius: 0;
+  clip-path: none;
+}
+
+.page-metadata {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+  margin: 0 18px;
+  color: #82939f;
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.page-metadata .page-title {
+  max-width: 210px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #506b7f;
+}
+.page-metadata button {
+  font-size: 10px;
+  white-space: nowrap;
+}
+.page-metadata .has-failures {
+  color: #bd7451;
+}
+#reader.immersive-web {
+  padding: 0;
+  overflow: hidden;
+  background: white;
+  display: flex;
+  flex-direction: column;
+}
+.immersive-web .preview-frame {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.immersive-web #saved-page {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  flex: 1;
+  border: 0;
+  background: white;
+}
+.immersive-web #preview-loading {
+  padding: 30px;
+}
+.immersive-web .archived-videos {
+  max-height: 30vh;
+  overflow: auto;
+}
+.toolbar-actions {
+  flex-shrink: 0;
+}
+@media (max-width: 1250px) {
+  .page-metadata .page-title {
+    display: none;
+  }
+  .page-metadata {
+    gap: 8px;
+    margin: 0 8px;
+  }
+}
+
+/* macOS-style grouped settings with persistent section navigation. */
+#dialog.settings-window {
+  width: min(900px, 94vw);
+  max-width: 900px;
+  padding: 0;
+  background: #f5f5f7;
+  border-radius: 22px;
+  overflow: hidden;
+}
+.settings-window .dialog-header {
+  padding: 18px 24px;
+  margin: 0;
+  border-bottom: 1px solid #e4e5e8;
+}
+.settings-window .dialog-header h2 {
+  font-size: 15px;
+}
+.settings-window #dialog-body {
+  padding: 0;
+}
+.settings-layout {
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr);
+  height: min(590px, 70vh);
+}
+.settings-nav {
+  padding: 18px 12px;
+  background: linear-gradient(135deg, #eaf0f4, #e9eaef);
+  border-right: 1px solid #dfe2e7;
+}
+.settings-app {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px 24px;
+}
+.settings-app > .icon {
+  width: 33px;
+  height: 33px;
+  color: #42647c;
+}
+.settings-app strong {
+  font-size: 15px;
+}
+.settings-app small {
+  display: block;
+  font-weight: 400;
+  font-size: 10px;
+  color: #81929f;
+  margin-top: 5px;
+}
+.settings-nav button {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  border: 0;
+  background: none;
+  padding: 11px 12px;
+  width: 100%;
+  border-radius: 9px;
+  font-size: 13px;
+  text-align: left;
+  margin: 3px 0;
+  color: #455b6c;
+}
+.settings-nav button .icon {
+  width: 18px;
+  height: 18px;
+}
+.settings-nav button.active {
+  background: #417ba9;
+  color: white;
+  box-shadow: 0 2px 5px #365c7522;
+}
+.settings-panel {
+  overflow: auto;
+  padding: 26px 30px;
+}
+.settings-panel > h2 {
+  font-size: 23px;
+  margin: 0 0 26px;
+  color: #2d414f;
+}
+#dialog-body .settings-section h3 {
+  font-size: 12px;
+  margin: 20px 0 10px;
+  color: #6b7c89;
+  font-weight: 500;
+}
+.settings-card {
+  background: #fff;
+  border: 1px solid #e0e3e8;
+  border-radius: 12px;
+  padding: 4px 16px;
+  overflow: hidden;
+}
+.settings-row,
+#dialog-body .settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  min-height: 52px;
+  margin: 0;
+  border-bottom: 1px solid #eef0f2;
+  font-size: 12px;
+  color: #3d5364;
+}
+.settings-row:last-child {
+  border-bottom: 0;
+}
+#dialog-body .settings-row input:not([type="checkbox"]) {
+  width: 88px;
+  margin: 0;
+  padding: 7px 8px;
+  text-align: right;
+}
+#dialog-body .settings-row select {
+  max-width: 200px;
+  width: auto;
+  margin: 0;
+  font-size: 12px;
+}
+#dialog-body .settings-row input[type="checkbox"] {
+  appearance: none;
+  width: 34px;
+  height: 20px;
+  border-radius: 20px;
+  background: #cbd1d8;
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+#dialog-body .settings-row input[type="checkbox"]::after {
+  content: "";
+  position: absolute;
+  background: white;
+  width: 16px;
+  height: 16px;
+  left: 2px;
+  top: 2px;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px #0003;
+  transition: transform 0.15s;
+}
+#dialog-body .settings-row input:checked {
+  background: #4b9568;
+}
+#dialog-body .settings-row input:checked::after {
+  transform: translateX(14px);
+}
+.settings-note {
+  font-size: 11px;
+  line-height: 1.8;
+  color: #85939e;
+  margin: 9px 2px 20px;
+}
+.settings-window .dialog-actions {
+  padding: 15px 24px;
+  border-top: 1px solid #e0e3e7;
+  margin: 0;
+  background: #f9f9fa;
+}
+.settings-card > label:not(.settings-row) {
+  margin: 15px 0 !important;
+  font-size: 12px;
+}
+.settings-card .pairing-card {
+  background: none;
+  padding: 13px 0;
+  box-shadow: none;
+  border: 0;
+}
+.settings-card .pairing-card p {
+  font-size: 11px;
+  color: #8798a3;
+}
+.about-app {
+  text-align: center;
+  padding: 26px;
+}
+.about-app .icon {
+  width: 50px;
+  height: 50px;
+  color: #41677f;
+}
+.about-app p {
+  font-size: 12px;
+  color: #7c8f9c;
 }

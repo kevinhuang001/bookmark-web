@@ -218,13 +218,7 @@
 .x-detail-title > strong {
   font-size: 19px;
 }
-.x-snapshot-link {
-  margin-left: auto;
-  color: #536471;
-  font-size: 11px;
-  background: none;
-  border: 0;
-}
+
 .x-post {
   display: flex;
   gap: 11px;

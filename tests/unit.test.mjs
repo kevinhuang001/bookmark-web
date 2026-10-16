@@ -29,15 +29,6 @@ test("CSS dependency graph resolves imports, fonts and background images", () =>
       "https://a.test/css/theme.css",
     ],
   ));
-test("JS module graph handles static and literal dynamic imports", () =>
-  assert.deepEqual(
-    dependencies(
-      'import x from "./a.js"; import("../b.js"); import "./c.js"; import y from "react"',
-      "text/javascript",
-      "https://a.test/js/app.js",
-    ),
-    ["https://a.test/js/a.js", "https://a.test/b.js", "https://a.test/js/c.js"],
-  ));
 test("rewrites saved resources including HTML escaped URLs", () => {
   const r = [
     { url: "https://a.test/image?a=1&b=2", status: "saved", name: "a.png" },
@@ -270,4 +261,52 @@ test("explicit webpage capture of a social URL stays in Web folders", async () =
     }),
     "web",
   );
+});
+
+test("download workers run concurrently and include rendered-session credentials", async () => {
+  let active = 0,
+    maximum = 0;
+  const urls = Array.from(
+    { length: 15 },
+    (_, i) => `https://media.test/${i}.png`,
+  );
+  const r = await archiveResources(urls, {
+    concurrency: 4,
+    approve: async () => true,
+    upload: async () => {},
+    fetcher: async (url, options) => {
+      assert.equal(options.credentials, "include");
+      active++;
+      maximum = Math.max(maximum, active);
+      await new Promise((r) => setTimeout(r, 10));
+      active--;
+      return new Response("image", {
+        headers: { "content-type": "image/png" },
+      });
+    },
+  });
+  assert.equal(r.length, 15);
+  assert.ok(r.every((r) => r.status === "saved"));
+  assert.equal(maximum, 4);
+});
+test("concurrent downloads share a single budget approval gate", async () => {
+  let active = 0,
+    maximum = 0,
+    asked = 0;
+  const state = { total: 0, limit: 3 };
+  await Promise.all(
+    ["abc", "def", "ghi"].map((text) =>
+      readBounded(new Response(text), state, async () => {
+        active++;
+        maximum = Math.max(maximum, active);
+        asked++;
+        await new Promise((r) => setTimeout(r, 5));
+        active--;
+        return true;
+      }),
+    ),
+  );
+  assert.equal(state.total, 9);
+  assert.equal(asked, 1);
+  assert.equal(maximum, 1);
 });

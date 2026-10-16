@@ -94,11 +94,11 @@ impl Store {
         }Ok(values)
     }
     pub fn capture(&self, mut value: Value)->Result<Value>{
-        if value["version"]!=1{return Err("Unsupported archive format".into());}
+        if value["version"]!=2{return Err("内容格式不匹配，请更新浏览器扩展后重新收藏".into());}
         let url=value["url"].as_str().ok_or("Missing URL")?;
         let parsed=url::Url::parse(url).map_err(|e|e.to_string())?;
         if !["http","https"].contains(&parsed.scheme()){return Err("Only HTTP(S) pages can be archived".into());}
-        for key in ["title","snapshot","original","text"]{if !value[key].is_string(){return Err(format!("Missing {key}"));}}
+        for key in ["title","text"]{if !value[key].is_string(){return Err(format!("Missing {key}"));}}
         if value["tags"].is_null(){value["tags"]=json!([]);}
         let tags=value["tags"].as_array().ok_or("Tags must be an array")?;
         if tags.len()>100||tags.iter().any(|t|t.as_str().is_none_or(|s|s.trim().is_empty()||s.len()>100)){return Err("Invalid tags".into());}
@@ -115,10 +115,11 @@ impl Store {
                 let dest=dir.join("assets").join(name);if !dest.exists(){fs::hard_link(&source,&dest).or_else(|_|fs::copy(&source,&dest).map(|_|())).map_err(|e|e.to_string())?;}
             }
         }
-        atomic_write(&dir.join("snapshot.html"),value["snapshot"].as_str().unwrap().as_bytes())?;
-        atomic_write(&dir.join("source.html"),value["original"].as_str().unwrap().as_bytes())?;
-        atomic_write(&dir.join("posts.json"),&serde_json::to_vec_pretty(&value["posts"]).unwrap())?;
-        value.as_object_mut().unwrap().remove("snapshot");value.as_object_mut().unwrap().remove("original");
+        if value["platform"]=="web" {
+            let content=value["content"].as_str().ok_or("Missing webpage content")?;
+            atomic_write(&dir.join("content.html"),content.as_bytes())?;
+        }
+        value.as_object_mut().unwrap().remove("content");
         value["id"]=json!(id);if value.get("folderId").is_none(){value["folderId"]=Value::Null;}
         let saved=self.event("item",value)?;
         atomic_write(&dir.join("manifest.json"),&serde_json::to_vec_pretty(&saved).unwrap())?;
@@ -131,7 +132,7 @@ mod tests {
     use super::*;
     #[test]fn paths_reject_traversal(){assert!(!valid_asset("../config.json"));assert!(!valid_id("../../"));assert!(valid_asset(&format!("{}.png","a".repeat(64))));}
     #[test]fn search_replay_and_duplicates(){let dir=tempfile::tempdir().unwrap();let store=Store::open(dir.path().to_path_buf()).unwrap();
-        let fixture=json!({"version":1,"title":"光电器件","text":"InSb diffusion research","url":"https://example.com","snapshot":"<p>Hi</p>","original":"<html></html>","resources":[],"posts":[]});
+        let fixture=json!({"version":2,"platform":"web","title":"光电器件","text":"InSb diffusion research","url":"https://example.com","content":"<p>Hi</p>","resources":[],"posts":[]});
         let first=store.capture(fixture.clone()).unwrap();let second=store.capture(fixture).unwrap();assert_ne!(first["id"],second["id"]);
         assert_eq!(store.list("item","diffusion").unwrap().len(),2);assert_eq!(store.list("item","光电").unwrap().len(),2);
         drop(store);assert_eq!(Store::open(dir.path().to_path_buf()).unwrap().list("item","").unwrap().len(),2);
@@ -139,11 +140,17 @@ mod tests {
     #[test]fn capture_keeps_destination_and_platform_tags(){
         let dir=tempfile::tempdir().unwrap();let store=Store::open(dir.path().to_path_buf()).unwrap();
         let folder=store.event("folder",json!({"name":"Reading"})).unwrap();
-        let fixture=json!({"version":1,"title":"Video","text":"test","url":"https://example.com","snapshot":"<p>Video</p>","original":"<html></html>","resources":[],"posts":[],"folderId":folder["id"],"tags":["Research"]});
+        let fixture=json!({"version":2,"platform":"web","title":"Video","text":"test","url":"https://example.com","content":"<p>Video</p>","resources":[],"posts":[],"folderId":folder["id"],"tags":["Research"]});
         let saved=store.capture(fixture.clone()).unwrap();assert_eq!(saved["folderId"],folder["id"]);assert_eq!(saved["tags"],json!(["Research"]));
         let mut bad=fixture;bad["folderId"]=json!(Uuid::new_v4());assert!(store.capture(bad).is_err());
         store.event("tag",json!({"name":"Videos","platform":"x"})).unwrap();drop(store);
         assert_eq!(Store::open(dir.path().to_path_buf()).unwrap().list("tag","").unwrap().len(),1);
+    }
+    #[test]fn posts_keep_one_structured_content_and_no_html(){
+        let dir=tempfile::tempdir().unwrap();let store=Store::open(dir.path().to_path_buf()).unwrap();
+        let saved=store.capture(json!({"version":2,"platform":"x","mode":"thread","title":"Post","text":"Body","url":"https://x.com/a/status/1","posts":[{"text":"Body"}],"resources":[]})).unwrap();
+        let root=store.root.join("archives").join(saved["id"].as_str().unwrap());
+        assert!(root.join("manifest.json").is_file());assert!(!root.join("content.html").exists());assert_eq!(fs::read_dir(root).unwrap().count(),2);
     }
     #[test]fn revision_order_is_deterministic(){let dir=tempfile::tempdir().unwrap();let store=Store::open(dir.path().to_path_buf()).unwrap();let id=Uuid::new_v4().to_string();
         let event=|rev:&str,title:&str|json!({"kind":"item","revision":rev,"data":{"id":id,"title":title}});

@@ -6,9 +6,17 @@ const params = new URLSearchParams(location.search);
 const tabId = Number(params.get("tab"));
 const mode = params.get("mode");
 const $ = (id) => document.getElementById(id);
-let maximum = 100;
+let maximum;
+let preferences = {};
 let controller;
 let running = false;
+let progressTab;
+api.runtime.onMessage.addListener((message) => {
+  if (message.type === "capture-progress" && running) {
+    $("stats").textContent =
+      `已识别 ${message.count} 条帖子 / 评论，正在按设置加载回复`;
+  }
+});
 $("retry").onclick = run;
 $("cancel").onclick = () => {
   controller?.abort();
@@ -23,7 +31,7 @@ $("cancel").onclick = () => {
   $("title").textContent = "已取消";
 };
 $("more").onclick = () => {
-  maximum += 100;
+  maximum += preferences.maxPosts || 100;
   run();
 };
 function approve() {
@@ -57,6 +65,20 @@ async function run() {
   $("report").hidden = true;
   try {
     await request("/api/status");
+    preferences =
+      (await (await request("/api/capture-options")).json()).preferences || {};
+    maximum ||= preferences.maxPosts || 100;
+    $("limit-message").textContent =
+      `此次下载将超过设置的 ${preferences.downloadLimitMb || 500} MB 上限，是否继续？`;
+    progressTab = await api.tabs.getCurrent();
+    const lockKey = "runningCapture_" + tabId;
+    const old = (await api.storage.local.get(lockKey))[lockKey];
+    if (old && old !== progressTab?.id) {
+      const previous = await api.tabs.get(old).catch(() => null);
+      if (previous)
+        throw new Error("这个页面已有收藏任务，请先完成或取消该任务");
+    }
+    await api.storage.local.set({ [lockKey]: progressTab?.id });
     const stored = await api.storage.local.get("pendingCapture_" + tabId);
     const job = stored["pendingCapture_" + tabId];
     const current = await api.tabs.get(tabId);
@@ -71,17 +93,35 @@ async function run() {
       mode === "thread"
         ? "正在加载讨论，请勿关闭来源标签页…"
         : "正在保存元素、样式与页面状态…";
+    if (mode === "thread") {
+      progressTab = await api.tabs.getCurrent();
+      await api.tabs.update(tabId, { active: true });
+    }
+    if (controller.signal.aborted) throw new Error("已取消收藏");
     await api.scripting.executeScript({
       target: { tabId },
       files: ["content.js"],
     });
     const results = await api.scripting.executeScript({
       target: { tabId },
-      func: async (options) => globalThis.GlassmarkCapture.collect(options),
-      args: [{ mode, maxPosts: maximum }],
+      func: async (options) => {
+        try {
+          return await globalThis.GlassmarkCapture.collect(options);
+        } catch (error) {
+          return {
+            captureError: error.message,
+            cancelled: error.message.includes("已取消"),
+          };
+        }
+      },
+      args: [{ ...preferences, mode, maxPosts: maximum }],
     });
+    if (progressTab)
+      await api.tabs.update(progressTab.id, { active: true }).catch(() => {});
     const capture = results[0]?.result;
     if (!capture) throw new Error("页面捕获未返回内容");
+    if (capture.cancelled) controller.abort();
+    if (capture.captureError) throw new Error(capture.captureError);
     if (job?.expectedUrl && capture.url !== job.expectedUrl)
       throw new Error("捕获过程中来源页面已跳转，请重新收藏");
     if (controller.signal.aborted) throw new Error("已取消收藏");
@@ -91,6 +131,11 @@ async function run() {
     $("detail").textContent = capture.title;
     const resources = await archiveResources(capture.resources, {
       signal: controller.signal,
+      concurrency: preferences.downloadConcurrency || 6,
+      budget: (preferences.downloadLimitMb || 500) * 1024 * 1024,
+      resourceLimit: preferences.resourceLimit || 2000,
+      imageTimeoutSeconds: preferences.imageTimeoutSeconds || 15,
+      videoTimeoutSeconds: preferences.videoTimeoutSeconds || 90,
       approve,
       progress: ({ done, total, bytes }) => {
         $("progress").max = total;
@@ -107,10 +152,12 @@ async function run() {
         });
       },
     });
-    const snapshot = rewrite(capture.snapshot, resources);
+    const content = capture.content
+      ? rewrite(capture.content, resources)
+      : null;
     $("step-media").classList.remove("active");
     $("step-save").classList.add("active");
-    const payload = { ...capture, ...destination, snapshot, resources };
+    const payload = { ...capture, ...destination, content, resources };
     const response = await request("/api/items", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -125,6 +172,9 @@ async function run() {
     $("progress").value = $("progress").max;
     $("cancel").hidden = true;
     const failed = resources.filter((r) => r.status !== "saved");
+    $("stats").textContent =
+      `已保存 ${resources.length - failed.length} / ${resources.length} 个资源 · ${capture.posts?.length || 0} 条帖子 / 评论${failed.length ? " · 部分媒体保存失败，请查看报告" : ""}`;
+    $("report").open = failed.length > 0;
     $("warnings").textContent =
       [
         ...capture.warnings,
@@ -134,6 +184,8 @@ async function run() {
     $("report").hidden = false;
     $("more").hidden = !(capture.platform === "x" && mode === "thread");
   } catch (error) {
+    if (progressTab)
+      await api.tabs.update(progressTab.id, { active: true }).catch(() => {});
     $("title").textContent = controller.signal.aborted
       ? "已取消收藏"
       : "收藏未完成";
@@ -142,6 +194,9 @@ async function run() {
     $("cancel").hidden = true;
     $("retry").hidden = controller.signal.aborted;
   } finally {
+    const lockKey = "runningCapture_" + tabId;
+    const current = (await api.storage.local.get(lockKey))[lockKey];
+    if (current === progressTab?.id) await api.storage.local.remove(lockKey);
     running = false;
   }
 }

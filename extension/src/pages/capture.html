@@ -20,14 +20,14 @@
       <progress id="progress"></progress>
       <p id="stats" class="muted"></p>
       <div id="limit" hidden>
-        <p>此次下载将超过当前上限。是否再允许下载 500 MB？</p>
+        <p id="limit-message">此次下载将超过设置上限，是否继续？</p>
         <button id="approve">继续下载</button
         ><button class="secondary" id="skip">跳过超限资源</button>
       </div>
       <div class="actions">
         <button id="retry" hidden>重试收藏</button
         ><button id="cancel" class="secondary">取消收藏</button
-        ><button id="more" hidden>继续收集下一批 100 条（新增收藏）</button>
+        ><button id="more" hidden>继续收集更多回复（新增收藏）</button>
       </div>
       <details id="report" hidden>
         <summary>查看保存范围与资源报告</summary>

@@ -9,6 +9,22 @@ export async function fixtureBridge(root) {
   await mkdir(root, { recursive: true });
   let db = {
     items: [],
+    preferences: {
+      maxPosts: 100,
+      autoLoadSeconds: 20,
+      downloadLimitMb: 500,
+      downloadConcurrency: 6,
+      imageTimeoutSeconds: 15,
+      videoTimeoutSeconds: 90,
+      resourceLimit: 2000,
+      includeImages: true,
+      includeAvatars: true,
+      includeVideos: true,
+      showSavedTime: true,
+      showMediaStats: true,
+      confirmDelete: true,
+      defaultFolderId: null,
+    },
     folders: [],
     tags: [],
     settings: { enabled: false, url: "", username: "", password: "" },
@@ -130,7 +146,7 @@ export async function fixtureBridge(root) {
       if (endpoint === "/api/items" && req.method === "POST") {
         const capture = body();
         const id = randomUUID();
-        if (capture.version !== 1 || !/^https?:/.test(capture.url))
+        if (capture.version !== 2 || !/^https?:/.test(capture.url))
           return send(400, { error: "Invalid archive" });
         const dir = root + "/archives/" + id;
         await mkdir(dir + "/assets", { recursive: true });
@@ -140,14 +156,9 @@ export async function fixtureBridge(root) {
               dir + "/assets/" + r.name,
               await readFile(root + "/blobs/" + r.name),
             );
-        await writeFile(dir + "/snapshot.html", capture.snapshot);
-        await writeFile(dir + "/source.html", capture.original);
-        await writeFile(
-          dir + "/posts.json",
-          JSON.stringify(capture.posts || []),
-        );
-        delete capture.snapshot;
-        delete capture.original;
+        if (capture.platform === "web")
+          await writeFile(dir + "/content.html", capture.content);
+        delete capture.content;
         const item = {
           ...capture,
           id,
@@ -182,10 +193,7 @@ export async function fixtureBridge(root) {
         if (!item) return send(404, { error: "Not found" });
         if (kind) {
           if (file === "manifest.json") return send(200, item);
-          if (
-            kind === "content" &&
-            !["snapshot.html", "source.html", "posts.json"].includes(file)
-          )
+          if (kind === "content" && !["content.html"].includes(file))
             return send(400, { error: "Invalid file" });
           if (kind === "assets" && !/^[a-f\d]{64}\.[a-z\d]{1,8}$/.test(file))
             return send(400, { error: "Invalid file" });
@@ -223,6 +231,7 @@ export async function fixtureBridge(root) {
       }
       if (endpoint === "/api/capture-options")
         return send(200, {
+          preferences: db.preferences || {},
           folders: db.folders,
           tags: [
             ...(db.tags || []),
@@ -256,6 +265,14 @@ export async function fixtureBridge(root) {
         Object.assign(folder, patch);
         await persist();
         return send(200, folder);
+      }
+      if (endpoint === "/api/preferences") {
+        if (req.method === "PUT") {
+          db.preferences = body();
+          await persist();
+          return send(200, { ok: true });
+        }
+        return send(200, db.preferences || {});
       }
       if (endpoint === "/api/settings") {
         if (req.method === "PUT") {

@@ -72,7 +72,29 @@ try {
     })
   ).json();
   assert.equal(items.length, 1);
-  assert.ok(items[0].resources.some((r) => r.name?.endsWith(".js")));
+  assert.equal(items[0].version, 2);
+  assert.equal(
+    items[0].resources.some((r) => /javascript/.test(r.mime)),
+    false,
+  );
+  await source.route("https://x.com/**", (route) =>
+    route.fulfill({ contentType: "text/html", path: "tests/fixtures/x.html" }),
+  );
+  await source.goto("https://x.com/lin/status/1001");
+  await progress.goto(
+    `chrome-extension://${extensionId}/capture.html?tab=${tabId}&mode=thread`,
+  );
+  await progress
+    .getByText("已收藏，留待慢慢读", { exact: true })
+    .waitFor({ timeout: 45000 });
+  const captured = await (
+    await fetch(connection.base + "/api/items", {
+      headers: { Authorization: "Bearer " + connection.token },
+    })
+  ).json();
+  assert.equal(captured.length, 2);
+  assert.equal(captured[0].posts.length, 3);
+  assert.equal(captured[0].platform, "x");
   const device = await worker.evaluate(
     async () => (await chrome.storage.local.get("connection")).connection,
   );
