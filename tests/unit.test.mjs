@@ -446,3 +446,20 @@ test("Zhihu supports exact answer/article routes without treating questions or l
   ])
     assert.equal(pageContext(url).isPost, false);
 });
+
+test("reading zoom tolerates unavailable or corrupt storage and clamps steps at both ends", async () => {
+  const { readPageZoom, nextZoom } = await import("../app/zoom.js");
+  assert.equal(readPageZoom("one", { getItem: () => "150" }), 150);
+  for (const value of ["NaN", "Infinity", "-10", "9999", null])
+    assert.equal(readPageZoom("one", { getItem: () => value }), 100);
+  assert.equal(
+    readPageZoom("one", {
+      getItem() {
+        throw new Error("unavailable");
+      },
+    }),
+    100,
+  );
+  assert.equal(nextZoom(50, -1), 50);
+  assert.equal(nextZoom(200, 1), 200);
+});

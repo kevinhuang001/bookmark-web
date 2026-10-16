@@ -54,6 +54,25 @@
     "macOS": {
       "signingIdentity": "-",
       "minimumSystemVersion": "11.0"
+    },
+    "homepage": "https://github.com/kevinhuang001/bookmark-web",
+    "linux": {
+      "rpm": {
+        "depends": [
+          "libwebkit2gtk-4.1.so.0()(64bit)",
+          "libjavascriptcoregtk-4.1.so.0()(64bit)",
+          "libgtk-3.so.0()(64bit)",
+          "libayatana-appindicator3.so.1()(64bit)",
+          "libxdo.so.3()(64bit)",
+          "librsvg-2.so.2()(64bit)",
+          "libssl.so.3()(64bit)",
+          "libc.so.6(GLIBC_2.39)(64bit)",
+          "ca-certificates"
+        ],
+        "files": {
+          "/usr/share/licenses/glassmark/LICENSE": "../LICENSE"
+        }
+      }
     }
   }
 }

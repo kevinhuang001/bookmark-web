@@ -234,6 +234,13 @@ try {
     type: "jpeg",
     quality: 90,
   });
+  await page.locator("#page-zoom-value").selectOption("150");
+  await page.screenshot({
+    path: "docs/images/webpage-zoom.jpg",
+    type: "jpeg",
+    quality: 90,
+  });
+  await page.locator("#page-zoom-value").selectOption("100");
   for (const kind of ["x", "reddit", "xiaohongshu"]) {
     await page.locator(`[data-view="${kind}"]`).click();
     await page
@@ -268,6 +275,15 @@ try {
     type: "jpeg",
     quality: 90,
   });
+  await page.locator("#search").fill("context");
+  await page.locator(".global-result").first().waitFor();
+  await page.screenshot({
+    path: "docs/images/search.jpg",
+    type: "jpeg",
+    quality: 90,
+  });
+  await page.locator("#search").fill("");
+  await page.locator(".global-results").waitFor({ state: "hidden" });
   await page.locator("#settings").click();
   await page.getByLabel("Language", { exact: true }).waitFor();
   await page.screenshot({
@@ -277,7 +293,7 @@ try {
   });
   assert.deepEqual(errors, []);
   console.log(
-    "Rendered seven English product screenshots from the real application.",
+    "Rendered nine English product screenshots from the real application.",
   );
 } finally {
   await browser.close();

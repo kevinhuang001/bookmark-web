@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Glassmark
+Comment=Keep the web, beautifully.
+Exec=glassmark
+Icon=glassmark
+Terminal=false
+Categories=Office;Utility;
+StartupWMClass=glassmark

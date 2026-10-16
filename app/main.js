@@ -7,7 +7,8 @@ import { preview, releasePreview } from "./preview.js";
 import { renderSocial, releaseSocial } from "./social.js";
 import { icon, hydrateIcons } from "./icons.js";
 hydrateIcons();
-import { itemsInView, itemPlatform } from "./library.js";
+import { readPageZoom, normalizeZoom, nextZoom, zoomSteps } from "./zoom.js";
+import { itemsInView, itemPlatform, rootPost } from "./library.js";
 const $ = (id) => document.getElementById(id);
 const state = {
   items: [],
@@ -295,6 +296,7 @@ function revealSelected() {
 }
 function renderGlobalResults() {
   $("page-metadata").hidden = true;
+  $("page-zoom").hidden = true;
   $("reader").classList.remove("immersive-web");
   releaseSocial();
   releasePreview();
@@ -312,7 +314,30 @@ function renderGlobalResults() {
   if (state.viewKey === key) return;
   state.viewKey = key;
   $("reader").innerHTML =
-    `<section class="global-results"><p class="eyebrow">${tr("SEARCH YOUR LIBRARY")}</p><h1>${escape(state.query)}</h1><p>${tr("{1} 份收藏 · 网页与平台内容", { 1: state.items.length })}</p>${state.items.map((i) => `<button class="global-result" data-global-id="${i.id}">${icon(itemPlatform(i) === "web" ? "file" : itemPlatform(i))}<span><strong>${escape(i.title)}</strong><small>${platformLabel[itemPlatform(i)]} · ${escape(domain(i))} · ${(i.tags || []).map((t) => "#" + escape(t)).join(" ")}</small><p>${escape((i.text || "").slice(0, 140))}</p></span></button>`).join("") || `<p>${tr("没有找到匹配的内容")}</p>`}</section>`;
+    `<section class="global-results" aria-label="${tr("全局搜索")}">${
+      state.items
+        .map((item) => {
+          const kind = itemPlatform(item);
+          const post = rootPost(item);
+          const title =
+            kind === "web"
+              ? item.title
+              : post.title ||
+                post.text?.split("\n")[0].slice(0, 120) ||
+                item.title;
+          const source = kind === "web" ? domain(item) : platformLabel[kind];
+          const text =
+            kind === "web" ? item.text || "" : post.text || item.text || "";
+          const excerpt =
+            text.trim() === title.trim() ? "" : text.slice(0, 180);
+          const tags = (item.tags || [])
+            .slice(0, 3)
+            .map((tag) => "#" + tag.replace(/^#+/, ""))
+            .join(" ");
+          return `<button class="global-result" data-global-id="${item.id}"><span class="search-source ${kind}">${icon(kind === "web" ? "file" : kind)}</span><span class="search-result-copy"><strong>${escape(title)}</strong><small>${escape(source)}${tags ? " · " + escape(tags) : ""}</small>${excerpt ? `<p>${escape(excerpt)}</p>` : ""}</span>${icon("chevron")}</button>`;
+        })
+        .join("") || `<p class="global-empty">${tr("没有找到匹配的内容")}</p>`
+    }</section>`;
   $("reader").onclick = guarded(async (e) => {
     clearTimeout(timer);
     state.generation++;
@@ -332,13 +357,66 @@ function renderGlobalResults() {
     render();
   });
 }
+function applyPageZoom(value = readPageZoom(state.selected)) {
+  const zoom = normalizeZoom(value);
+  $("page-zoom-value").value = String(zoom);
+  $("page-zoom-out").disabled = zoom === zoomSteps[0];
+  $("page-zoom-in").disabled = zoom === zoomSteps.at(-1);
+  const frame = $("saved-page");
+  if (frame?.contentDocument?.documentElement)
+    frame.contentDocument.documentElement.style.setProperty(
+      "zoom",
+      String(zoom / 100),
+      "important",
+    );
+}
+function changePageZoom(value) {
+  if (state.view !== "web" || !state.selected) return;
+  const zoom = normalizeZoom(value);
+  try {
+    localStorage.setItem("glassmark-page-zoom:" + state.selected, String(zoom));
+  } catch {}
+  applyPageZoom(zoom);
+}
+function readerZoomKey(event) {
+  if (
+    (!event.metaKey && !event.ctrlKey) ||
+    event.altKey ||
+    state.view !== "web" ||
+    !state.selected ||
+    $("dialog").open ||
+    event.target.closest?.("input,textarea,select,[contenteditable]")
+  )
+    return;
+  const direction = ["+", "="].includes(event.key)
+    ? 1
+    : event.key === "-"
+      ? -1
+      : 0;
+  if (!direction && event.key !== "0") return;
+  event.preventDefault();
+  changePageZoom(
+    direction ? nextZoom(readPageZoom(state.selected), direction) : 100,
+  );
+}
+$("page-zoom-out").onclick = () =>
+  changePageZoom(nextZoom(readPageZoom(state.selected), -1));
+$("page-zoom-in").onclick = () =>
+  changePageZoom(nextZoom(readPageZoom(state.selected), 1));
+$("page-zoom-value").onchange = (event) => changePageZoom(event.target.value);
+document.addEventListener("keydown", readerZoomKey);
 async function renderReader() {
+  const searching = Boolean(state.globalMode && state.query);
+  $("reader").classList.toggle("search-reader", searching);
+  $("toolbar").classList.toggle("search-toolbar", searching);
+  document.querySelector(".toolbar-actions").hidden = searching;
   if (state.globalMode && state.query) {
     renderGlobalResults();
     return;
   }
   const social = state.view !== "web";
   $("page-metadata").hidden = social || !state.selected;
+  $("page-zoom").hidden = social || !state.selected;
   $("reader").classList.toggle(
     "immersive-web",
     !social && Boolean(state.selected),
@@ -417,6 +495,7 @@ async function renderReader() {
     $("connect-start").onclick = guarded(showSettings);
     return;
   }
+  applyPageZoom();
   $("move").disabled = state.view !== "web";
   const saved = item.resources.filter((r) => r.status === "saved");
   const failed = item.resources.length - saved.length;
@@ -431,6 +510,15 @@ async function renderReader() {
     if (signal.aborted) return;
     const frame = $("saved-page");
     if (!frame) return;
+    frame.addEventListener(
+      "load",
+      () => {
+        if (frame !== $("saved-page") || state.selected !== item.id) return;
+        applyPageZoom();
+        frame.contentDocument?.addEventListener("keydown", readerZoomKey);
+      },
+      { once: true },
+    );
     frame.src = url;
     frame.hidden = false;
     $("preview-loading").remove();

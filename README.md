@@ -21,7 +21,9 @@ An article you want to return to. A thread that explains something well. A note 
 
 ### Webpages, with room to read
 
-Keep whole pages or select several regions from a page. Read the saved content in a dedicated pane; its title, source and resource details stay within reach.
+Keep whole pages or select several regions from a page. Read the saved content in a dedicated pane; its title, source and resource details stay within reach. Zoom each saved page from 50% to 200%; the app remembers its scale. Use the toolbar or ⌘/Ctrl + `+` / `−`, and ⌘/Ctrl + `0` to reset.
+
+![Zoom a saved webpage without scaling the app](docs/images/webpage-zoom.jpg)
 
 ### X, focused on bookmarks
 
@@ -59,6 +61,8 @@ Use **⌘/Ctrl + K** to search your library and **Escape** to return from a save
 
 *Screenshots show the application with sample content.*
 
+![Compact search results](docs/images/search.jpg)
+
 ## Get started
 
 ### 1. Download the desktop app
@@ -69,7 +73,14 @@ Choose your installer from the [latest release](https://github.com/kevinhuang001
 | --- | --- |
 | macOS · Apple Silicon and Intel | Universal `.dmg` |
 | Windows · x64 | `.exe` installer or `.msi` |
-| Linux · x64 | `.AppImage` or `.deb` |
+| Ubuntu / Debian · x64 | `.deb` |
+| Fedora / openSUSE · x64 | `.rpm` |
+| Arch / EndeavourOS / Manjaro · x64 | `.pkg.tar.zst` |
+| Other Linux desktops · x64 | `.AppImage` |
+
+Linux packages include the desktop launcher and application icon. Install with `sudo apt install ./Glassmark*.deb`, `sudo dnf install ./Glassmark*.rpm` (or `sudo zypper install ./Glassmark*.rpm`), or `sudo pacman -U ./glassmark-*.pkg.tar.zst`. Adjust the filename to the downloaded asset. Arch packages are built with `makepkg`; no AUR listing is required. Linux x64 binaries are built on Ubuntu 24.04 and require glibc 2.39 or newer plus WebKitGTK 4.1. Older enterprise distributions are not covered by these packages.
+
+Release assets contain installers, extension ZIPs and `SHA256SUMS.txt`. Automated test reports are available in the linked [CI run artifacts](https://github.com/kevinhuang001/bookmark-web/actions), rather than the download list.
 
 ### 2. Add the browser extension
 

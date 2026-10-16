@@ -46,7 +46,7 @@ for (const browser of ["chromium", "firefox"]) {
   const browserMessages = {
     en: {
       extensionDescription:
-        "Save webpages, X threads, Reddit discussions Xiaohongshu notes and Zhihu answers to your desktop.",
+        "Save webpages, X threads, Reddit discussions, Xiaohongshu notes and Zhihu answers to your desktop.",
       saveToGlassmark: "Save to Glassmark",
     },
     zh_CN: {

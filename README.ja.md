@@ -39,3 +39,5 @@ Chromium は拡張機能管理画面の開発者モードから解凍したフ�
 スクリーンショットはサンプルコンテンツです。詳しい紹介は [English README](README.md) をご覧ください。
 
 [ユーザーガイド](docs/USER-GUIDE.md) · [開発に参加](CONTRIBUTING.md) · [MIT ライセンス](LICENSE)
+
+Linux x64 は DEB、RPM、Arch の `.pkg.tar.zst`、AppImage を用意します。Ubuntu 24.04 を基準にビルドし、glibc 2.39 以降と WebKitGTK 4.1 が必要です。JSON テストレポートはリリース一覧ではなく CI アーティファクトに保存します。

@@ -665,6 +665,22 @@ try {
   await page
     .locator(`.global-result[data-global-id="${articleItem.id}"]`)
     .waitFor();
+  await expect(page.locator(".window-titlebar")).toHaveText("");
+  await expect(
+    page.locator(".global-results .eyebrow,.global-results h1"),
+  ).toHaveCount(0);
+  await expect(page.locator(".toolbar-actions")).toBeHidden();
+  await expect(page.locator("#page-zoom")).toBeHidden();
+  assert.ok(
+    (await page
+      .locator(".global-result")
+      .first()
+      .evaluate(
+        (el) =>
+          el.getBoundingClientRect().top -
+          document.querySelector("#reader").getBoundingClientRect().top,
+      )) < 32,
+  );
   await page
     .locator(`.global-result[data-global-id="${articleItem.id}"]`)
     .click();
@@ -1101,6 +1117,48 @@ try {
   pass(
     "web content fills the reader while metadata lives beside the folder breadcrumb",
   );
+
+  await expect(page.locator("#page-zoom")).toBeVisible();
+  await page.locator("#page-zoom-in").click();
+  await expect(page.locator("#page-zoom-value")).toHaveValue("110");
+  await expect
+    .poll(() =>
+      page
+        .locator("#saved-page")
+        .evaluate((el) => el.contentDocument.documentElement.style.zoom),
+    )
+    .toBe("1.1");
+  await page.locator("#page-zoom-value").selectOption("150");
+  await expect
+    .poll(() =>
+      page
+        .locator("#saved-page")
+        .evaluate((el) => el.contentDocument.documentElement.style.zoom),
+    )
+    .toBe("1.5");
+  await page.reload();
+  await expect(page.locator("#page-zoom-value")).toHaveValue("150");
+  await expect
+    .poll(() =>
+      page
+        .locator("#saved-page")
+        .evaluate((el) => el.contentDocument?.documentElement.style.zoom),
+    )
+    .toBe("1.5");
+  await page
+    .frameLocator("#saved-page")
+    .locator("body")
+    .click({ position: { x: 5, y: 5 } });
+  await page.keyboard.press("Control+0");
+  await expect(page.locator("#page-zoom-value")).toHaveValue("100");
+  await page.locator("#page-zoom-value").selectOption("200");
+  await expect(page.locator("#page-zoom-in")).toBeDisabled();
+  await page.locator("#page-zoom-value").selectOption("50");
+  await expect(page.locator("#page-zoom-out")).toBeDisabled();
+  await page.locator("#page-zoom-value").selectOption("100");
+  pass(
+    "saved webpages support bounded zoom, persist their scale after reload and reset from inside the sandbox with keyboard shortcuts",
+  );
   const deletion = await save({
     ...videoCapture,
     resources: [],
@@ -1372,6 +1430,7 @@ try {
   await page.locator('[data-pref="language"]').selectOption("en");
   await page.getByRole("button", { name: "保存设置", exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  await expect(page.locator("html")).toHaveAttribute("data-app-ready", "true");
   await page.locator('[data-view="web"]').click();
   await expect(page.locator("#folders")).toContainText("灵感花园");
   await popup.reload();
@@ -1389,11 +1448,13 @@ try {
     .getByRole("button", { name: "Save settings", exact: true })
     .click();
   await expect(page.locator("html")).toHaveAttribute("lang", "ja");
+  await expect(page.locator("html")).toHaveAttribute("data-app-ready", "true");
   await page.locator("#settings").click();
   await expect(page.getByLabel("言語", { exact: true })).toHaveValue("ja");
   await page.getByLabel("言語", { exact: true }).selectOption("system");
   await page.getByRole("button", { name: "設定を保存", exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  await expect(page.locator("html")).toHaveAttribute("data-app-ready", "true");
   await popup.addInitScript(() =>
     Object.defineProperty(navigator, "language", { value: "ja-JP" }),
   );
@@ -1415,7 +1476,7 @@ try {
   );
   await popup.close();
   pass(
-    "popup exposes only post actions on X, Reddit and Xiaohongshu; webpages retain both capture modes and connection settings expand",
+    "popup exposes only post actions on X, Reddit, Xiaohongshu and Zhihu; webpages retain both capture modes and connection settings expand",
   );
   assert.deepEqual(errors, []);
   pass("desktop interface has no uncaught JavaScript errors");

@@ -1,0 +1,20 @@
+# Repackages the same CI-built x86_64 binary shipped in the DEB/RPM installers.
+# The build script stages binary, desktop entry, icon and license beside this file.
+pkgname=glassmark
+pkgver=0.7.0
+pkgrel=1
+pkgdesc='A local-first library for webpages, conversations and media'
+arch=('x86_64')
+url='https://github.com/kevinhuang001/bookmark-web'
+license=('MIT')
+depends=('webkit2gtk-4.1' 'gtk3' 'openssl' 'libayatana-appindicator' 'xdotool' 'librsvg')
+options=('!strip' '!debug')
+source=('glassmark' 'glassmark.desktop' 'glassmark.png' 'LICENSE')
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP')
+
+package() {
+  install -Dm755 "$srcdir/glassmark" "$pkgdir/usr/bin/glassmark"
+  install -Dm644 "$srcdir/glassmark.desktop" "$pkgdir/usr/share/applications/glassmark.desktop"
+  install -Dm644 "$srcdir/glassmark.png" "$pkgdir/usr/share/icons/hicolor/256x256/apps/glassmark.png"
+  install -Dm644 "$srcdir/LICENSE" "$pkgdir/usr/share/licenses/glassmark/LICENSE"
+}

@@ -39,3 +39,5 @@ Chromium 扩展解压后通过扩展管理页的开发者模式加载。Firefox 
 截图使用示例内容。更完整的安装和产品介绍见 [English README](README.md)。
 
 [使用指南](docs/USER-GUIDE.md) · [参与开发](CONTRIBUTING.md) · [MIT 许可](LICENSE)
+
+Linux x64 提供 DEB（Ubuntu / Debian）、RPM（Fedora / openSUSE）、Arch 的 `.pkg.tar.zst` 和通用 AppImage。二进制以 Ubuntu 24.04 为构建基线，要求 glibc 2.39+ 与 WebKitGTK 4.1。Release 下载区只保留安装包、扩展和校验文件，JSON 测试报告位于 CI 附件。

@@ -50,3 +50,7 @@ Include your app version, operating system, browser and the relevant resource re
 Open an individual `/question/…/answer/…` answer or a `zhuanlan.zhihu.com/p/…` article. Expand the comments you want before saving. Recommendations and other answers are excluded. The Zhihu collection supports search, tags and sorting, with a full-text reader for saved content. Existing sidebar preferences are preserved; enable Zhihu in Settings → General if it is hidden.
 
 Press ⌘/Ctrl + K for global search. Press Escape outside a text input or dialog to return from a discussion to its collection. Filtered empty states offer a reset, and the interface respects reduced-motion preferences.
+
+## Webpage zoom
+
+Use the reading toolbar to zoom a saved webpage from 50% to 200%. The scale is remembered separately for each page on this device. ⌘/Ctrl + plus or minus changes scale; ⌘/Ctrl + 0 resets it to 100%, including when focus is inside the page. Saved files and application controls retain their original scale.

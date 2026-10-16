@@ -451,4 +451,8 @@ export default {
   清除筛选: "Clear filters",
   "没有找到相关收藏。": "No matching saves found.",
   清除搜索: "Clear search",
+  网页缩放: "Page zoom",
+  缩小网页: "Zoom out",
+  放大网页: "Zoom in",
+  网页缩放比例: "Page zoom level",
 };
