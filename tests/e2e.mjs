@@ -676,6 +676,28 @@ try {
   )
     await page.locator(`[data-collapse="${nested.id}"]`).click();
   pass("global results open nested webpage files under the Web root");
+  await page.locator(`[data-item="${articleItem.id}"]`).evaluate((el) => {
+    globalThis.draggedNode = el;
+    el.dispatchEvent(
+      new DragEvent("dragstart", {
+        bubbles: true,
+        dataTransfer: new DataTransfer(),
+      }),
+    );
+  });
+  await page.waitForTimeout(3300);
+  assert.equal(
+    await page.evaluate(() => globalThis.draggedNode.isConnected),
+    true,
+  );
+  await page.evaluate(() =>
+    globalThis.draggedNode.dispatchEvent(
+      new DragEvent("dragend", { bubbles: true }),
+    ),
+  );
+  pass(
+    "background polling preserves the active dragged file and its drop targets",
+  );
   await page
     .locator(`[data-item="${articleItem.id}"]`)
     .dragTo(page.locator(`[data-folder="${firstFolder.id}"]`));

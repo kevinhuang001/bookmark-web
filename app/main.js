@@ -17,6 +17,8 @@ const state = {
     ? localStorage.getItem("glassmark-view")
     : "web",
   editing: null,
+  draggingItem: false,
+  folderTreeMarkup: null,
   filters: { threads: false, sort: "recent", author: "", community: "" },
   collapsed: new Set(),
   feedScroll: { x: 0, reddit: 0, xiaohongshu: 0 },
@@ -156,6 +158,7 @@ function renderPlatforms() {
   $("sidebar").classList.toggle("social-sidebar", state.view !== "web");
 }
 function renderFolders() {
+  if (state.draggingItem) return;
   const webItems = state.allItems.filter((i) => itemPlatform(i) === "web");
   const matches = state.allItems.filter(
     (i) =>
@@ -186,8 +189,11 @@ function renderFolders() {
       })
       .join("");
   }
-  $("folders").innerHTML =
-    `${walk()}${files(null, 0)}${matches.length ? "" : '<div class="tree-empty">从浏览器收藏网页</div>'}`;
+  const treeMarkup = `${walk()}${files(null, 0)}${matches.length ? "" : '<div class="tree-empty">从浏览器收藏网页</div>'}`;
+  if (state.folderTreeMarkup !== treeMarkup) {
+    $("folders").innerHTML = treeMarkup;
+    state.folderTreeMarkup = treeMarkup;
+  }
   $("breadcrumb-current").textContent = state.tag
     ? "# " + state.tag
     : folderName();
@@ -200,8 +206,14 @@ function renderFolders() {
       state.items = state.allItems;
       render();
     };
-    button.ondragstart = (e) =>
+    button.ondragstart = (e) => {
+      state.draggingItem = true;
       e.dataTransfer.setData("text/glassmark-id", button.dataset.item);
+    };
+    button.ondragend = () => {
+      state.draggingItem = false;
+      renderFolders();
+    };
   }
   for (const button of $("folders").querySelectorAll("[data-folder]")) {
     button.onclick = () => {
@@ -219,6 +231,7 @@ function renderFolders() {
     button.ondragleave = () => button.classList.remove("drop-target");
     button.ondrop = guarded(async (e) => {
       e.preventDefault();
+      state.draggingItem = false;
       button.classList.remove("drop-target");
       const id = e.dataTransfer.getData("text/glassmark-id");
       if (id) {
