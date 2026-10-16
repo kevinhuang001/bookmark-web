@@ -990,7 +990,7 @@ try {
   assert.ok(!withoutAds.posts.some((p) => p.text.includes("Sponsored reply")));
   await source.evaluate(() => history.replaceState(null, "", "/home"));
   await assert.rejects(
-    source.evaluate(() => GlassmarkCapture.collect({ mode: "page" })),
+    source.evaluate(() => GlassmarkCapture.collect({ mode: "page", language:"zh-CN" })),
     /不支持收藏信息流/,
   );
   await source.evaluate(() =>
