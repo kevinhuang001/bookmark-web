@@ -22,5 +22,5 @@ impl Preferences {
 
 #[cfg(test)]mod platform_tests{use super::*;
  #[test]fn missing_platform_choices_use_all_sources(){let p:Preferences=serde_json::from_str(r#"{"maxPosts":42}"#).unwrap();assert_eq!(p.max_posts,42);assert_eq!(p.visible_platforms,vec!["web","x","reddit","xiaohongshu"]);}
- #[test]fn platform_choices_round_trip_and_validate(){let mut p=Preferences::default();p.visible_platforms=vec!["xiaohongshu".into()];let saved=serde_json::to_vec(&p).unwrap();let restored:Preferences=serde_json::from_slice(&saved).unwrap();assert_eq!(restored.visible_platforms,p.visible_platforms);assert!(restored.validate().is_ok());p.visible_platforms.push("unknown".into());assert!(p.validate().is_err());}
+ #[test]fn platform_choices_round_trip_and_validate(){let mut p=Preferences{visible_platforms:vec!["xiaohongshu".into()],..Preferences::default()};let saved=serde_json::to_vec(&p).unwrap();let restored:Preferences=serde_json::from_slice(&saved).unwrap();assert_eq!(restored.visible_platforms,p.visible_platforms);assert!(restored.validate().is_ok());p.visible_platforms.push("unknown".into());assert!(p.validate().is_err());}
 }
