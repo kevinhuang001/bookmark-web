@@ -13,7 +13,7 @@ struct Pairing { code:String,expires:Instant,attempts:u8 }
 #[derive(Clone)]pub struct AppState {pub store:Store,pub token:String,pairing:Arc<Mutex<Pairing>>,syncing:Arc<AtomicBool>,sync_status:Arc<Mutex<Value>>}
 impl AppState {
     pub fn open(root:std::path::PathBuf)->store::Result<Self>{
-        let store=Store::open(root)?;
+        let store=Store::open(root.join("content-v2"))?;
         // Desktop token is process-scoped; paired device tokens persist independently.
         Ok(Self{store,token:format!("{}{}",Uuid::new_v4().simple(),Uuid::new_v4().simple()),pairing:Arc::new(Mutex::new(new_pairing())),syncing:Arc::new(AtomicBool::new(false)),sync_status:Arc::new(Mutex::new(json!({"running":false})))})
     }
@@ -144,5 +144,6 @@ pub async fn serve(state:AppState)->store::Result<()>{
         for path in ["/api/items","/api/settings","/api/pairing"]{assert_eq!(router.clone().oneshot(request(path,Some("paired"))).await.unwrap().status(),StatusCode::FORBIDDEN);}
     }
     #[test]fn folders_reject_self_and_ancestor_cycles(){let (_dir,state)=setup();let a=state.store.event("folder",json!({"name":"a"})).unwrap();let b=state.store.event("folder",json!({"name":"b","parentId":a["id"]})).unwrap();let mut changed=a;changed["parentId"]=b["id"].clone();assert!(validate_folder(&state,&changed).is_err());}
+    #[test]fn new_content_store_does_not_load_other_formats(){let dir=tempfile::tempdir().unwrap();std::fs::create_dir_all(dir.path().join("events")).unwrap();std::fs::write(dir.path().join("events/old.json"),b"unsupported older content").unwrap();let state=AppState::open(dir.path().to_path_buf()).unwrap();assert_eq!(state.store.root,dir.path().join("content-v2"));assert!(state.store.list("item","").unwrap().is_empty());}
     #[test]fn origin_parser_rejects_lookalikes(){assert!(trusted_origin("chrome-extension://abcdefghijklmnop"));assert!(!trusted_origin("https://localhost.attacker.test:1420"));assert!(!trusted_origin("null"));}
 }

@@ -170,7 +170,7 @@ export async function openSettings({ modal, folders, onSaved, toast }) {
         "Glassmark",
         '<div class="about-app">' +
           icon("logo") +
-          "<h3>Glassmark 0.5.0</h3><p>把值得回看的内容留在本机。</p></div>",
+          "<h3>Glassmark 0.5.1</h3><p>把值得回看的内容留在本机。</p></div>",
         "网页保存一份内容文件；帖子保存正文、评论和媒体。Chromium、Firefox 与 Windows / macOS / Linux。",
       );
     panel.innerHTML = `<h2>${heading}</h2>${body}`;
