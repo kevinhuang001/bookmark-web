@@ -26,3 +26,54 @@ async fn dav(State(remote):State<Arc<Mutex<Remote>>>,req:Request)->Response{
     let mut other=config.clone();other.url=format!("http://{addr}/another/");run(&a,other).await.unwrap();assert!(remote.lock().unwrap().files.keys().any(|key|key.starts_with("/another/glassmark/content-v2/events/")));
     task.abort();
 }
+
+#[tokio::test]
+async fn concurrent_edits_resolve_without_losing_versions_or_trusting_device_clocks(){
+    let remote=Arc::new(Mutex::new(Remote::default()));
+    let listener=tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr=listener.local_addr().unwrap();
+    let app=Router::new().fallback(dav).with_state(remote.clone());
+    let task=tokio::spawn(async move{axum::serve(listener,app).await.unwrap()});
+    let da=tempfile::tempdir().unwrap();let db=tempfile::tempdir().unwrap();let dc=tempfile::tempdir().unwrap();
+    let a=Store::open(da.path().to_path_buf()).unwrap();let b=Store::open(db.path().to_path_buf()).unwrap();let c=Store::open(dc.path().to_path_buf()).unwrap();
+    let config=SyncConfig{enabled:true,url:format!("http://{addr}/"),username:"test".into(),password:"test".into()};
+    let item=a.capture(json!({"version":2,"title":"Reading","text":"body","url":"https://example.com","platform":"web","content":"<p>immutable</p>","resources":[],"posts":[]})).unwrap();
+    let id=item["id"].as_str().unwrap();run(&a,config.clone()).await.unwrap();run(&b,config.clone()).await.unwrap();run(&c,config.clone()).await.unwrap();
+    let mut av=a.get(id).unwrap();av["tags"]=json!(["a"]);a.event("item",av).unwrap();
+    let mut bv=b.get(id).unwrap();bv["tags"]=json!(["b"]);b.event("item",bv).unwrap();
+    run(&a,config.clone()).await.unwrap();run(&b,config.clone()).await.unwrap();run(&a,config.clone()).await.unwrap();
+    assert_eq!(a.conflict_count().unwrap(),1);assert_eq!(b.conflict_count().unwrap(),1);
+    let conflict=a.conflicts().unwrap().remove(0);let versions=conflict["versions"].as_array().unwrap();
+    let heads:Vec<String>=versions.iter().map(|v|v["revision"].as_str().unwrap().to_owned()).collect();
+    let choice=versions[0]["revision"].as_str().unwrap();
+    a.resolve_conflict(id,&heads,choice,true).unwrap();assert_eq!(a.get(id).unwrap()["tags"],json!(["a","b"]));
+    assert!(a.resolve_conflict(id,&heads,choice,false).is_err());
+    run(&a,config.clone()).await.unwrap();run(&b,config.clone()).await.unwrap();run(&c,config.clone()).await.unwrap();
+    for store in [&a,&b,&c] {assert_eq!(store.conflict_count().unwrap(),0);assert_eq!(store.get(id).unwrap()["tags"],json!(["a","b"]));}
+    // A delete concurrent with an offline edit cannot silently hide that edit.
+    let mut deletion=a.get(id).unwrap();deletion["deleted"]=json!(true);a.event("item",deletion).unwrap();
+    let mut edit=b.get(id).unwrap();edit["title"]=json!("Still reading");b.event("item",edit).unwrap();
+    run(&a,config.clone()).await.unwrap();run(&b,config.clone()).await.unwrap();run(&a,config.clone()).await.unwrap();
+    assert_eq!(a.list("item","").unwrap().len(),1);assert_eq!(a.conflict_count().unwrap(),1);
+    let conflict=a.conflicts().unwrap().remove(0);let versions=conflict["versions"].as_array().unwrap();
+    let heads:Vec<String>=versions.iter().map(|v|v["revision"].as_str().unwrap().to_owned()).collect();
+    let deletion=versions.iter().find(|v|v["data"]["deleted"]==true).unwrap()["revision"].as_str().unwrap();
+    a.resolve_conflict(id,&heads,deletion,false).unwrap();run(&a,config.clone()).await.unwrap();run(&b,config.clone()).await.unwrap();
+    assert!(b.list("item","").unwrap().is_empty());assert_eq!(b.conflict_count().unwrap(),0);
+    drop(a);let reopened=Store::open(da.path().to_path_buf()).unwrap();assert_eq!(reopened.conflict_count().unwrap(),0);assert!(reopened.list("item","").unwrap().is_empty());
+    task.abort();
+}
+
+#[tokio::test]
+async fn remote_revision_collision_does_not_mark_the_event_as_synced(){
+    let remote=Arc::new(Mutex::new(Remote::default()));
+    let listener=tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();let addr=listener.local_addr().unwrap();
+    let app=Router::new().fallback(dav).with_state(remote.clone());let task=tokio::spawn(async move{axum::serve(listener,app).await.unwrap()});
+    let dir=tempfile::tempdir().unwrap();let store=Store::open(dir.path().to_path_buf()).unwrap();store.event("folder",json!({"name":"A"})).unwrap();
+    let event=std::fs::read_dir(store.root.join("events")).unwrap().next().unwrap().unwrap().file_name().to_string_lossy().to_string();
+    remote.lock().unwrap().files.insert(format!("/glassmark/content-v2/events/{event}"),b"different content".to_vec());
+    let config=SyncConfig{enabled:true,url:format!("http://{addr}/"),username:"test".into(),password:"test".into()};
+    assert!(run(&store,config).await.unwrap_err().contains("不一致"));
+    assert_eq!(store.db.lock().unwrap().query_row("SELECT count(*) FROM synced",[],|r|r.get::<_,usize>(0)).unwrap(),0);
+    task.abort();
+}

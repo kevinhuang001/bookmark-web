@@ -13,9 +13,12 @@ export function videoSources(element, doc = document) {
     } catch {}
   };
   const videos = [
+    ...(element.matches?.("video,source,shreddit-player,video-player")
+      ? [element]
+      : []),
     ...element.querySelectorAll("video,source,shreddit-player,video-player"),
   ];
-  for (const node of videos) {
+  for (const node of [element, ...videos]) {
     add(node.currentSrc);
     add(node.src);
     for (const attr of node.attributes) {
@@ -31,7 +34,6 @@ export function videoSources(element, doc = document) {
       }
     }
   }
-  if (!videos.length) return [...found];
   const posters =
     videos.map((v) => v.poster || v.getAttribute("poster") || "").join(" ") +
     " " +

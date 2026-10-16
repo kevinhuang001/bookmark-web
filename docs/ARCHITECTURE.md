@@ -72,3 +72,9 @@ WebDAV 仅操作独立的 `glassmark/content-v2/` 子目录，与其他内容格
 `scripts/build.mjs` 生成桌面前端、经典背景脚本的 Chromium MV3 扩展、Firefox MV3 扩展与 ZIP。原生客户端嵌入相同 Rust 服务。
 
 CI 的 Rust 工作区缓存按平台、工具链和依赖锁文件隔离，缓存工作区 crate 并在失败时保存。发布仅接收同次成功 CI 的安装包、扩展和三个浏览器报告。
+
+## Causal conflict management
+
+Revision events name their parent revisions. SQLite `revisions` stores immutable events and `heads` materializes each document's unconsumed branches. A sole head supersedes its ancestors regardless of clock order; multiple heads remain an explicit conflict. Existing unparented history replays as one ordered chain. Live branches remain visible during delete/edit conflicts. Resolutions atomically check the expected head set and create a new event referencing every resolved head.
+
+The desktop-only conflict API exposes metadata comparisons and permits version selection or explicit tag union when other editable fields agree. Mutation requests carry revision preconditions; stale requests return HTTP 409. WebDAV conditional writes verify an existing event's exact bytes before marking it uploaded. Archive bodies and content-addressed media remain immutable.

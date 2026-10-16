@@ -32,9 +32,7 @@ function bodyText(text) {
     .join("");
 }
 function mediaMarkup(post, item) {
-  const records = ["xiaohongshu", "zhihu"].includes(item.platform)
-    ? post.media || []
-    : (post.media || []).slice(0, 4);
+  const records = post.media || [];
   if (!records.length) return "";
   return `<div class="social-media-grid media-count-${records.length}">${records.map((m) => `<div class="social-media media-loading ${m.type === "video" ? "video-media" : ""}">${m.type === "video" ? `<video controls preload="metadata" data-archive-id="${item.id}" data-archive-media="${esc(m.url)}"></video>` : `<img loading="lazy" alt="${esc(m.alt || tr("收藏的图片"))}" data-archive-id="${item.id}" data-archive-media="${esc(m.url)}">`}<span class="media-fallback">${tr("媒体未归档")}</span></div>`).join("")}</div>`;
 }

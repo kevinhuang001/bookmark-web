@@ -1,6 +1,4 @@
-//! Immutable revision events make concurrent device uploads non-destructive.
-//! The greatest timestamp/UUID revision wins the materialized metadata index;
-//! every conflicting revision remains available in WebDAV's events directory.
+//! Immutable, causally linked events retain concurrent branches for explicit resolution.
 use crate::store::{atomic_write, valid_asset, valid_id, Result, Store};
 use reqwest::{Client, Method, StatusCode};
 use serde::{Deserialize,Serialize};
@@ -32,12 +30,20 @@ impl Dav {
     }
     async fn put(&self,remote:&str,local:&Path)->Result<()> {
         let head=self.req(Method::HEAD,remote)?.send().await.map_err(|e|e.to_string())?;
-        if head.status().is_success(){return Ok(());}
+        if head.status().is_success(){return self.verify_event(remote,local).await;}
         if head.status()!=StatusCode::NOT_FOUND{return Err(format!("WebDAV HEAD: {}",head.status()));}
         let file=tokio::fs::File::open(local).await.map_err(|e|e.to_string())?;
         let stream=tokio_util::io::ReaderStream::new(file);
         let response=self.req(Method::PUT,remote)?.header("If-None-Match","*").body(reqwest::Body::wrap_stream(stream)).send().await.map_err(|e|e.to_string())?;
-        if response.status().is_success()||response.status()==StatusCode::PRECONDITION_FAILED{Ok(())}else{Err(format!("WebDAV PUT: {}",response.status()))}
+        if response.status().is_success(){Ok(())}else if response.status()==StatusCode::PRECONDITION_FAILED{self.verify_event(remote,local).await}else{Err(format!("WebDAV PUT: {}",response.status()))}
+    }
+    async fn verify_event(&self,remote:&str,local:&Path)->Result<()> {
+        if !remote.starts_with("events/"){return Ok(());}
+        let response=self.req(Method::GET,remote)?.send().await.map_err(|e|e.to_string())?.error_for_status().map_err(|e|e.to_string())?;
+        if response.content_length().is_some_and(|n|n>16*1024*1024){return Err("WebDAV 索引过大".into());}
+        let bytes=response.bytes().await.map_err(|e|e.to_string())?;
+        if bytes.len()>16*1024*1024 || bytes.as_ref()!=fs::read(local).map_err(|e|e.to_string())? {return Err("远端同步事件不一致，已停止同步".into());}
+        Ok(())
     }
     async fn get_file(&self,remote:&str,local:&Path,limit:u64,hash:Option<&str>)->Result<()> {
         if local.is_file(){return Ok(());}
@@ -70,6 +76,7 @@ pub async fn run(store:&Store,config:SyncConfig)->Result<usize> {
     for entry in fs::read_dir(store.root.join("events")).map_err(|e|e.to_string())? {
         let entry=entry.map_err(|e|e.to_string())?;let name=entry.file_name().to_string_lossy().to_string();if !event_name(&name)||synced.contains(&(namespace.clone()+&name)){continue;}
         let event:Value=serde_json::from_slice(&fs::read(entry.path()).map_err(|e|e.to_string())?).map_err(|e|e.to_string())?;
+        crate::conflicts::validate_event(&event)?;
         if event["kind"]=="item"&&event["data"]["deleted"]!=true {
             let id=event["data"]["id"].as_str().ok_or("Missing id")?;if !valid_id(id){return Err("Invalid archive id".into());}
             let prefix=format!("archives/{id}/");dav.mkdir(&prefix).await?;dav.mkdir(&(prefix.clone()+"assets/")).await?;
@@ -93,6 +100,8 @@ pub async fn run(store:&Store,config:SyncConfig)->Result<usize> {
         let local=store.root.join("events").join(&name);if local.exists(){continue;}
         let temp=store.root.join("incoming").join(&name);dav.get_file(&("events/".to_owned()+&name),&temp,16*1024*1024,None).await?;
         let event:Value=serde_json::from_slice(&fs::read(&temp).map_err(|e|e.to_string())?).map_err(|e|e.to_string())?;
+        crate::conflicts::validate_event(&event)?;
+        if event["revision"].as_str().is_none_or(|revision|format!("{revision}.json")!=name){return Err("Invalid sync event filename".into());}
         let id=event["data"]["id"].as_str().ok_or("Missing id")?;if !valid_id(id){return Err("Invalid archive id".into());}
         if event["kind"]=="item"&&event["data"]["deleted"]!=true {
             let prefix=format!("archives/{id}/");let dir=store.root.join("archives").join(id);
@@ -100,7 +109,8 @@ pub async fn run(store:&Store,config:SyncConfig)->Result<usize> {
             if let Some(resources)=event["data"]["resources"].as_array(){for resource in resources{if resource["status"]=="saved"{let name=resource["name"].as_str().ok_or("Missing resource name")?;if !valid_asset(name){return Err("Invalid resource name".into());}dav.get_file(&(prefix.clone()+"assets/"+name),&dir.join("assets").join(name),2*1024*1024*1024,Some(name.split('.').next().unwrap())).await?;}}}
         }
         // Persist first, index second. Store::open replays committed events after a crash.
-        atomic_write(&local,&fs::read(&temp).map_err(|e|e.to_string())?)?;store.index(&event)?;
+        atomic_write(&local,&fs::read(&temp).map_err(|e|e.to_string())?)?;
+        if let Err(error)=store.index(&event){let _=fs::remove_file(&local);return Err(error);}
         let _=fs::remove_file(temp);store.db.lock().map_err(|e|e.to_string())?.execute("INSERT OR IGNORE INTO synced VALUES(?1)",[&(namespace.clone()+&name)]).map_err(|e|e.to_string())?;count+=1;
     }
     Ok(count)

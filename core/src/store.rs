@@ -1,11 +1,11 @@
-use rusqlite::{params, Connection};
+use rusqlite::Connection;
 use serde_json::{json, Value};
 use std::{fs, path::{Path, PathBuf}, sync::{Arc, Mutex}};
 use uuid::Uuid;
 
 pub type Result<T> = std::result::Result<T, String>;
 #[derive(Clone)]
-pub struct Store { pub root: PathBuf, pub db: Arc<Mutex<Connection>> }
+pub struct Store { pub root: PathBuf, pub db: Arc<Mutex<Connection>>,pub(crate) writes:Arc<Mutex<()>>,pub(crate) device:String }
 pub fn now() -> String { chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true) }
 pub fn valid_id(id: &str) -> bool { Uuid::parse_str(id).is_ok() }
 pub fn valid_asset(name: &str) -> bool {
@@ -31,8 +31,13 @@ impl Store {
         CREATE TABLE IF NOT EXISTS documents(id TEXT PRIMARY KEY, revision TEXT NOT NULL, kind TEXT NOT NULL, data TEXT NOT NULL);
         CREATE VIRTUAL TABLE IF NOT EXISTS search USING fts5(id UNINDEXED,title,body,url,tags,tokenize='trigram');
         CREATE TABLE IF NOT EXISTS devices(token TEXT PRIMARY KEY,name TEXT NOT NULL);
-        CREATE TABLE IF NOT EXISTS synced(event TEXT PRIMARY KEY);").map_err(|e|e.to_string())?;
-        let store=Self{root,db:Arc::new(Mutex::new(db))};
+        CREATE TABLE IF NOT EXISTS synced(event TEXT PRIMARY KEY);
+        CREATE TABLE IF NOT EXISTS revisions(revision TEXT PRIMARY KEY,id TEXT NOT NULL,event TEXT NOT NULL);
+        CREATE INDEX IF NOT EXISTS revisions_document ON revisions(id);
+        CREATE TABLE IF NOT EXISTS heads(id TEXT NOT NULL,revision TEXT NOT NULL,PRIMARY KEY(id,revision));").map_err(|e|e.to_string())?;
+        let device=fs::read_to_string(root.join("device-id")).ok().filter(|id|valid_id(id)).unwrap_or_else(||Uuid::new_v4().to_string());
+        atomic_write(&root.join("device-id"),device.as_bytes())?;
+        let store=Self{root,db:Arc::new(Mutex::new(db)),writes:Arc::new(Mutex::new(())),device};
         // Events are the durable source of truth; replay also recovers after an interrupted index update.
         for entry in fs::read_dir(store.root.join("events")).map_err(|e|e.to_string())? {
             let path=entry.map_err(|e|e.to_string())?.path();
@@ -43,31 +48,13 @@ impl Store {
         }
         Ok(store)
     }
-    pub fn event(&self, kind: &str, mut data: Value) -> Result<Value> {
-        if data["id"].as_str().is_none(){data["id"]=json!(Uuid::new_v4().to_string());}
-        data["modifiedAt"]=json!(now());
-        let revision=format!("{}--{}",chrono::Utc::now().format("%Y%m%dT%H%M%S%9f"),Uuid::new_v4());
-        let event=json!({"version":1,"revision":revision,"kind":kind,"data":data});
-        atomic_write(&self.root.join("events").join(format!("{revision}.json")),&serde_json::to_vec_pretty(&event).unwrap())?;
-        self.index(&event)?;Ok(event["data"].clone())
+    pub fn event(&self,kind:&str,data:Value)->Result<Value>{
+        let _guard=self.writes.lock().map_err(|e|e.to_string())?;
+        self.event_unlocked(kind,data,None)
     }
-    pub fn index(&self, event: &Value) -> Result<()> {
-        let id=event["data"]["id"].as_str().ok_or("Missing id")?;
-        if !valid_id(id){return Err("Invalid document id".into());}
-        let revision=event["revision"].as_str().ok_or("Missing revision")?;
-        let kind=event["kind"].as_str().ok_or("Missing kind")?;
-        if !["item","folder","tag"].contains(&kind){return Err("Unknown event kind".into());}
-        let mut db=self.db.lock().map_err(|e|e.to_string())?;
-        let tx=db.transaction().map_err(|e|e.to_string())?;
-        let current:Option<String>=tx.query_row("SELECT revision FROM documents WHERE id=?1",[id],|r|r.get(0)).ok();
-        if current.is_some_and(|c|c.as_str()>=revision){return Ok(());}
-        let data=&event["data"];
-        tx.execute("INSERT OR REPLACE INTO documents VALUES(?1,?2,?3,?4)",params![id,revision,kind,data.to_string()]).map_err(|e|e.to_string())?;
-        tx.execute("DELETE FROM search WHERE id=?1",[id]).map_err(|e|e.to_string())?;
-        if kind=="item" && data["deleted"]!=true {
-            tx.execute("INSERT INTO search VALUES(?1,?2,?3,?4,?5)",params![id,data["title"].as_str().unwrap_or(""),data["text"].as_str().unwrap_or(""),data["url"].as_str().unwrap_or(""),data["tags"].to_string()]).map_err(|e|e.to_string())?;
-        }
-        tx.commit().map_err(|e|e.to_string())?;Ok(())
+    pub fn index(&self,event:&Value)->Result<()>{
+        let _guard=self.writes.lock().map_err(|e|e.to_string())?;
+        self.index_unlocked(event)
     }
     pub fn get(&self,id:&str)->Result<Value>{
         let db=self.db.lock().map_err(|e|e.to_string())?;

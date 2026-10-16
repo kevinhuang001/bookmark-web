@@ -27,7 +27,7 @@ Keep whole pages or select several regions from a page. Read the saved content i
 
 ### X, focused on bookmarks
 
-A familiar timeline for your saved posts and threads. Open a conversation, filter by author, or search just your X collection.
+A familiar timeline for your saved posts and threads. Open a conversation, filter by author, or search just your X collection. Capture requires a specific post URL: one main post per save, with loaded replies. Feeds, preceding posts, marked ads and recommendation sections are excluded. Every exposed photo and video is archived separately, including attachments that load later.
 
 ![X bookmarks and saved threads](docs/images/x.jpg)
 
@@ -113,3 +113,7 @@ Glassmark is built with Tauri and a Rust local service. The code is available un
 [User guide](docs/USER-GUIDE.md) · [Contributing](CONTRIBUTING.md) · [Architecture](docs/ARCHITECTURE.md) · [Localization](docs/I18N.md) · [Report an issue](https://github.com/kevinhuang001/bookmark-web/issues)
 
 Desktop installers and extension ZIPs are distributed through GitHub Releases. The macOS app is ad-hoc signed; Windows packages and Firefox add-ons are not store-signed. Glassmark is an independent project and is not affiliated with the platforms it supports.
+
+## Resolve sync conflicts
+
+Concurrent WebDAV edits retain their causal branches instead of being silently overwritten by a newer device clock. Open **Settings → WebDAV → Sync conflicts** to compare the title, folder, tags and deletion state, then choose a version. If versions differ only in tags, merge all tags. Deletion versus editing stays visible until you decide. Resolutions sync to other devices and remain effective after restarting. Stale resolution choices are rejected and refreshed.

@@ -1,5 +1,6 @@
 import { t as tr, localizeError } from "./i18n.js";
 let connection;
+const revisions = new Map();
 export async function connect() {
   if (globalThis.__TAURI__) {
     connection = await globalThis.__TAURI__.core.invoke("connection");
@@ -21,10 +22,15 @@ export async function connect() {
   throw new Error(tr("本地服务启动失败，请检查端口 47831 是否被其他程序占用"));
 }
 export async function request(path, options = {}) {
+  const id = path.match(/^\/api\/(?:items|folders)\/([a-z\d-]+)$/)?.[1];
+  const expected = revisions.get(id);
   const response = await fetch(connection.base + path, {
     ...options,
     headers: {
       Authorization: "Bearer " + connection.token,
+      ...(expected && ["PUT", "DELETE"].includes(options.method)
+        ? { "If-Match": expected }
+        : {}),
       ...options.headers,
     },
   });
@@ -40,8 +46,13 @@ export async function request(path, options = {}) {
   }
   return response;
 }
-export const json = async (path, options) =>
-  (await request(path, options)).json();
+export const json = async (path, options) => {
+  const result = await (await request(path, options)).json();
+  for (const record of Array.isArray(result) ? result : [result])
+    if (record?.id && record.revision)
+      revisions.set(record.id, record.revision);
+  return result;
+};
 export const mutate = (path, body, method = "POST") =>
   json(path, {
     method,

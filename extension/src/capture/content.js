@@ -1,5 +1,7 @@
 import { t as tr, setLanguage } from "../../../app/i18n.js";
 import { pageContext } from "../context.js";
+import { isAdvertisement } from "./ads.js";
+import { mergePost } from "./merge.js";
 import { videoSources } from "./video.js";
 import { platform, adapterFor, extractPost } from "./adapters.js";
 import { serializeElement, contentDocument, escapeHtml } from "./serialize.js";
@@ -33,14 +35,27 @@ export async function collect({
     } catch {}
   };
   const context = pageContext(location.href);
-  const limit = kind === "reddit" ? 100000 : maxPosts;
+  const sourceTitle = document.title || location.hostname;
+  if (kind === "x") {
+    if (!context.isPost)
+      throw new Error(tr("请先打开要收藏的 X 帖子详情，不支持收藏信息流"));
+    mode = "thread";
+  }
+  const limit =
+    kind === "reddit" ? 100000 : kind === "x" ? maxPosts + 1 : maxPosts;
   let rootId = null;
   const candidates = () => {
+    if (kind === "x" && pageContext(location.href).postId !== context.postId) {
+      finish = true;
+      return [];
+    }
     const scope =
       document.querySelector('[data-testid="primaryColumn"]') ||
       document.querySelector("main") ||
       document.body;
-    let elements = [...scope.querySelectorAll(config.selector)];
+    let elements = [...scope.querySelectorAll(config.selector)].filter(
+      (el) => !isAdvertisement(el),
+    );
     if (kind === "x") {
       elements = elements.filter(
         (el) => !el.parentElement?.closest(config.selector),
@@ -67,7 +82,17 @@ export async function collect({
       if (!primary && !rootId) return [];
       if (primary) {
         rootId = extractPost(primary, kind).id;
-        elements = [primary, ...elements.filter((el) => el !== primary)];
+        elements = [
+          primary,
+          ...elements.filter(
+            (el) =>
+              el !== primary &&
+              Boolean(
+                primary.compareDocumentPosition(el) &
+                  Node.DOCUMENT_POSITION_FOLLOWING,
+              ),
+          ),
+        ];
       }
     } else if (kind === "reddit") {
       const primary = elements.find(
@@ -125,12 +150,17 @@ export async function collect({
         ),
       ];
     }
-    return elements;
+    return elements.filter((el) => !isAdvertisement(el));
   };
   function accumulate(elements) {
     for (const element of elements) {
-      const post = extractPost(element, kind);
-      if (posts.has(post.id) || posts.size >= limit) continue;
+      const captured = extractPost(element, kind);
+      if (kind === "x") {
+        captured.isComment = captured.id !== rootId;
+        captured.parentId = captured.isComment ? rootId : null;
+      }
+      if (!posts.has(captured.id) && posts.size >= limit) continue;
+      const post = mergePost(posts.get(captured.id), captured);
       post.media = (post.media || []).filter((m) =>
         m.type === "video" ? includeVideos : includeImages,
       );
@@ -202,6 +232,7 @@ export async function collect({
         unchanged = posts.size === before ? unchanged + 1 : 0;
         if (unchanged >= 3) break;
       }
+      accumulate(candidates());
       if (globalThis.__glassmarkCaptureCanceled)
         throw new Error(tr("已取消收藏"));
       if (performance.now() - started >= autoLoadSeconds * 1000)
@@ -281,8 +312,8 @@ export async function collect({
   }
   return {
     version: 2,
-    title: document.title || location.hostname,
-    url: location.href,
+    title: sourceTitle,
+    url: context.url,
     platform: mode === "thread" ? kind : "web",
     mode,
     capturedAt: new Date().toISOString(),
@@ -312,6 +343,11 @@ export async function collect({
         )
       : [...posts.values()],
     warnings: [...new Set(warnings)],
-    scope: { maxPosts, capturedPosts: posts.size, rootPostId: rootId },
+    scope: {
+      maxMainPosts: kind === "x" ? 1 : null,
+      maxReplies: kind === "x" ? maxPosts : null,
+      capturedPosts: posts.size,
+      rootPostId: rootId,
+    },
   };
 }

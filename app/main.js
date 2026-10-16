@@ -246,7 +246,10 @@ function renderFolders() {
         if (!item || itemPlatform(item) !== "web") return;
         await mutate(
           "/api/items/" + id,
-          { folderId: button.dataset.folder || null },
+          {
+            folderId: button.dataset.folder || null,
+            baseRevision: item.revision,
+          },
           "PUT",
         );
         state.collapsed.delete(button.dataset.folder);
@@ -661,6 +664,7 @@ async function socialAction(action, data = {}) {
     await mutate(
       "/api/items/" + item.id,
       {
+        baseRevision: item.revision,
         tags: tags.includes("喜欢")
           ? tags.filter((t) => t !== "喜欢")
           : [...tags, "喜欢"],
@@ -754,6 +758,7 @@ function editFolder(id) {
           await mutate(
             "/api/folders/" + id,
             {
+              baseRevision: folder.revision,
               name: $("folder-name").value.trim(),
               parentId: $("folder-parent").value || null,
             },
@@ -821,7 +826,11 @@ function editTags() {
         label: tr("保存标签"),
         primary: true,
         run: async () => {
-          await mutate("/api/items/" + item.id, { tags: [...chosen] }, "PUT");
+          await mutate(
+            "/api/items/" + item.id,
+            { tags: [...chosen], baseRevision: item.revision },
+            "PUT",
+          );
           $("dialog").close();
           await refresh();
         },
@@ -855,7 +864,10 @@ function moveItem() {
         run: async () => {
           await mutate(
             "/api/items/" + item.id,
-            { folderId: $("move-folder").value || null },
+            {
+              folderId: $("move-folder").value || null,
+              baseRevision: item.revision,
+            },
             "PUT",
           );
           state.folder = $("move-folder").value || null;
@@ -913,7 +925,10 @@ $("info").onclick = guarded(showInfo);
 function confirmDelete(item) {
   if (!item) return;
   if (state.preferences.confirmDelete === false) {
-    json("/api/items/" + item.id, { method: "DELETE" })
+    json("/api/items/" + item.id, {
+      method: "DELETE",
+      headers: item.revision ? { "If-Match": item.revision } : {},
+    })
       .then(async () => {
         state.selected = null;
         state.viewKey = "";
@@ -930,7 +945,10 @@ function confirmDelete(item) {
       {
         label: tr("删除收藏"),
         run: async () => {
-          await json("/api/items/" + item.id, { method: "DELETE" });
+          await json("/api/items/" + item.id, {
+            method: "DELETE",
+            headers: item.revision ? { "If-Match": item.revision } : {},
+          });
           state.selected = null;
           state.editing = null;
           state.viewKey = "";
@@ -1014,11 +1032,14 @@ async function poll() {
   try {
     const status = await json("/api/status");
     $("connection-dot").classList.add("online");
-    $("connection-status").textContent = status.sync?.error
-      ? tr("同步失败，点击设置查看")
-      : status.running
-        ? tr("正在同步…")
-        : tr("本地服务已连接");
+    $("settings").classList.toggle("has-conflicts", Boolean(status.conflicts));
+    $("connection-status").textContent = status.conflicts
+      ? tr("有 {count} 项同步冲突，点击设置处理", { count: status.conflicts })
+      : status.sync?.error
+        ? tr("同步失败，点击设置查看")
+        : status.running
+          ? tr("正在同步…")
+          : tr("本地服务已连接");
     if (!$("dialog").open) await refresh();
   } catch {
     $("connection-dot").classList.remove("online");

@@ -463,3 +463,43 @@ test("reading zoom tolerates unavailable or corrupt storage and clamps steps at 
   assert.equal(nextZoom(50, -1), 50);
   assert.equal(nextZoom(200, 1), 200);
 });
+
+test("incremental post capture retains earlier attachments and merges late sources without collapsing different videos", async () => {
+  const { mergePost } = await import("../extension/src/capture/merge.js");
+  const first = {
+    id: "post",
+    media: [
+      { type: "image", url: "https://pbs.twimg.com/media/one?name=small" },
+      {
+        type: "video",
+        id: "11",
+        poster: "https://pbs.twimg.com/ext_tw_video_thumb/11/a.jpg",
+        url: "",
+      },
+    ],
+  };
+  const later = {
+    id: "post",
+    media: [
+      { type: "image", url: "https://pbs.twimg.com/media/two?name=large" },
+      {
+        type: "video",
+        id: "11",
+        poster: "https://pbs.twimg.com/ext_tw_video_thumb/11/a.jpg",
+        url: "https://video.twimg.com/ext_tw_video/11/master.m3u8",
+        sources: ["https://video.twimg.com/ext_tw_video/11/master.m3u8"],
+      },
+      {
+        type: "video",
+        id: "22",
+        poster: "https://pbs.twimg.com/ext_tw_video_thumb/22/a.jpg",
+        url: "https://video.twimg.com/ext_tw_video/22/master.m3u8",
+      },
+    ],
+  };
+  const merged = mergePost(first, later);
+  assert.equal(merged.media.length, 4);
+  assert.equal(merged.media.filter((m) => m.type === "video").length, 2);
+  assert.ok(merged.media.find((m) => m.id === "11").url.includes("/11/"));
+  assert.equal(mergePost(merged, later).media.length, 4);
+});

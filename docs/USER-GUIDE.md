@@ -54,3 +54,9 @@ Press ⌘/Ctrl + K for global search. Press Escape outside a text input or dialo
 ## Webpage zoom
 
 Use the reading toolbar to zoom a saved webpage from 50% to 200%. The scale is remembered separately for each page on this device. ⌘/Ctrl + plus or minus changes scale; ⌘/Ctrl + 0 resets it to 100%, including when focus is inside the page. Saved files and application controls retain their original scale.
+
+## WebDAV conflicts
+
+A settings badge and connection status indicate unresolved conflicts. In Settings → WebDAV, compare preserved versions and select one. For tag-only differences, “Merge all tags” combines both tag sets. A delete concurrent with an edit keeps the live record visible until you explicitly choose the deletion. If another change arrives while you are choosing, refresh and choose again. All clients should be updated to the same version to manage causal revisions consistently.
+
+X saves require an individual status URL. Each capture has exactly one main post; the X count setting limits replies. Feed captures are blocked even if a whole-page capture is requested. Marked ads, posts before the selected root and recommendation sections are excluded. Source URLs and video players stay scoped to their own media tile.

@@ -121,6 +121,7 @@ export async function fixtureBridge(root) {
               : null,
           },
         });
+      if (endpoint === "/api/conflicts") return send(200, []);
       if (endpoint === "/api/pairing") {
         pairing = { code: "381624", attempts: 0, expires: Date.now() + 300000 };
         return send(200, { code: pairing.code, expiresIn: 300 });

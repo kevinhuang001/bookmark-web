@@ -49,6 +49,8 @@ jobs:
             const notes = [
               'Tauri desktop archive with Chromium and Firefox capture extensions.',
               '',
+              '- Causal WebDAV conflict detection, preserved concurrent versions, explicit resolution and tag merging.',
+              '- X attachments are collected per player and enriched as lazy media arrive; all saved media are displayed.',
               '- Compact search results without oversized headings or repeated descriptions; clean, unbranded title bar.',
               '- Per-page webpage zoom from 50% to 200%, persistent scale and keyboard shortcuts without scaling the app chrome.',
               '- Native RPM and Arch Linux packages in addition to DEB and AppImage; test reports stay in CI artifacts.',

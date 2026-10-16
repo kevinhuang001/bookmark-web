@@ -65,7 +65,10 @@ async function init() {
   $("context-icon").innerHTML = icon(
     context.isPost ? context.platform : "globe",
   );
-  $("actions").hidden = !live || !context.supported;
+  const blockedFeed = context.platform === "x" && !context.isPost;
+  $("actions").hidden = !live || !context.supported || blockedFeed;
+  if (live && blockedFeed)
+    error(tr("请先打开要收藏的 X 帖子详情，不支持收藏信息流"));
   if (live && !context.supported)
     error(tr("此页面不能收藏，请打开一个 HTTP/HTTPS 网页"));
   $("save-post").hidden = !context.isPost;

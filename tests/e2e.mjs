@@ -338,9 +338,10 @@ try {
     GlassmarkCapture.collect({ mode: "page" }),
   );
   assert.equal(wholeSocial.posts.length, 3);
-  assert.equal(wholeSocial.platform, "web");
+  assert.equal(wholeSocial.platform, "x");
+  assert.equal(wholeSocial.content, null);
   pass(
-    "social metadata preserves author, media and metrics for both thread and full-page capture",
+    "X URL detail always saves one structured main post with its replies, never a whole-page feed",
   );
   const xItem = await save(x);
   const lean = await source.evaluate(async () => {
@@ -349,7 +350,7 @@ try {
       throw new Error("social capture must not walk CSS");
     };
     try {
-      return await GlassmarkCapture.collect({ mode: "thread", maxPosts: 1 });
+      return await GlassmarkCapture.collect({ mode: "thread", maxPosts: 0 });
     } finally {
       window.getComputedStyle = read;
     }
@@ -414,7 +415,7 @@ try {
     };
   });
   const virtual = await source.evaluate(() =>
-    GlassmarkCapture.collect({ mode: "thread", maxPosts: 3 }),
+    GlassmarkCapture.collect({ mode: "thread", maxPosts: 2 }),
   );
   assert.equal(virtual.posts.length, 3);
   assert.ok(virtual.posts.some((p) => /Virtual reply/.test(p.text)));
@@ -969,6 +970,32 @@ try {
     GlassmarkCapture.collect({ mode: "thread", maxPosts: 3 }),
   );
   assert.equal(currentRoot.posts[0].url, "https://x.com/chen/status/1002");
+  assert.equal(currentRoot.posts.filter((p) => !p.isComment).length, 1);
+  assert.ok(!currentRoot.posts.some((p) => p.url?.includes("/1001")));
+  await source.evaluate(() => {
+    const ad = document.querySelector("article").cloneNode(true);
+    ad.dataset.promoted = "true";
+    ad.querySelector('[data-testid="tweetText"]').textContent =
+      "Sponsored reply should be excluded";
+    ad.querySelector("a").href = "/ads/status/5555";
+    document.querySelector("main").append(ad);
+  });
+  const withoutAds = await source.evaluate(() =>
+    GlassmarkCapture.collect({
+      mode: "thread",
+      maxPosts: 10,
+      autoLoadSeconds: 1,
+    }),
+  );
+  assert.ok(!withoutAds.posts.some((p) => p.text.includes("Sponsored reply")));
+  await source.evaluate(() => history.replaceState(null, "", "/home"));
+  await assert.rejects(
+    source.evaluate(() => GlassmarkCapture.collect({ mode: "page" })),
+    /不支持收藏信息流/,
+  );
+  await source.evaluate(() =>
+    history.replaceState(null, "", "/chen/status/1002"),
+  );
   pass(
     "the URL-selected post is primary even when an ancestor appears first in the DOM",
   );
@@ -1125,7 +1152,7 @@ try {
     .poll(() =>
       page
         .locator("#saved-page")
-        .evaluate((el) => el.contentDocument.documentElement.style.zoom),
+        .evaluate((el) => el.contentDocument?.documentElement?.style.zoom),
     )
     .toBe("1.1");
   await page.locator("#page-zoom-value").selectOption("150");
@@ -1133,7 +1160,7 @@ try {
     .poll(() =>
       page
         .locator("#saved-page")
-        .evaluate((el) => el.contentDocument.documentElement.style.zoom),
+        .evaluate((el) => el.contentDocument?.documentElement?.style.zoom),
     )
     .toBe("1.5");
   await page.reload();
@@ -1142,7 +1169,7 @@ try {
     .poll(() =>
       page
         .locator("#saved-page")
-        .evaluate((el) => el.contentDocument?.documentElement.style.zoom),
+        .evaluate((el) => el.contentDocument?.documentElement?.style.zoom),
     )
     .toBe("1.5");
   await page
@@ -1356,6 +1383,147 @@ try {
   await call("/api/items/" + answerItem.id, { method: "DELETE" });
   pass(
     "Zhihu locks the selected answer or article, preserves loaded comments and archived images, with its own searchable reader",
+  );
+
+  await source.route("https://x.com/media/status/777", (route) =>
+    route.fulfill({
+      contentType: "text/html",
+      path: "tests/fixtures/x-multiple.html",
+    }),
+  );
+  const multiple = await collect("https://x.com/media/status/777", "thread", {
+    autoLoadSeconds: 1,
+  });
+  assert.equal(
+    multiple.posts[0].media.filter((m) => m.type === "image").length,
+    4,
+  );
+  assert.equal(
+    multiple.posts[0].media.filter((m) => m.type === "video").length,
+    2,
+  );
+  assert.equal(
+    new Set(
+      multiple.posts[0].media
+        .filter((m) => m.type === "video")
+        .map((m) => m.url),
+    ).size,
+    2,
+  );
+  const multiItem = await save(multiple);
+  for (const entry of multiple.posts[0].media)
+    assert.ok(
+      multiItem.resources.some(
+        (r) => r.url === entry.url && r.status === "saved",
+      ),
+    );
+  await page.reload();
+  await page.locator('[data-view="x"]').click();
+  await page.locator(`.x-post[data-open-archive="${multiItem.id}"]`).click();
+  await expect(page.locator(".x-post-detail .social-media img")).toHaveCount(4);
+  await expect(page.locator(".x-post-detail video")).toHaveCount(2);
+  for (const video of await page.locator(".x-post-detail video").all())
+    await expect(video).toHaveAttribute("src", /^blob:/);
+
+  const enriched = await source.evaluate(async () => {
+    const article = document.querySelector("article");
+    const late = [
+      ...article.querySelectorAll(
+        '[data-testid="tweetPhoto"],[data-testid="videoComponent"]',
+      ),
+    ].slice(1);
+    late.forEach((node) => node.remove());
+    setTimeout(() => late.forEach((node) => article.append(node)), 300);
+    return GlassmarkCapture.collect({
+      mode: "thread",
+      language: "zh-CN",
+      autoLoadSeconds: 2,
+    });
+  });
+  assert.equal(enriched.posts[0].media.length, 6);
+  // Each player must use its own HLS manifest even when both are exposed in one post.
+  const hlsAssignment = await source.evaluate(async () => {
+    const article = document.querySelector("article");
+    for (const [i, container] of [
+      ...article.querySelectorAll('[data-testid="videoComponent"]'),
+    ].entries()) {
+      const video = container.querySelector("video");
+      video.removeAttribute("src");
+      container.dataset.video = JSON.stringify({
+        url: `https://video.twimg.com/ext_tw_video/${i + 1}/master.m3u8`,
+      });
+    }
+    return (
+      await GlassmarkCapture.collect({
+        mode: "thread",
+        language: "zh-CN",
+        autoLoadSeconds: 1,
+      })
+    ).posts[0].media
+      .filter((m) => m.type === "video")
+      .map((m) => m.url);
+  });
+  assert.deepEqual(hlsAssignment, [
+    "https://video.twimg.com/ext_tw_video/1/master.m3u8",
+    "https://video.twimg.com/ext_tw_video/2/master.m3u8",
+  ]);
+  await call("/api/items/" + multiItem.id, { method: "DELETE" });
+  pass(
+    "X archives and displays every photo and separate video; multiple HLS players never share the first source",
+  );
+
+  let mockedConflicts = [
+    {
+      id: "11111111-1111-4111-8111-111111111111",
+      kind: "item",
+      versions: [
+        {
+          revision: "left",
+          current: true,
+          data: {
+            title: "Concurrent save",
+            tags: ["Design"],
+            modifiedAt: "2026-10-16T00:00:00Z",
+          },
+        },
+        {
+          revision: "right",
+          current: false,
+          data: {
+            title: "Concurrent save",
+            tags: ["Research"],
+            modifiedAt: "2026-10-16T00:00:01Z",
+          },
+        },
+      ],
+    },
+  ];
+  let resolution;
+  await page.route(connection.base + "/api/conflicts", (route) =>
+    route.fulfill({ json: mockedConflicts }),
+  );
+  await page.route(
+    connection.base + "/api/conflicts/*/resolve",
+    async (route) => {
+      resolution = route.request().postDataJSON();
+      mockedConflicts = [];
+      await route.fulfill({ json: { ok: true } });
+    },
+  );
+  await page.locator("#settings").click();
+  await page.locator('[data-settings-category="sync"]').click();
+  await expect(page.locator(".conflict-versions article")).toHaveCount(2);
+  await page.getByRole("button", { name: "合并全部标签", exact: true }).click();
+  await expect(page.locator("#sync-conflicts")).toContainText(
+    "没有待处理的冲突",
+  );
+  assert.deepEqual(resolution.heads, ["left", "right"]);
+  assert.equal(resolution.mergeTags, true);
+  await page.locator("#dialog-close").click();
+  await page.unroute(connection.base + "/api/conflicts");
+  await page.unroute(connection.base + "/api/conflicts/*/resolve");
+  pass(
+    "WebDAV settings compare preserved versions and submit an explicit tag merge with the expected causal heads",
   );
   const popup = await context.newPage();
   popup.on("pageerror", (e) => errors.push(e.message));

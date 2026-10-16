@@ -87,8 +87,11 @@ export function extractPost(el, kind, doc = document) {
     author.split("@")[0].replace(/[✓✔]/g, "").trim();
   const media = [];
   const owned = (node) =>
-    !node.parentElement?.closest("shreddit-comment,.thing.comment") ||
-    node.parentElement.closest("shreddit-comment,.thing.comment") === el;
+    kind === "x"
+      ? node.closest('article[data-testid="tweet"]') === el &&
+        !node.closest('[data-testid="quoteTweet"]')
+      : !node.parentElement?.closest("shreddit-comment,.thing.comment") ||
+        node.parentElement.closest("shreddit-comment,.thing.comment") === el;
   for (const image of [...el.querySelectorAll("img")].filter(owned)) {
     const url = image.currentSrc || image.src;
     if (
@@ -106,27 +109,47 @@ export function extractPost(el, kind, doc = document) {
     )
       media.push({ type: "image", url, alt: image.alt || "" });
   }
-  const sources = videoSources(el, doc);
-  for (const video of [...el.querySelectorAll("video,shreddit-player")].filter(
-    owned,
-  )) {
-    const direct = video.currentSrc || video.src || "";
-    const playable = /^https?:/.test(direct)
-      ? direct
-      : sources.find((u) => /\.m3u8(?:\?|$)/.test(u)) || sources[0] || direct;
+  const containers =
+    kind === "x"
+      ? [...el.querySelectorAll('[data-testid="videoComponent"]')].filter(owned)
+      : [];
+  const loose = [...el.querySelectorAll("video,shreddit-player")].filter(
+    (node) =>
+      owned(node) && !containers.some((container) => container.contains(node)),
+  );
+  for (const container of [...containers, ...loose]) {
+    const video = container.matches("video,shreddit-player")
+      ? container
+      : container.querySelector("video");
+    const poster =
+      video?.poster ||
+      video?.getAttribute("poster") ||
+      container.querySelector("img")?.currentSrc ||
+      container.querySelector("img")?.src ||
+      "";
+    const sources = videoSources(container, doc);
+    const direct = video?.currentSrc || video?.src || "";
     const hls = sources.find((u) => /\.m3u8(?:\?|$)/.test(u));
+    const playable =
+      hls || (/^https?:/.test(direct) ? direct : sources[0] || "");
+    const id = poster.match(
+      /(?:ext_tw_video_thumb|amplify_video_thumb|tweet_video_thumb)\/(\w+)/,
+    )?.[1];
     media.push({
       type: "video",
-      url: hls || playable,
-      poster: video.poster || video.getAttribute("poster") || "",
+      url: playable,
+      poster,
       alt: "视频",
       sources,
+      ...(id ? { id } : {}),
     });
   }
   const seenMedia = new Set();
   for (let i = media.length - 1; i >= 0; i--) {
     const m = media[i];
-    let key = m.url;
+    let key = m.id
+      ? m.type + ":" + m.id
+      : m.url || m.poster || `unresolved-${i}`;
     try {
       const u = new URL(m.url);
       if (u.hostname === "pbs.twimg.com") key = u.origin + u.pathname;

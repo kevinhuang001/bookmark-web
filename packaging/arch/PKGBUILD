@@ -1,7 +1,7 @@
 # Repackages the same CI-built x86_64 binary shipped in the DEB/RPM installers.
 # The build script stages binary, desktop entry, icon and license beside this file.
 pkgname=glassmark
-pkgver=0.7.0
+pkgver=0.8.0
 pkgrel=1
 pkgdesc='A local-first library for webpages, conversations and media'
 arch=('x86_64')

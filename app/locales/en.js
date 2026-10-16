@@ -455,4 +455,37 @@ export default {
   缩小网页: "Zoom out",
   放大网页: "Zoom in",
   网页缩放比例: "Page zoom level",
+  同步冲突: "Sync conflicts",
+  刷新: "Refresh",
+  "并发修改的版本均已保留。选择要使用的版本，处理结果会同步到其他设备。":
+    "Concurrent versions are preserved. Choose a version; your resolution will sync to other devices.",
+  没有待处理的冲突: "No unresolved conflicts",
+  当前显示版本: "Currently displayed",
+  其他版本: "Other version",
+  保留: "Keep",
+  "此版本会删除这条记录。": "This version deletes this record.",
+  确认删除: "Confirm deletion",
+  使用此版本: "Use this version",
+  合并全部标签: "Merge all tags",
+  冲突已处理: "Conflict resolved",
+  "冲突列表加载失败，请重新打开设置重试":
+    "Could not load conflicts. Reopen settings to retry.",
+  "有 {count} 项同步冲突，点击设置处理":
+    "Unresolved sync conflicts: {count}. Open settings.",
+  "冲突已变更，请刷新后重试": "This conflict changed. Refresh and try again.",
+  "这些版本不能自动合并标签，请选择一个版本":
+    "These versions cannot merge tags. Choose a version.",
+  "远端同步事件不一致，已停止同步":
+    "A remote revision has different content. Sync stopped.",
+  未分类: "Unfiled",
+  标题: "Title",
+  "内容已更新，请刷新后重试": "This item changed. Refresh and try again.",
+  文件夹: "Folder",
+  状态: "Status",
+  删除: "Delete",
+  "X 回复数量上限": "Maximum X replies per capture",
+  "每次只收藏当前 URL 对应的一个 X 主帖，数量限制仅用于回复。广告与推荐内容不会导入。":
+    "Each capture saves only the X post identified by the current URL. The limit applies to replies. Ads and recommendations are excluded.",
+  "请先打开要收藏的 X 帖子详情，不支持收藏信息流":
+    "Open the specific X post first. Feeds cannot be saved.",
 };

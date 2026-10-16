@@ -7,6 +7,7 @@ import {
   localizeError,
 } from "./i18n.js";
 import { icon, escapeHtml as esc } from "./icons.js";
+import { renderConflicts } from "./conflicts.js";
 import { json, mutate } from "./api.js";
 export async function openSettings({ modal, folders, onSaved, toast }) {
   const [prefs, dav, pairing, devices, status] = await Promise.all([
@@ -135,7 +136,7 @@ export async function openSettings({ modal, folders, onSaved, toast }) {
       body =
         section(
           tr("帖子与讨论"),
-          control(tr("X 默认最多收集条数"), "maxPosts", "number", 1, 1000) +
+          control(tr("X 回复数量上限"), "maxPosts", "number", 1, 1000) +
             control(
               tr("自动加载时长（秒）"),
               "autoLoadSeconds",
@@ -144,7 +145,7 @@ export async function openSettings({ modal, folders, onSaved, toast }) {
               120,
             ),
           tr(
-            "包含当前主帖。Reddit 保存页面已加载的全部评论。达到时间或数量上限后保存已收集内容，可手动继续。",
+            "每次只收藏当前 URL 对应的一个 X 主帖，数量限制仅用于回复。广告与推荐内容不会导入。",
           ),
         ) +
         section(
@@ -203,7 +204,7 @@ export async function openSettings({ modal, folders, onSaved, toast }) {
           tr("服务器"),
           `<label>${tr("目录地址")}<input id="dav-url" type="url" placeholder="https://dav.example.com/archive/" value="${esc(dav.url)}"></label><label>${tr("用户名")}<input id="dav-username" value="${esc(dav.username)}" autocomplete="username"></label><label>${tr("应用密码")}<input id="dav-password" type="password" value="${esc(dav.password || "")}" placeholder="${dav.hasPassword ? tr("已保存，留空保留") : tr("输入密码")}" autocomplete="new-password"></label>`,
         ) +
-        `<button type="button" id="settings-sync-now" class="secondary">${tr("立即同步")}</button><p id="sync-feedback" class="settings-note">${esc(localizeError(status.sync?.error) || status.sync?.lastSync || "")}</p>`;
+        `<button type="button" id="settings-sync-now" class="secondary">${tr("立即同步")}</button><p id="sync-feedback" class="settings-note">${esc(localizeError(status.sync?.error) || status.sync?.lastSync || "")}</p><section id="sync-conflicts" class="settings-section"></section>`;
     if (active === "connection")
       body =
         section(
@@ -226,7 +227,7 @@ export async function openSettings({ modal, folders, onSaved, toast }) {
         "Glassmark",
         '<div class="about-app">' +
           icon("logo") +
-          `<h3>Glassmark 0.7.0</h3><p>${tr("把值得回看的内容留在本机。")}</p></div>`,
+          `<h3>Glassmark 0.8.0</h3><p>${tr("把值得回看的内容留在本机。")}</p></div>`,
         tr(
           "网页保存一份内容文件；帖子保存正文、评论和媒体。Chromium、Firefox 与 Windows / macOS / Linux。",
         ),
@@ -265,12 +266,21 @@ export async function openSettings({ modal, folders, onSaved, toast }) {
           toast(e.message);
         }
       };
+    const conflictRoot = document.getElementById("sync-conflicts");
+    if (conflictRoot)
+      renderConflicts(conflictRoot, { folders, onResolved: onSaved, toast });
     if (document.getElementById("settings-sync-now"))
       document.getElementById("settings-sync-now").onclick = async () => {
         try {
           const result = await mutate("/api/sync", {});
           document.getElementById("sync-feedback").textContent =
             localizeError(result.error) || tr("同步完成");
+          if (conflictRoot?.isConnected)
+            await renderConflicts(conflictRoot, {
+              folders,
+              onResolved: onSaved,
+              toast,
+            });
         } catch (e) {
           toast(e.message);
         }
