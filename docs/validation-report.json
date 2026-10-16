@@ -14,6 +14,7 @@
     "Reddit captures loaded post and comments without requesting hidden comments",
     "Reddit has a dedicated community feed, comment tree and original-snapshot return path",
     "Reddit saves all loaded comments even when more than 100 are visible",
+    "discussion detail renders every archived comment, including more than 100 replies",
     "repeated captures create independent archive IDs",
     "full-text search finds body text, including Chinese",
     "tag editing updates the library and filters",
@@ -21,8 +22,11 @@
     "search reveals matching webpage files within their ancestor folders",
     "dragging webpage files moves them between folder tree branches",
     "webpage files live inside nested folders, collapse with them, and sidebar uses translucent material",
+    "X saved navigation searches local bookmarks without restoring home or explore",
+    "Reddit saved sidebar filters communities and searches archived discussions",
     "multi-post social feeds filter authors and communities and display only archived media",
+    "webpage preview uses a centered reading column and open-source toolbar icons",
     "desktop interface has no uncaught JavaScript errors"
   ],
-  "recordedAt": "2026-10-16T00:36:30.812Z"
+  "recordedAt": "2026-10-16T01:14:20.809Z"
 }

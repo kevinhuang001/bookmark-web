@@ -63,7 +63,7 @@ export async function preview(item, signal) {
     const documentHtml =
       '<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="' +
       csp +
-      '"></head><body style="margin:0">' +
+      '"><style>[data-glassmark-body]{margin-left:auto!important;margin-right:auto!important}</style></head><body style="margin:0">' +
       template.innerHTML +
       "</body></html>";
     const url = URL.createObjectURL(

@@ -57,7 +57,7 @@ try {
   await source.goto("http://127.0.0.1:1420/fixtures/article.html");
   const tabId = await worker.evaluate(async () => {
     const tabs = await chrome.tabs.query({});
-    return tabs.find((t) => t.url.includes("/fixtures/article.html")).id;
+    return tabs.find((t) => t.url?.includes("/fixtures/article.html")).id;
   });
   const progress = await context.newPage();
   await progress.goto(

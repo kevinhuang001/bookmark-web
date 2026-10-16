@@ -1,3 +1,5 @@
+import { hydrateIcons } from "../../../app/icons.js";
+hydrateIcons();
 import { api, request } from "../api.js";
 import { archiveResources, rewrite } from "../archive.js";
 const params = new URLSearchParams(location.search);

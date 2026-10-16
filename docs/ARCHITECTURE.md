@@ -82,8 +82,11 @@ HTTP 层同时检查 Host、Origin 和 Bearer。允许应用来源、本地开�
 
 ## 平台视图与玻璃材质（0.2）
 
-`app/library.js` 统一归类 X/twitter.com、Reddit 和普通网页，网页目录和计数始终排除社交帖子；网页文件直接嵌入对应目录的子节点，搜索保留祖先路径。`app/social.js` 分别渲染官网风格的书签／已保存信息流与详情，移除首页、探索、账号区与推荐栏；`app/media.js` 仅解析归档资源或内嵌图片，不加载远端图像。头像、图片、视频、作者、发布时间、社区和原始计数作为帖子元数据保存。
+`app/library.js` 统一归类 X/twitter.com、Reddit 和普通网页，网页目录和计数始终排除社交帖子；网页文件直接嵌入对应目录的子节点，搜索保留祖先路径。`app/social.js` 分别渲染官网风格的书签／已保存信息流与详情，保留书签导航、左侧本地搜索和已保存社区，移除首页、探索、账号区与推荐栏；`app/media.js` 仅解析归档资源或内嵌图片，不加载远端图像。头像、图片、视频、作者、发布时间、社区和原始计数作为帖子元数据保存。
 
 信息流打开帖子后显示同份归档中的回复/评论；原始快照仍经过既有 iframe 隔离。帖子文字先分词再转义，避免 URL/话题高亮破坏 HTML 实体或引入标签。
 
 侧栏为低不透明度材质，页面底图可透过其模糊层。macOS 26 使用原生 Liquid Glass Clear，较旧 macOS 回退 Sidebar，Windows 使用 Mica/Acrylic；Tauri 窗口与 WebView 均设置为透明，右侧保持不透明；浏览器和 Linux 使用应用内场景作为背景。原生渲染仍需在目标操作系统验收。
+
+
+`app/icon-data.js` 由 `scripts/icons.mjs` 从锁定的 Lucide / Simple Icons 包生成，`app/icons.js` 为桌面和扩展共享的渲染入口。扩展页面通过 esbuild 打包该模块；无需网络图标服务。

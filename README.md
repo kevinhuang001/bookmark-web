@@ -4,12 +4,16 @@
 
 Glassmark 是一个 Tauri 2 桌面客户端与 Chromium / Firefox 浏览器扩展。客户端采用 macOS 26 Liquid Glass 风格：左侧独立设置 X（Twitter）、Reddit 和网页入口；网页使用文件夹树与原始快照，X 和 Reddit 分别使用官网风格的信息流与讨论详情。目标桌面平台为 Windows、macOS 和 Linux。
 
-**项目状态：初始实现。** 本地已通过 15 项 JavaScript 单元测试与 21 项浏览器端到端检查。当前环境没有可用的现代 Rust 工具链或完整 Firefox，尚未执行原生构建、真实扩展安装与 WebDAV 原生集成测试。相应检查已加入 GitHub Actions；在 Actions 运行完成前，不应视为已通过。详见 [验证记录](docs/VALIDATION.md)。
+[![CI](https://github.com/kevinhuang001/bookmark-web/actions/workflows/ci.yml/badge.svg)](https://github.com/kevinhuang001/bookmark-web/actions/workflows/ci.yml)
+
+[下载最新版本](https://github.com/kevinhuang001/bookmark-web/releases/latest) · [CI 与构建记录](https://github.com/kevinhuang001/bookmark-web/actions) · [验证范围](docs/VALIDATION.md)
+
+GitHub Actions 执行 JavaScript、Rust、WebDAV、原生后端浏览器测试，以及 Chromium 已安装扩展与 Firefox 捕获测试；随后构建 Windows x64、Linux x64 和 macOS 通用客户端。全部检查成功后自动发布版本及 SHA-256 清单。
 
 ## 功能
 
-- X（兼容 twitter.com）与 Reddit 独立归档入口。X 只显示书签信息流、帖子详情、回复与作者筛选；Reddit 只显示已保存信息流、评论树、社区筛选和本地排序。均移除首页、探索、账号区及推荐栏。
-- 普通网页作为文件直接嵌入文件夹树，子目录及其文件可一起折叠；没有独立的收藏卡片列表。搜索结果保留原来的目录层级。
+- X（兼容 twitter.com）与 Reddit 独立归档入口。X 只显示书签信息流、帖子详情、回复与作者筛选；Reddit 只显示已保存信息流、评论树、社区筛选和本地排序。保留各站风格的左侧书签导航、搜索和已保存社区；移除首页、探索、账号区及推荐栏。
+- 普通网页作为文件直接嵌入文件夹树，子目录及其文件可一起折叠；没有独立的收藏卡片列表。搜索结果保留原来的目录层级，右侧网页预览居中。
 - 低透明度玻璃侧栏有背景透射、模糊、高光与描边。macOS 26 使用 Liquid Glass Clear，较旧 macOS 回退 Sidebar；Windows 使用 Mica/Acrylic；Linux 和浏览器预览以应用内场景做跨平台回退。原生材质尚未在真实系统运行验证。
 
 - 收藏整个网页，或通过悬停高亮、上下方向键调整父子元素、点击选择多个区域，将选区合并为一份收藏。
@@ -21,6 +25,19 @@ Glassmark 是一个 Tauri 2 桌面客户端与 Chromium / Firefox 浏览器扩�
 - 文件夹与子文件夹、拖动归类、标签和全文搜索。中文短词可以搜索；较长词使用 SQLite FTS5 trigram 索引。
 - 同一网址重复收藏始终生成新的 UUID，不覆盖先前收藏。
 - WebDAV 自动同步：启动时、修改后和每分钟执行。远端使用普通 HTML、JSON 和媒体文件，不做端到端加密。
+
+## 下载安装
+
+从 [Releases](https://github.com/kevinhuang001/bookmark-web/releases/latest) 下载：
+
+| 平台 | 产物 |
+| --- | --- |
+| Windows x64 | `.exe` 安装程序或 `.msi` |
+| macOS Apple Silicon / Intel | 通用 `.dmg` |
+| Linux x64 | `.AppImage` 或 `.deb` |
+| Chromium / Firefox | 对应浏览器的 ZIP |
+
+macOS 包使用 ad-hoc 签名，Windows 包没有商业代码签名。浏览器 ZIP 在下方“安装浏览器扩展”一节加载；Firefox 临时附加组件在重启后移除，持久安装需要 Mozilla 签名。
 
 ## 本地开发
 
@@ -62,7 +79,7 @@ npm run build
 
 捕获过程中会打开独立的扩展进度页。请保留此页与来源页，直到发送完成。下载失败、流式媒体及站点范围信息会出现在归档报告中。单次超出资源数量或元素数量上限时会报告原因。
 
-客户端侧栏分为 X、Reddit 和网页。X 与 Reddit 直接打开书签／已保存信息流，点击帖子可看已收藏的讨论，详情页可切换原始快照。网页作为文件夹下的文件显示，点击文件在右侧预览，可创建文件夹及子文件夹、折叠目录树、拖动归类，或通过工具栏编辑标签。左侧搜索覆盖标题、正文、网址及标签。网页右侧显示原站快照；社交信息流只使用已归档的正文和媒体。原始脚本保存在源码归档中，不在阅读器运行。
+客户端侧栏分为 X、Reddit 和网页。X 与 Reddit 直接打开书签／已保存信息流，点击帖子可看本次归档的全部回复／评论，详情页显示实际保存数量并可切换原始快照。原站标注的评论总数可能大于已保存数量；未加载、未捕获的评论不属于这份离线收藏。网页作为文件夹下的文件显示，点击文件在右侧预览，可创建文件夹及子文件夹、折叠目录树、拖动归类，或通过工具栏编辑标签。左侧搜索覆盖标题、正文、网址及标签。网页右侧显示原站快照；社交信息流只使用已归档的正文和媒体。原始脚本保存在源码归档中，不在阅读器运行。
 
 ## WebDAV
 
@@ -101,7 +118,7 @@ node tests/firefox.e2e.mjs
 npm run tauri -- build
 ```
 
-GitHub Actions 同时进行 Rust 单元/集成测试、JavaScript 测试、生产后端 E2E、真实 Chromium 扩展测试、Firefox 捕获测试及三平台桌面构建。产物从 Actions 的 Artifacts 下载。初始构建未配置 Apple 公证、Windows 代码签名或扩展商店签名。
+GitHub Actions 同时进行 Rust 单元/集成测试、JavaScript 测试、生产后端 E2E、真实 Chromium 扩展测试、Firefox 捕获测试及三平台桌面构建。成功构建的产物会自动上传至 GitHub Releases，也可从对应 Actions 的 Artifacts 下载。初始构建未配置 Apple 公证、Windows 代码签名或扩展商店签名。
 
 ## 保存范围
 
@@ -134,8 +151,17 @@ GitHub Actions 同时进行 Rust 单元/集成测试、JavaScript 测试、生�
 
 MIT License。测试场景中的人物、文章、讨论及站点内容均为本项目构造的演示素材。
 
-## 0.2 界面调整
+## 站点视图与原生材质
 
 X 与 Reddit 的信息流重现各站的布局、字号层次、交互图标、帖子媒体和讨论结构，不再把社交帖子当作普通网页列表中的条目。作者、计数和媒体取自收藏，不请求实时信息流。分享复制原始链接；X 的喜欢标记仅写入本地标签，不向原站点赞。
 
 透明窗口使用 Tauri 2.12.1+，配置 `transparent`、透明背景和 `liquidGlassClear` / `sidebar` / `mica` / `acrylic` 平台材质。浏览器演示中的底图用于观察玻璃透射；不能用浏览器录屏代替原生材质验收。
+
+
+## 图标与许可证
+
+界面使用 [Lucide](https://lucide.dev) 1.57.0（ISC，部分源自 MIT 许可的 Feather）和 [Simple Icons](https://simpleicons.org) 16.35.0（CC0）品牌标识。选用的 SVG 数据随应用离线打包，许可证保存在 `licenses/` 并随客户端和扩展分发。运行 `npm run icons` 可根据锁定的 npm 依赖重新生成图标数据。
+
+## 版本发布
+
+`CI` 在 `main` 推送和 PR 上运行测试及三平台构建。`Release` 只接受 `main` 上成功完成的 CI，核对全部安装包及三份浏览器报告，将 `package.json` 版本发布为 `v<version>`。版本已经发布时跳过；下一次发布先同步更新 npm、Tauri 配置和两个 Cargo 包的版本号。发布过程使用仓库 `GITHUB_TOKEN`，不需要个人访问令牌。

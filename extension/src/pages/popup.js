@@ -1,9 +1,11 @@
+import { hydrateIcons } from "../../../app/icons.js";
+hydrateIcons();
 import { api, BASE, request, connected } from "../api.js";
 const $ = (id) => document.getElementById(id);
 async function init() {
   const live = await connected();
   $("status").textContent = live
-    ? "● 客户端已连接"
+    ? "客户端已连接"
     : "客户端未连接，收藏操作已停用";
   $("actions").hidden = !live;
   try {

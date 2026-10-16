@@ -1,6 +1,6 @@
 {
   "name": "glassmark",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "description": "A local-first web archive with a Liquid Glass desktop and cross-browser capture extension.",
@@ -12,15 +12,18 @@
     "check": "node scripts/check.mjs",
     "tauri": "tauri",
     "desktop": "tauri dev",
-    "verify": "npm run check && npm test && npm run build && npm run test:e2e"
+    "verify": "npm run check && npm test && npm run build && npm run test:e2e",
+    "icons": "node scripts/icons.mjs"
   },
   "devDependencies": {
     "@fontsource/noto-sans-sc": "^5.2.9",
     "@playwright/test": "1.58.2",
     "@sparticuz/chromium": "143.0.4",
-    "@tauri-apps/cli": "^2.11.0",
+    "@tauri-apps/cli": "2.12.3",
     "esbuild": "^0.25.12",
-    "prettier": "^3.6.2"
+    "lucide-static": "1.57.0",
+    "prettier": "^3.6.2",
+    "simple-icons": "16.35.0"
   },
   "engines": {
     "node": ">=22"

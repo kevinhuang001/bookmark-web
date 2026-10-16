@@ -1138,3 +1138,85 @@ body {
   max-height: 90px;
   overflow: auto;
 }
+
+/* Web archives share one centered reading column. */
+#reader:not(.social-reader) > .reader-heading,
+#reader:not(.social-reader) > .preview-frame {
+  width: 100%;
+  max-width: 1080px;
+  margin-left: auto;
+  margin-right: auto;
+  flex-shrink: 0;
+}
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.icon-button .icon {
+  width: 19px;
+  height: 19px;
+}
+[data-icon] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+}
+.mark .icon {
+  width: 26px;
+  height: 26px;
+}
+.search > span .icon {
+  width: 16px;
+  height: 16px;
+}
+.section-label button .icon {
+  width: 15px;
+  height: 15px;
+}
+.glass-emblem > .icon {
+  width: 53px;
+  height: 53px;
+  stroke-width: 1.4;
+}
+.empty-features > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.empty-features .icon {
+  width: 15px;
+  height: 15px;
+}
+.empty-reader .primary > .icon {
+  width: 16px;
+  height: 16px;
+  margin-left: 15px;
+}
+.archive-pill {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+}
+.archive-pill .icon {
+  width: 12px;
+  height: 12px;
+}
+.source-link .icon {
+  width: 12px;
+  height: 12px;
+  margin-left: 5px;
+}
+.preview-chrome .icon {
+  width: 13px;
+  height: 13px;
+}
+body[data-view="x"] #sidebar .search,
+body[data-view="reddit"] #sidebar .search {
+  display: none;
+}
+.platform-symbol.reddit,
+.reddit-bookmarks-title > .icon {
+  color: #ff4500;
+}

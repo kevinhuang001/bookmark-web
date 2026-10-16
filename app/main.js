@@ -1,7 +1,8 @@
 import { connect, json, request, mutate } from "./api.js";
 import { preview, releasePreview } from "./preview.js";
 import { renderSocial, releaseSocial } from "./social.js";
-import { icon } from "./icons.js";
+import { icon, hydrateIcons } from "./icons.js";
+hydrateIcons();
 import { itemsInView, itemPlatform } from "./library.js";
 const $ = (id) => document.getElementById(id);
 const state = {
@@ -77,7 +78,8 @@ function visible() {
     folders: state.folders,
   });
 }
-function switchView(view) {
+async function switchView(view) {
+  const changed = state.view !== view;
   if (state.view === view && view !== "web") {
     state.selected = null;
     state.rawSnapshot = false;
@@ -102,6 +104,12 @@ function switchView(view) {
   }
   localStorage.setItem("glassmark-view", view);
   state.viewKey = "";
+  if (changed && state.query) {
+    state.query = "";
+    $("search").value = "";
+    await refresh();
+    return;
+  }
   if (view === "web" && visible().length) state.selected = visible()[0].id;
   revealSelected();
   render();
@@ -118,7 +126,7 @@ function renderPlatforms() {
     )
     .join("");
   for (const button of $("platforms").querySelectorAll("button"))
-    button.onclick = () => switchView(button.dataset.view);
+    button.onclick = guarded(() => switchView(button.dataset.view));
   document.body.dataset.view = state.view;
   $("web-folder-section").hidden = state.view !== "web";
   $("sidebar").classList.toggle("social-sidebar", state.view !== "web");
@@ -298,7 +306,7 @@ async function renderReader() {
   if (!item) {
     releasePreview();
     $("reader").innerHTML =
-      '<section class="empty-reader"><div class="glass-emblem">◈</div><p class="eyebrow">YOUR PERSONAL CORNER OF THE WEB</p><h1>让好内容，留下来。</h1><p>一篇文章，一段对话，一瞬灵感。<br>从浏览器收藏，在这里慢慢读。</p><div class="empty-features"><span>◉ 本地保存</span><span>▣ 原站外观</span><span>⟳ 跨设备同步</span></div><button id="connect-start" class="primary">连接浏览器插件 <span>↗</span></button></section>';
+      `<section class="empty-reader"><div class="glass-emblem">${icon("logo")}</div><p class="eyebrow">YOUR PERSONAL CORNER OF THE WEB</p><h1>让好内容，留下来。</h1><p>一篇文章，一段对话，一瞬灵感。<br>从浏览器收藏，在这里慢慢读。</p><div class="empty-features"><span>${icon("archive")}本地保存</span><span>${icon("globe")}原站外观</span><span>${icon("refresh")}跨设备同步</span></div><button id="connect-start" class="primary">连接浏览器插件 ${icon("external")}</button></section>`;
     $("connect-start").onclick = guarded(showSettings);
     return;
   }
@@ -306,7 +314,7 @@ async function renderReader() {
   const saved = item.resources.filter((r) => r.status === "saved");
   const failed = item.resources.length - saved.length;
   $("reader").innerHTML =
-    `<section class="reader-heading"><div class="eyebrow">${escape(platformLabel[item.platform] || "网页")} <span>／</span> ${new Date(item.capturedAt).toLocaleString("zh-CN", { hour12: false })}</div><h1>${escape(item.title)}</h1><div class="reader-meta"><span class="archive-pill">● 离线快照</span><span>${saved.length} 个资源 · ${fmt(saved.reduce((n, r) => n + r.bytes, 0))}</span>${failed ? `<button id="resource-warning" class="text-button">${failed} 个资源未保存</button>` : ""}<button id="source-link" class="source-link">${escape(domain(item))} ↗</button></div><div class="reader-tags">${item.tags.map((t) => `<span># ${escape(t)}</span>`).join("")}</div></section><div class="preview-frame"><div class="preview-chrome"><span>◉</span><span>${escape(item.url)}</span><span>原站快照</span></div><div id="preview-loading">正在还原页面…</div><iframe id="snapshot" title="收藏网页的离线快照" sandbox="" referrerpolicy="no-referrer" hidden></iframe></div>`;
+    `<section class="reader-heading"><div class="eyebrow">${escape(platformLabel[item.platform] || "网页")} <span>／</span> ${new Date(item.capturedAt).toLocaleString("zh-CN", { hour12: false })}</div><h1>${escape(item.title)}</h1><div class="reader-meta"><span class="archive-pill">${icon("circleCheck")}离线快照</span><span>${saved.length} 个资源 · ${fmt(saved.reduce((n, r) => n + r.bytes, 0))}</span>${failed ? `<button id="resource-warning" class="text-button">${failed} 个资源未保存</button>` : ""}<button id="source-link" class="source-link">${escape(domain(item))} ${icon("external")}</button></div><div class="reader-tags">${item.tags.map((t) => `<span># ${escape(t)}</span>`).join("")}</div></section><div class="preview-frame"><div class="preview-chrome"><span>${icon("globe")}</span><span>${escape(item.url)}</span><span>原站快照</span></div><div id="preview-loading">正在还原页面…</div><iframe id="snapshot" title="收藏网页的离线快照" sandbox="" referrerpolicy="no-referrer" hidden></iframe></div>`;
   $("source-link").onclick = () => showSourceLink(item.url);
   if ($("resource-warning")) $("resource-warning").onclick = guarded(showInfo);
   try {
@@ -359,6 +367,28 @@ async function socialAction(action, data = {}) {
     state.selected = item.id;
     state.rawSnapshot = false;
     renderReader();
+    return;
+  }
+  if (action === "bookmarks") {
+    state.selected = null;
+    state.rawSnapshot = false;
+    state.filters.author = "";
+    state.filters.community = "";
+    state.feedScroll[state.view] = 0;
+    state.viewKey = "";
+    if (state.query) {
+      state.query = "";
+      $("search").value = "";
+      await refresh();
+    } else render();
+    return;
+  }
+  if (action === "search") {
+    state.query = String(data.query || "").trim();
+    $("search").value = state.query;
+    state.selected = null;
+    state.feedScroll[state.view] = 0;
+    await refresh();
     return;
   }
   if (action === "back") {
@@ -687,7 +717,7 @@ $("search").oninput = () => {
 document.addEventListener("keydown", (e) => {
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
     e.preventDefault();
-    $("search").focus();
+    (document.querySelector(".saved-search input") || $("search")).focus();
   }
 });
 let busy = false;

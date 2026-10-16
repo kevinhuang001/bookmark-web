@@ -127,3 +127,26 @@ pre {
   background: #fff6dc;
   border-radius: 12px;
 }
+.icon {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+[data-icon] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+}
+.brand > [data-icon] {
+  margin-right: 8px;
+}
+.brand .icon {
+  width: 27px;
+  height: 27px;
+}
+button [data-icon] {
+  margin-right: 7px;
+}

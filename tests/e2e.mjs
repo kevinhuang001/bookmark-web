@@ -307,11 +307,24 @@ try {
     await page.locator(".x-bookmarks-title strong").textContent(),
     "书签",
   );
+  assert.equal(
+    await page.locator(".x-saved-sidebar .saved-nav-entry").count(),
+    1,
+  );
+  assert.equal(
+    await page.getByRole("searchbox", { name: "搜索 X 收藏" }).isVisible(),
+    true,
+  );
+  assert.ok((await page.locator('[data-icon-source="lucide"]').count()) > 15);
   assert.equal(await page.locator("#web-folder-section").isVisible(), false);
   assert.equal(await page.locator("#snapshot").count(), 0);
   await page.screenshot({ path: "artifacts/glassmark-x.png" });
   await page.locator(`.x-post[data-open-archive="${xItem.id}"]`).click();
   assert.equal(await page.locator(".x-reply").count(), 2);
+  assert.match(
+    await page.locator(".discussion-scope").textContent(),
+    /已保存 2 条/,
+  );
   await page.locator(".x-snapshot-link").click();
   await page
     .frameLocator("#snapshot")
@@ -400,6 +413,26 @@ try {
   );
   assert.equal(many.posts.length, 109);
   pass("Reddit saves all loaded comments even when more than 100 are visible");
+  const manyItem = await save(many);
+  await page
+    .locator(`.reddit-post[data-open-archive="${manyItem.id}"]`)
+    .waitFor({ timeout: 20000 });
+  await page
+    .locator(`.reddit-post[data-open-archive="${manyItem.id}"] h1`)
+    .click();
+  assert.equal(await page.locator(".reddit-comment").count(), 108);
+  assert.match(
+    await page.locator(".discussion-scope").textContent(),
+    /已保存 108 条/,
+  );
+  await page.locator(".reddit-comment").last().scrollIntoViewIfNeeded();
+  assert.equal(await page.locator(".reddit-comment").last().isVisible(), true);
+  await page.getByRole("button", { name: "返回信息流", exact: true }).click();
+  await call("/api/items/" + manyItem.id, { method: "DELETE" });
+  pass(
+    "discussion detail renders every archived comment, including more than 100 replies",
+  );
+
   const duplicate = await save({ ...article, resources: [] });
   assert.notEqual(duplicate.id, articleItem.id);
   pass("repeated captures create independent archive IDs");
@@ -633,6 +666,17 @@ try {
   assert.equal(await page.locator(".x-post").count(), 1);
   await page.locator('[data-social-action="clear-filter"]').click();
   assert.equal(await page.locator(".x-post").count(), 4);
+  await page.getByRole("searchbox", { name: "搜索 X 收藏" }).fill("noahbuilds");
+  await page.getByRole("searchbox", { name: "搜索 X 收藏" }).press("Enter");
+  await page.waitForTimeout(500);
+  assert.equal(await page.locator(".x-post").count(), 1);
+  await page.getByRole("searchbox", { name: "搜索 X 收藏" }).fill("");
+  await page.getByRole("searchbox", { name: "搜索 X 收藏" }).press("Enter");
+  await page.waitForTimeout(500);
+  assert.equal(await page.locator(".x-post").count(), 4);
+  pass(
+    "X saved navigation searches local bookmarks without restoring home or explore",
+  );
   await page.screenshot({ path: "artifacts/glassmark-x.png" });
   await page.locator('[data-view="reddit"]').click();
   assert.equal(await page.locator(".reddit-post").count(), 3);
@@ -656,12 +700,46 @@ try {
   assert.equal(await page.locator(".reddit-post").count(), 1);
   await page.locator(".saved-community").selectOption("");
   assert.equal(await page.locator(".reddit-post").count(), 3);
+  await page.locator('.saved-communities [data-community="webdev"]').click();
+  assert.equal(await page.locator(".reddit-post").count(), 1);
+  await page.locator(".reddit-saved-sidebar .saved-nav-entry").click();
+  assert.equal(await page.locator(".reddit-post").count(), 3);
+  await page
+    .getByRole("searchbox", { name: "搜索 Reddit 收藏" })
+    .fill("What makes a personal archive");
+  await page
+    .getByRole("searchbox", { name: "搜索 Reddit 收藏" })
+    .press("Enter");
+  await page.waitForTimeout(500);
+  assert.equal(await page.locator(".reddit-post").count(), 1);
+  await page.getByRole("searchbox", { name: "搜索 Reddit 收藏" }).fill("");
+  await page
+    .getByRole("searchbox", { name: "搜索 Reddit 收藏" })
+    .press("Enter");
+  await page.waitForTimeout(500);
+  pass(
+    "Reddit saved sidebar filters communities and searches archived discussions",
+  );
   await page.screenshot({ path: "artifacts/glassmark-reddit.png" });
   assert.equal(socialRequests.length, 0);
   pass(
     "multi-post social feeds filter authors and communities and display only archived media",
   );
   await page.locator('[data-view="web"]').click();
+  const centered = await page.locator(".preview-frame").evaluate((el) => {
+    const frame = el.getBoundingClientRect(),
+      reader = document.querySelector("#reader").getBoundingClientRect();
+    return (
+      Math.abs(frame.left + frame.right - (reader.left + reader.right)) / 2
+    );
+  });
+  assert.ok(
+    centered < 10,
+    "web preview should be centered in the reading pane",
+  );
+  pass(
+    "webpage preview uses a centered reading column and open-source toolbar icons",
+  );
   assert.deepEqual(errors, []);
   pass("desktop interface has no uncaught JavaScript errors");
   const report = {

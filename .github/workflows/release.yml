@@ -1,0 +1,76 @@
+name: Release
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: release-main
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event != 'pull_request'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: release-input
+      - name: Verify bundles and publish versioned release
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require('node:fs');
+            const path = require('node:path');
+            const crypto = require('node:crypto');
+            const version = JSON.parse(fs.readFileSync('package.json', 'utf8')).version;
+            const tag = `v${version}`;
+            const sha = context.payload.workflow_run.head_sha;
+            const { owner, repo } = context.repo;
+            const walk = dir => fs.readdirSync(dir, {withFileTypes:true}).flatMap(e => e.isDirectory() ? walk(path.join(dir,e.name)) : [path.join(dir,e.name)]);
+            const all = walk('release-input');
+            const files = all.filter(f => /(?:glassmark-(?:chromium|firefox)\.zip|\.(?:dmg|msi|exe|deb|AppImage))$/.test(f));
+            for (const required of [/glassmark-chromium\.zip$/, /glassmark-firefox\.zip$/, /\.dmg$/, /\.exe$/, /\.msi$/, /\.deb$/, /\.AppImage$/]) {
+              if (!files.some(f => required.test(f))) throw new Error(`Missing release asset ${required}`);
+            }
+            const reports = all.filter(f => /(?:e2e|extension|firefox)-report\.json$/.test(f));
+            if (reports.length !== 3) throw new Error('All three browser reports must be present');
+            const report = JSON.parse(fs.readFileSync(reports.find(f=>f.endsWith('e2e-report.json'))));
+            if (report.backend !== 'native-rust') throw new Error('Release requires production Rust backend validation');
+            const existing = await github.rest.repos.getReleaseByTag({owner,repo,tag}).then(r=>r.data).catch(e=>{if(e.status===404)return null;throw e;});
+            if (existing && !existing.draft) { core.notice(`${tag} is already published; bump package version for another release.`); return; }
+            const notes = [
+              'Tauri desktop archive with Chromium and Firefox capture extensions.',
+              '',
+              '- X / Reddit: saved-content side navigation, local search and all archived replies/comments.',
+              '- Webpages: nested folder files and a centered offline preview.',
+              '- Lucide UI icons and Simple Icons brand marks, bundled with licenses.',
+              '',
+              'Downloads: macOS universal (Apple Silicon + Intel), Windows x64, Linux x64; Chromium and Firefox extension ZIPs.',
+              'The macOS app is ad-hoc signed; Windows installers and Firefox ZIP are not store-signed. Firefox ZIP is for temporary loading via about:debugging. These are GitHub Releases, not browser-store listings.',
+              '',
+              `Validated commit: ${sha}`,
+              `CI: ${context.payload.workflow_run.html_url}`
+            ].join('\n');
+            const release = existing || (await github.rest.repos.createRelease({owner,repo,tag_name:tag,target_commitish:sha,name:`Glassmark ${tag}`,body:notes,draft:true,prerelease:false})).data;
+            const names = new Set(); const checksum=[];
+            for (const file of [...files, ...reports]) {
+              const name=path.basename(file); if(names.has(name))throw new Error(`Duplicate asset ${name}`); names.add(name);
+              const bytes=fs.readFileSync(file); checksum.push(`${crypto.createHash('sha256').update(bytes).digest('hex')}  ${name}`);
+              const old = await github.rest.repos.listReleaseAssets({owner,repo,release_id:release.id});
+              for(const asset of old.data.filter(a=>a.name===name))await github.rest.repos.deleteReleaseAsset({owner,repo,asset_id:asset.id});
+              await github.rest.repos.uploadReleaseAsset({owner,repo,release_id:release.id,name,data:bytes,headers:{'content-type':'application/octet-stream','content-length':bytes.length}});
+            }
+            const bytes=Buffer.from(checksum.join('\n')+'\n');
+            const oldChecksums=await github.rest.repos.listReleaseAssets({owner,repo,release_id:release.id});
+            for(const asset of oldChecksums.data.filter(a=>a.name==='SHA256SUMS.txt'))await github.rest.repos.deleteReleaseAsset({owner,repo,asset_id:asset.id});
+            await github.rest.repos.uploadReleaseAsset({owner,repo,release_id:release.id,name:'SHA256SUMS.txt',data:bytes,headers:{'content-type':'text/plain','content-length':bytes.length}});
+            await github.rest.repos.updateRelease({owner,repo,release_id:release.id,draft:false,body:notes,make_latest:'true'});
+            core.notice(`Published ${release.html_url}`);

@@ -1,7 +1,9 @@
 name: CI
 on:
   push:
+    branches: [main]
   pull_request:
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:
@@ -26,7 +28,7 @@ jobs:
       - run: npm ci
       - run: npm run check && npm test && npm run build
       - run: cargo test --manifest-path core/Cargo.toml
-      - run: cargo clippy --manifest-path core/Cargo.toml --all-targets
+      - run: cargo clippy --manifest-path core/Cargo.toml --all-targets -- -D warnings
       - run: cargo build --manifest-path core/Cargo.toml --bin glassmark-bridge
       - run: npx playwright install --with-deps chromium firefox
       - run: npm run test:e2e
@@ -43,11 +45,27 @@ jobs:
           path: |
             artifacts/
             dist/glassmark-*.zip
+            core/Cargo.lock
   desktop:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-24.04
+            platform: linux-x64
+            target: x86_64-unknown-linux-gnu
+            rust-targets: x86_64-unknown-linux-gnu
+            bundles: deb,appimage
+          - os: windows-latest
+            platform: windows-x64
+            target: x86_64-pc-windows-msvc
+            rust-targets: x86_64-pc-windows-msvc
+            bundles: nsis,msi
+          - os: macos-latest
+            platform: macos-universal
+            target: universal-apple-darwin
+            rust-targets: aarch64-apple-darwin,x86_64-apple-darwin
+            bundles: dmg
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     steps:
@@ -57,21 +75,27 @@ jobs:
           node-version: 24
           cache: npm
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust-targets }}
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
+          key: ${{ matrix.platform }}
       - name: Linux desktop dependencies
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential libxdo-dev libssl-dev librsvg2-dev libayatana-appindicator3-dev patchelf
       - run: npm ci
-      - run: npm run tauri -- build
+      - name: Build native installers
+        run: npm run tauri -- build --target ${{ matrix.target }} --bundles ${{ matrix.bundles }}
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: "1"
       - uses: actions/upload-artifact@v4
         with:
-          name: desktop-${{ matrix.os }}
+          name: desktop-${{ matrix.platform }}
+          if-no-files-found: error
           path: |
-            src-tauri/target/release/bundle/**/*.dmg
-            src-tauri/target/release/bundle/**/*.app.tar.gz
-            src-tauri/target/release/bundle/**/*.msi
-            src-tauri/target/release/bundle/**/*.exe
-            src-tauri/target/release/bundle/**/*.deb
-            src-tauri/target/release/bundle/**/*.AppImage
+            src-tauri/target/**/release/bundle/**/*.dmg
+            src-tauri/target/**/release/bundle/**/*.msi
+            src-tauri/target/**/release/bundle/**/*.exe
+            src-tauri/target/**/release/bundle/**/*.deb
+            src-tauri/target/**/release/bundle/**/*.AppImage

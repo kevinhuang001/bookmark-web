@@ -1,10 +1,11 @@
-import { mkdir, rm, cp, writeFile } from "node:fs/promises";
+import { mkdir, rm, cp, writeFile, readFile } from "node:fs/promises";
 import { build } from "esbuild";
 import { execFileSync } from "node:child_process";
+const { version } = JSON.parse(await readFile("package.json", "utf8"));
 const base = {
   manifest_version: 3,
   name: "Glassmark",
-  version: "0.2.0",
+  version,
   description:
     "Archive pages, selected regions, X threads and Reddit discussions to your desktop.",
   permissions: ["activeTab", "scripting", "storage"],
@@ -15,13 +16,21 @@ const base = {
 await rm("dist", { recursive: true, force: true });
 await mkdir("dist", { recursive: true });
 await cp("app", "dist/app", { recursive: true });
+await cp("licenses", "dist/app/licenses", { recursive: true });
 for (const browser of ["chromium", "firefox"]) {
   const out = `dist/extension-${browser}`;
   await mkdir(out + "/pages", { recursive: true });
   for (const name of ["api.js", "archive.js", "background.js", "picker.js"])
     await cp("extension/src/" + name, out + "/" + name);
   for (const name of ["popup", "capture"])
-    await cp(`extension/src/pages/${name}.js`, `${out}/pages/${name}.js`);
+    await build({
+      entryPoints: [`extension/src/pages/${name}.js`],
+      bundle: true,
+      format: "esm",
+      outfile: `${out}/pages/${name}.js`,
+      target: "es2022",
+    });
+  await cp("licenses", out + "/licenses", { recursive: true });
   for (const name of ["popup", "capture"])
     await cp(`extension/src/pages/${name}.html`, `${out}/${name}.html`);
   await cp("extension/src/pages/extension.css", out + "/extension.css");
