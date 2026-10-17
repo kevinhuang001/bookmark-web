@@ -141,7 +141,13 @@ async function run() {
     if (!capture) throw new Error(tr("页面捕获未返回内容"));
     if (capture.cancelled) controller.abort();
     if (capture.captureError) throw new Error(capture.captureError);
-    if (job?.expectedUrl && capture.url !== job.expectedUrl)
+    // The saved permalink can differ from the source document (e.g. a chosen
+    // Zhihu answer on a question page). Only document navigation invalidates it.
+    const sourceAfterCapture = await api.tabs.get(tabId);
+    if (
+      capture.sourceUrl !== current.url ||
+      sourceAfterCapture.url !== current.url
+    )
       throw new Error(tr("捕获过程中来源页面已跳转，请重新收藏"));
     if (controller.signal.aborted) throw new Error(tr("已取消收藏"));
     $("step-collect").classList.remove("active");

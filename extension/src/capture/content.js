@@ -334,6 +334,7 @@ export async function collect({
     version: 2,
     title: sourceTitle,
     url: zhihuIdentityAtStart?.url || context.url,
+    sourceUrl: context.url,
     platform: mode === "thread" ? kind : "web",
     mode,
     capturedAt: new Date().toISOString(),

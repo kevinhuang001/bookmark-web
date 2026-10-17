@@ -104,6 +104,92 @@ try {
   assert.equal(captured.length, 2);
   assert.equal(captured[0].posts.length, 3);
   assert.equal(captured[0].platform, "x");
+  await source.route("https://www.zhihu.com/**", (route) =>
+    route.fulfill({
+      contentType: "text/html",
+      path: "tests/fixtures/zhihu-question.html",
+    }),
+  );
+  // Exercise selection → background message → capture page → native persistence.
+  // Canonical answer URLs intentionally differ from question URLs and tracking URLs.
+  for (const url of [
+    "https://www.zhihu.com/question/123?utm_source=test#top",
+    "https://www.zhihu.com/question/123/answer/222?utm_source=test#comments",
+  ]) {
+    await source.goto(url);
+    await worker.evaluate(
+      async ({ tabId, url }) => {
+        await chrome.storage.local.set({
+          ["pendingCapture_" + tabId]: {
+            mode: "thread",
+            expectedUrl: url,
+            tags: [],
+            folderId: null,
+            createdAt: Date.now(),
+          },
+        });
+        await chrome.scripting.executeScript({
+          target: { tabId },
+          func: () => {
+            globalThis.__glassmarkLanguage = "zh-CN";
+            globalThis.__glassmarkPickerMode = "zhihu-answer";
+          },
+        });
+        await chrome.scripting.executeScript({
+          target: { tabId },
+          files: ["picker.js"],
+        });
+      },
+      { tabId, url },
+    );
+    await source
+      .locator(".AnswerItem")
+      .nth(1)
+      .locator(".RichContent-inner")
+      .click();
+    const newPage = context.waitForEvent("page");
+    await source
+      .getByRole("button", { name: "保存回答与评论", exact: true })
+      .click();
+    const capturePage = await newPage;
+    await capturePage.waitForURL(/capture\.html.*mode=thread/);
+    await capturePage
+      .getByText("已收藏，留待慢慢读", { exact: true })
+      .waitFor({ timeout: 45000 });
+    const archives = await (
+      await fetch(connection.base + "/api/items", { headers: auth })
+    ).json();
+    const saved = archives.find((item) => item.sourceUrl === url);
+    assert.ok(saved, "selected answer must reach native persistence");
+    assert.equal(saved.url, "https://www.zhihu.com/question/123/answer/222");
+    assert.equal(saved.platform, "zhihu");
+    assert.equal(saved.posts[0].id, "222");
+    assert.deepEqual(
+      saved.posts.map((post) => post.id),
+      ["222", "c1", "reply1", "c2", "c3"],
+    );
+    assert.ok(saved.resources.some((resource) => resource.status === "saved"));
+    await capturePage.close();
+  }
+  const beforeNavigation = (
+    await (
+      await fetch(connection.base + "/api/items", { headers: auth })
+    ).json()
+  ).length;
+  await source.goto("https://www.zhihu.com/question/999");
+  await progress.goto(
+    `chrome-extension://${extensionId}/capture.html?tab=${tabId}&mode=thread`,
+  );
+  await expect(progress.locator("#title")).toHaveText("收藏未完成");
+  await expect(progress.locator("#detail")).toContainText("来源标签页已跳转");
+  assert.equal(
+    (
+      await (
+        await fetch(connection.base + "/api/items", { headers: auth })
+      ).json()
+    ).length,
+    beforeNavigation,
+  );
   const device = await worker.evaluate(
     async () => (await chrome.storage.local.get("connection")).connection,
   );
@@ -134,6 +220,8 @@ try {
           "content injection",
           "resource upload",
           "native persistence",
+          "Zhihu question and tracked-answer selection through background, capture UI and native persistence",
+          "actual source navigation is rejected",
           "scoped token",
           "disabled when client is closed",
         ],
