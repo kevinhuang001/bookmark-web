@@ -12,6 +12,7 @@ translateDOM();
 const $ = (id) => document.getElementById(id);
 let currentTab,
   context,
+  threadPage,
   busy = false,
   captureLanguage = "system";
 const esc = (s) =>
@@ -51,9 +52,10 @@ async function init() {
     : tr("客户端未连接，请打开客户端后收藏");
   [currentTab] = await api.tabs.query({ active: true, currentWindow: true });
   context = pageContext(currentTab?.url);
+  threadPage = context.isPost || context.isQuestion;
   $("page-title").textContent = currentTab?.title || tr("当前标签页");
   $("page-host").textContent = context.host || tr("浏览器内部页面");
-  $("page-kind").textContent = context.isPost
+  $("page-kind").textContent = threadPage
     ? context.platform === "x"
       ? tr("X · 帖子与讨论")
       : context.platform === "xiaohongshu"
@@ -62,24 +64,25 @@ async function init() {
           ? tr("知乎 · 回答、文章与评论")
           : tr("Reddit · 帖子与评论")
     : tr("网页内容");
-  $("context-icon").innerHTML = icon(
-    context.isPost ? context.platform : "globe",
-  );
+  $("context-icon").innerHTML = icon(threadPage ? context.platform : "globe");
   const blockedFeed = context.platform === "x" && !context.isPost;
   $("actions").hidden = !live || !context.supported || blockedFeed;
   if (live && blockedFeed)
     error(tr("请先打开要收藏的 X 帖子详情，不支持收藏信息流"));
   if (live && !context.supported)
     error(tr("此页面不能收藏，请打开一个 HTTP/HTTPS 网页"));
-  $("save-post").hidden = !context.isPost;
-  $("save-page").hidden = context.isPost;
-  document.querySelector(".selection-action").hidden = context.isPost;
+  $("save-post").hidden = !threadPage;
+  $("save-page").hidden = threadPage;
+  document.querySelector(".selection-action").hidden = threadPage;
   $("save-post-label").textContent =
-    context.platform === "x"
-      ? tr("保存当前帖子与回复")
-      : tr("保存当前帖子与已加载评论");
-  $("folder-field").hidden = context.isPost;
-  $("tags-field").hidden = !context.isPost;
+    context.platform === "zhihu" &&
+    !/\/p\/\d+/.test(new URL(currentTab.url).pathname)
+      ? tr("选择回答并保存评论")
+      : context.platform === "x"
+        ? tr("保存当前帖子与回复")
+        : tr("保存当前帖子与已加载评论");
+  $("folder-field").hidden = threadPage;
+  $("tags-field").hidden = !threadPage;
   try {
     const health = await fetch(BASE + "/health", {
       signal: AbortSignal.timeout(1500),
@@ -181,7 +184,7 @@ for (const button of document.querySelectorAll("[data-mode]"))
         throw new Error(tr("来源页面已变化，请重新打开扩展"));
       const mode = button.dataset.mode;
       const tags =
-        context.isPost && mode === "thread"
+        threadPage && mode === "thread"
           ? [...$("destination-tags").querySelectorAll("input:checked")].map(
               (i) => i.value,
             )
@@ -193,7 +196,7 @@ for (const button of document.querySelectorAll("[data-mode]"))
       const stored = await api.storage.local.get("capturePreferences");
       const prefs = stored.capturePreferences || {};
       prefs.folderId = $("destination-folder").value || null;
-      if (context.isPost) prefs[context.platform] = { tags };
+      if (threadPage) prefs[context.platform] = { tags };
       await api.storage.local.set({
         capturePreferences: prefs,
         ["pendingCapture_" + tab.id]: {
@@ -204,13 +207,22 @@ for (const button of document.querySelectorAll("[data-mode]"))
           createdAt: Date.now(),
         },
       });
-      if (mode === "selection") {
+      if (
+        mode === "selection" ||
+        (mode === "thread" &&
+          context.platform === "zhihu" &&
+          !/\/p\/\d+/.test(new URL(tab.url).pathname))
+      ) {
         await api.scripting.executeScript({
           target: { tabId: tab.id },
-          func: (language) => {
+          func: (language, pickerMode) => {
             globalThis.__glassmarkLanguage = language;
+            globalThis.__glassmarkPickerMode = pickerMode;
           },
-          args: [captureLanguage],
+          args: [
+            captureLanguage,
+            mode === "thread" ? "zhihu-answer" : "selection",
+          ],
         });
         await api.scripting.executeScript({
           target: { tabId: tab.id },

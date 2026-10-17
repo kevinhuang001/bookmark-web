@@ -990,7 +990,9 @@ try {
   assert.ok(!withoutAds.posts.some((p) => p.text.includes("Sponsored reply")));
   await source.evaluate(() => history.replaceState(null, "", "/home"));
   await assert.rejects(
-    source.evaluate(() => GlassmarkCapture.collect({ mode: "page", language:"zh-CN" })),
+    source.evaluate(() =>
+      GlassmarkCapture.collect({ mode: "page", language: "zh-CN" }),
+    ),
     /不支持收藏信息流/,
   );
   await source.evaluate(() =>
@@ -1385,6 +1387,102 @@ try {
     "Zhihu locks the selected answer or article, preserves loaded comments and archived images, with its own searchable reader",
   );
 
+  await source.route("https://www.zhihu.com/question/123", (route) =>
+    route.fulfill({
+      contentType: "text/html",
+      path: "tests/fixtures/zhihu-question.html",
+    }),
+  );
+  await source.goto("https://www.zhihu.com/question/123");
+  await source.addScriptTag({ content: captureScript });
+  await assert.rejects(
+    source.evaluate(() =>
+      GlassmarkCapture.collect({ mode: "thread", language: "zh-CN" }),
+    ),
+    /请先选择/,
+  );
+  const pickerScript = await readFile(
+    "dist/extension-chromium/picker.js",
+    "utf8",
+  );
+  await source.evaluate(() => {
+    globalThis.__glassmarkLanguage = "zh-CN";
+    globalThis.__glassmarkPickerMode = "zhihu-answer";
+    globalThis.chrome = {
+      runtime: {
+        sendMessage: async (message) => {
+          globalThis.pickerMessage = message;
+        },
+      },
+    };
+  });
+  await source.addScriptTag({ content: pickerScript });
+  await source.locator("h1").click();
+  await expect(source.locator("[data-glassmark-ui] b")).toHaveText("0 个区域");
+  await source
+    .locator(".AnswerItem")
+    .nth(0)
+    .locator(".RichContent-inner")
+    .click();
+  await source
+    .locator(".AnswerItem")
+    .nth(1)
+    .locator(".RichContent-inner")
+    .click();
+  await source.keyboard.press("ArrowUp");
+  await expect(source.locator("[data-glassmark-ui] b")).toHaveText(
+    "已选择 1 个回答",
+  );
+  await source
+    .getByRole("button", { name: "保存回答与评论", exact: true })
+    .click();
+  assert.deepEqual(await source.evaluate(() => globalThis.pickerMessage), {
+    type: "selection-ready",
+    mode: "thread",
+  });
+  const chosenAnswer = await source.evaluate(() =>
+    GlassmarkCapture.collect({
+      mode: "thread",
+      language: "zh-CN",
+      autoLoadSeconds: 8,
+    }),
+  );
+  assert.equal(
+    chosenAnswer.url,
+    "https://www.zhihu.com/question/123/answer/222",
+  );
+  assert.equal(chosenAnswer.posts[0].id, "222");
+  assert.equal(chosenAnswer.posts[0].authorName, "选中作者");
+  assert.equal(chosenAnswer.posts[0].text, "选中的回答全文");
+  assert.equal(chosenAnswer.posts[0].media.length, 1);
+  assert.deepEqual(
+    chosenAnswer.posts.map((p) => p.id),
+    ["222", "c1", "reply1", "c2", "c3"],
+  );
+  assert.equal(chosenAnswer.posts[1].parentId, "222");
+  assert.equal(chosenAnswer.posts[2].parentId, "c1");
+  assert.ok(!chosenAnswer.text.includes("其他回答"));
+  assert.ok(!chosenAnswer.text.includes("广告"));
+  await source.evaluate(() =>
+    globalThis.__glassmarkZhihuAnswer.element.remove(),
+  );
+  await assert.rejects(
+    source.evaluate(() =>
+      GlassmarkCapture.collect({ mode: "thread", language: "zh-CN" }),
+    ),
+    /选择已失效/,
+  );
+  await source.addScriptTag({ content: pickerScript });
+  await source.keyboard.press("Escape");
+  await expect(source.locator("[data-glassmark-ui]")).toHaveCount(0);
+  assert.equal(
+    await source.evaluate(() => globalThis.__glassmarkZhihuAnswer),
+    undefined,
+  );
+  pass(
+    "Zhihu answer picker selects one answer, cancels cleanly, rejects stale roots and captures only its expanded body, modal comments, nested replies and multiple pages",
+  );
+
   await source.route("https://x.com/media/status/777", (route) =>
     route.fulfill({
       contentType: "text/html",
@@ -1558,6 +1656,7 @@ try {
     "https://www.reddit.com/r/test/comments/abc/post/",
     "https://www.xiaohongshu.com/explore/abc123",
     "https://www.zhihu.com/question/123/answer/456",
+    "https://www.zhihu.com/question/123",
     "https://zhuanlan.zhihu.com/p/789",
     "https://example.com/article",
   ]) {

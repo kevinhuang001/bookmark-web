@@ -47,7 +47,7 @@ Include your app version, operating system, browser and the relevant resource re
 
 ## Zhihu and keyboard navigation
 
-Open an individual `/question/…/answer/…` answer or a `zhuanlan.zhihu.com/p/…` article. Expand the comments you want before saving. Recommendations and other answers are excluded. The Zhihu collection supports search, tags and sorting, with a full-text reader for saved content. Existing sidebar preferences are preserved; enable Zhihu in Settings → General if it is hidden.
+On a Zhihu question or answer page, click “Select an answer and save comments” in the extension, click the answer you want, then confirm “Save answer and comments”. The picker highlights one whole answer at a time; Escape cancels. Glassmark opens that answer’s comments and follows available reply expansion, pagination and comment-panel scrolling within the configured count/time limits. The saved URL points to the selected answer, even when you started on a question page. Other answers and unrelated comment dialogs are excluded. Hidden, restricted or still-unloaded comments may be missing; see the capture report. `zhuanlan.zhihu.com/p/…` articles continue to save directly. The Zhihu collection supports search, tags and sorting, with a full-text reader for saved content. Existing sidebar preferences are preserved; enable Zhihu in Settings → General if it is hidden.
 
 Press ⌘/Ctrl + K for global search. Press Escape outside a text input or dialog to return from a discussion to its collection. Filtered empty states offer a reset, and the interface respects reduced-motion preferences.
 

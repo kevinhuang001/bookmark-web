@@ -1,0 +1,21 @@
+<!doctype html><html><head><meta charset="utf-8"><title>选择回答 - 知乎</title></head><body>
+<main><h1 class="QuestionHeader-title">选择回答</h1>
+<div class="AnswerItem" data-zop='{"itemId":111}'><div class="AuthorInfo-name">其他作者</div><div class="RichContent-inner">不该保存的第一个回答</div><div class="CommentItem" data-comment-id="wrong-inline"><div class="CommentItem-content">其他回答的评论</div></div></div>
+<div class="AnswerItem" data-zop='{"itemId":222}'><div class="AuthorInfo-name">选中作者</div><div class="RichContent-inner">选中的回答摘要</div><button class="ContentItem-expandButton">展开阅读全文</button><button id="comments">4 条评论</button></div>
+</main>
+<div role="dialog" id="foreign"><div class="CommentItem" data-comment-id="wrong-modal"><div class="CommentItem-content">其他回答的弹窗评论</div></div></div>
+<script>
+const answer = document.querySelectorAll('.AnswerItem')[1];
+answer.querySelector('.ContentItem-expandButton').onclick = (e) => {
+  answer.querySelector('.RichContent-inner').innerHTML = '<p>选中的回答全文</p><img src="http://127.0.0.1:1420/fixtures/note-cover.svg">';
+  e.target.remove();
+};
+document.querySelector('#comments').onclick = () => {
+ const panel = document.createElement('div'); panel.setAttribute('role', 'dialog'); panel.id = 'chosen-comments';
+ panel.innerHTML = '<div class="CommentListV2"><div class="CommentItemV2" data-comment-id="c1"><a class="UserLink-link">读者一</a><div class="CommentRichText">选中回答第一页评论</div><button id="replies">展开 1 条回复</button></div><div data-ad="true" class="CommentItemV2" data-comment-id="ad"><div class="CommentRichText">推广广告</div></div></div><button id="next">下一页</button>';
+ document.body.append(panel);
+ panel.querySelector('#replies').onclick = (e) => { e.target.insertAdjacentHTML('beforebegin', '<div class="CommentItemV2" data-comment-id="reply1"><a class="UserLink-link">回复者</a><div class="CommentRichText">嵌套回复</div></div>'); e.target.remove(); };
+ let page = 1;
+ panel.querySelector('#next').onclick = () => { panel.querySelector('.CommentListV2').innerHTML = '<div class="CommentItemV2" data-comment-id="c'+(++page)+'"><div class="CommentRichText">选中回答第'+page+'页评论</div></div>'; if (page === 3) panel.querySelector('#next').disabled = true; };
+};
+</script></body></html>

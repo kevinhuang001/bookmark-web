@@ -503,3 +503,18 @@ test("incremental post capture retains earlier attachments and merges late sourc
   assert.ok(merged.media.find((m) => m.id === "11").url.includes("/11/"));
   assert.equal(mergePost(merged, later).media.length, 4);
 });
+
+test("Zhihu questions require one selected answer while collection pages stay webpages", () => {
+  const question = pageContext(
+    "https://www.zhihu.com/question/123/?sort=updated",
+  );
+  assert.equal(question.isQuestion, true);
+  assert.equal(question.isPost, false);
+  for (const url of [
+    "https://www.zhihu.com/collection/123",
+    "https://www.zhihu.com/question/123/answer/456",
+    "https://www.zhihu.com/question/not-an-id",
+    "https://zhihu.com.attacker.test/question/123",
+  ])
+    assert.equal(pageContext(url).isQuestion, false);
+});

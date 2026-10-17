@@ -5,6 +5,12 @@ import { mergePost } from "./merge.js";
 import { videoSources } from "./video.js";
 import { platform, adapterFor, extractPost } from "./adapters.js";
 import { serializeElement, contentDocument, escapeHtml } from "./serialize.js";
+import {
+  zhihuRoot,
+  zhihuIdentity,
+  ZHIHU_COMMENTS,
+  loadZhihuComments,
+} from "./zhihu.js";
 export async function collect({
   language = "system",
   mode = "page",
@@ -36,6 +42,11 @@ export async function collect({
   };
   const context = pageContext(location.href);
   const sourceTitle = document.title || location.hostname;
+  const selectedZhihu =
+    kind === "zhihu" && mode === "thread" ? zhihuRoot(context) : null;
+  if (kind === "zhihu" && mode === "thread" && !selectedZhihu)
+    throw new Error(tr("选择已失效，请重新选择回答"));
+  const zhihuIdentityAtStart = selectedZhihu && zhihuIdentity(selectedZhihu);
   if (kind === "x") {
     if (!context.isPost)
       throw new Error(tr("请先打开要收藏的 X 帖子详情，不支持收藏信息流"));
@@ -132,23 +143,14 @@ export async function collect({
       ];
     }
     if (kind === "zhihu") {
-      const primary = elements.find((el) => {
-        const post = extractPost(el, kind);
-        return (
-          post.id === context.postId ||
-          post.url?.match(/\/(?:answer|p)\/(\d+)/)?.[1] === context.postId
-        );
-      });
+      if (location.href !== context.url)
+        throw new Error(tr("来源页面已变化，请重新打开扩展"));
+      const primary = selectedZhihu;
       if (!primary) return [];
       const root = extractPost(primary, kind);
       if (!root.text && !root.media.length) return [];
       rootId = root.id;
-      elements = [
-        primary,
-        ...primary.querySelectorAll(
-          "[data-comment-id],.CommentItem,.CommentItemV2",
-        ),
-      ];
+      elements = [primary, ...primary.querySelectorAll(ZHIHU_COMMENTS)];
     }
     return elements.filter((el) => !isAdvertisement(el));
   };
@@ -158,6 +160,10 @@ export async function collect({
       if (kind === "x") {
         captured.isComment = captured.id !== rootId;
         captured.parentId = captured.isComment ? rootId : null;
+      }
+      if (kind === "zhihu" && captured.isComment) {
+        if (!captured.text && !captured.media.length) continue;
+        captured.parentId ||= rootId;
       }
       if (!posts.has(captured.id) && posts.size >= limit) continue;
       const post = mergePost(posts.get(captured.id), captured);
@@ -176,8 +182,6 @@ export async function collect({
   }
   let parts;
   if (mode === "thread" && kind !== "web") {
-    if (kind === "zhihu" && !context.isPost)
-      throw new Error(tr("请先打开知乎回答或文章详情页"));
     if (kind === "xiaohongshu" && !context.isPost)
       throw new Error(tr("请先打开一篇小红书笔记详情"));
     if (kind === "x" && !/\/status\/\d+/.test(location.pathname))
@@ -215,6 +219,22 @@ export async function collect({
             "未识别到当前主帖，请等待帖子详情加载完成后重试；登录或访问限制也可能导致内容不可见",
           ),
         );
+      if (kind === "zhihu")
+        await loadZhihuComments(selectedZhihu, {
+          seconds: autoLoadSeconds,
+          stop: () => finish || posts.size >= limit,
+          collect: (comments) => {
+            if (
+              location.href !== context.url ||
+              zhihuIdentity(selectedZhihu)?.id !== zhihuIdentityAtStart.id
+            )
+              throw new Error(tr("选择已失效，请重新选择回答"));
+            accumulate(
+              [selectedZhihu, ...comments].filter((el) => !isAdvertisement(el)),
+            );
+            notify();
+          },
+        });
       let unchanged = 0;
       while (
         kind === "x" &&
@@ -313,7 +333,7 @@ export async function collect({
   return {
     version: 2,
     title: sourceTitle,
-    url: context.url,
+    url: zhihuIdentityAtStart?.url || context.url,
     platform: mode === "thread" ? kind : "web",
     mode,
     capturedAt: new Date().toISOString(),

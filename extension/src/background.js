@@ -6,6 +6,7 @@ api.runtime.onMessage.addListener((message, sender) => {
         api.runtime.getURL("capture.html") +
         "?tab=" +
         sender.tab.id +
-        "&mode=selection",
+        "&mode=" +
+        (message.mode === "thread" ? "thread" : "selection"),
     });
 });

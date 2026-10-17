@@ -1,7 +1,10 @@
 import { t as tr, setLanguage } from "../../app/i18n.js";
+import { zhihuIdentity } from "./capture/zhihu.js";
 (() => {
   setLanguage(globalThis.__glassmarkLanguage || "system");
   globalThis.__glassmarkPickerCleanup?.();
+  const answerMode = globalThis.__glassmarkPickerMode === "zhihu-answer";
+  delete globalThis.__glassmarkZhihuAnswer;
   const selected = [];
   let hovered;
   const overlay = document.createElement("div");
@@ -12,7 +15,7 @@ import { t as tr, setLanguage } from "../../app/i18n.js";
   toolbar.setAttribute("data-glassmark-ui", "");
   toolbar.style.cssText =
     "position:fixed;bottom:28px;left:50%;transform:translateX(-50%);z-index:2147483647;background:#20232deF;color:white;padding:12px 16px;border-radius:18px;box-shadow:0 12px 50px #0005;font:14px system-ui;display:flex;gap:10px;align-items:center;backdrop-filter:blur(24px)";
-  toolbar.innerHTML = `<span>${tr("点击选择 · ↑ 父级 · ↓ 子级")}</span><b>${tr("0 个区域")}</b><button data-action="done">${tr("收藏选区")}</button><button data-action="cancel">${tr("取消")}</button>`;
+  toolbar.innerHTML = `<span>${tr(answerMode ? "点击选择一个回答，再保存回答与评论" : "点击选择 · ↑ 父级 · ↓ 子级")}</span><b>${tr("0 个区域")}</b><button data-action="done">${tr(answerMode ? "保存回答与评论" : "收藏选区")}</button><button data-action="cancel">${tr("取消")}</button>`;
   toolbar
     .querySelectorAll("button")
     .forEach(
@@ -22,6 +25,7 @@ import { t as tr, setLanguage } from "../../app/i18n.js";
     );
   document.documentElement.append(overlay, toolbar);
   const draw = () => {
+    overlay.hidden = !hovered;
     if (!hovered) return;
     const r = hovered.getBoundingClientRect();
     Object.assign(overlay.style, {
@@ -33,14 +37,16 @@ import { t as tr, setLanguage } from "../../app/i18n.js";
   };
   const move = (e) => {
     if (e.target.closest("[data-glassmark-ui]")) return;
-    hovered = e.target;
+    hovered = answerMode ? e.target.closest(".AnswerItem") : e.target;
     draw();
   };
   const click = (e) => {
     if (e.target.closest("[data-glassmark-ui]")) return;
     e.preventDefault();
     e.stopImmediatePropagation();
-    if (!hovered) return;
+    if (answerMode) hovered = e.target.closest(".AnswerItem");
+    if (!hovered || (answerMode && !zhihuIdentity(hovered))) return;
+    if (answerMode) selected.splice(0);
     const index = selected.indexOf(hovered);
     if (index >= 0) selected.splice(index, 1);
     else {
@@ -49,11 +55,14 @@ import { t as tr, setLanguage } from "../../app/i18n.js";
           selected.splice(i, 1);
       selected.push(hovered);
     }
-    toolbar.querySelector("b").textContent = selected.length + tr(" 个区域");
+    toolbar.querySelector("b").textContent = answerMode
+      ? tr("已选择 {0} 个回答", { 0: selected.length })
+      : selected.length + tr(" 个区域");
+    if (answerMode) draw();
   };
   const key = (e) => {
     if (e.key === "Escape") cleanup();
-    else if (["ArrowUp", "ArrowDown"].includes(e.key)) {
+    else if (!answerMode && ["ArrowUp", "ArrowDown"].includes(e.key)) {
       e.preventDefault();
       hovered =
         e.key === "ArrowUp"
@@ -75,10 +84,19 @@ import { t as tr, setLanguage } from "../../app/i18n.js";
     const action = e.target.dataset.action;
     if (action === "cancel") cleanup();
     if (action === "done" && selected.length) {
-      globalThis.__glassmarkSelection = selected;
+      if (answerMode) {
+        const identity = zhihuIdentity(selected[0]);
+        if (!selected[0].isConnected || !identity) return;
+        globalThis.__glassmarkZhihuAnswer = {
+          element: selected[0],
+          id: identity.id,
+          pageUrl: location.href,
+        };
+      } else globalThis.__glassmarkSelection = selected;
       cleanup();
       (globalThis.browser || chrome).runtime.sendMessage({
         type: "selection-ready",
+        mode: answerMode ? "thread" : "selection",
       });
     }
   });

@@ -488,4 +488,12 @@ export default {
     "Each capture saves only the X post identified by the current URL. The limit applies to replies. Ads and recommendations are excluded.",
   "请先打开要收藏的 X 帖子详情，不支持收藏信息流":
     "Open the specific X post first. Feeds cannot be saved.",
+  选择回答并保存评论: "Select an answer and save comments",
+  "点击选择一个回答，再保存回答与评论":
+    "Click one answer, then save it with its comments",
+  保存回答与评论: "Save answer and comments",
+  "已选择 {0} 个回答": "{0} answer selected",
+  "选择已失效，请重新选择回答":
+    "The selection expired. Select the answer again.",
+  请先选择要收藏的知乎回答: "Select the Zhihu answer to save first.",
 };

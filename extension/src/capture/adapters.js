@@ -1,4 +1,5 @@
 import { videoSources } from "./video.js";
+import { zhihuIdentity, ZHIHU_COMMENTS } from "./zhihu.js";
 /** DOM adapters deliberately use the user's rendered session, never private APIs. */
 export function platform(host) {
   if (/(^|\.)(x\.com|twitter\.com)$/.test(host)) return "x";
@@ -296,19 +297,19 @@ function extractZhihu(el, doc) {
   const comment = el.matches(
     "[data-comment-id],.CommentItem,.NestComment--rootComment,.CommentItemV2",
   );
-  const read = (selector) =>
-    el.querySelector(selector)?.textContent.trim() || "";
-  const content = el.querySelector(
+  const owned = (node) => !comment || node.closest(ZHIHU_COMMENTS) === el;
+  const find = (selector) => [...el.querySelectorAll(selector)].find(owned);
+  const read = (selector) => find(selector)?.textContent.trim() || "";
+  const content = find(
     comment
-      ? '.CommentItem-content,.CommentRichText,.RichText,[class*="commentContent"]'
+      ? '.CommentItem-content,.CommentItemV2-content,.CommentContent,.CommentRichText,.RichText,[class*="commentContent"]'
       : ".RichContent-inner,.Post-RichTextContainer,.RichText",
   );
-  const avatar = el.querySelector(
+  const avatar = find(
     "img.AuthorInfo-avatar,.CommentItem-avatar img,.UserLink-avatar img,img.Avatar",
   );
-  const link = el.querySelector('meta[itemprop="url"],a[itemprop="url"]');
-  const raw = link?.getAttribute("content") || link?.getAttribute("href");
-  const url = comment ? null : raw ? new URL(raw, doc.URL).href : doc.URL;
+  const identity = comment ? null : zhihuIdentity(el, doc);
+  const url = identity?.url || null;
   const data = (() => {
     try {
       return JSON.parse(el.getAttribute("data-zop") || "{}");
@@ -317,6 +318,7 @@ function extractZhihu(el, doc) {
     }
   })();
   const media = [...(content?.querySelectorAll("img") || [])]
+    .filter(owned)
     .map((i) => ({
       type: "image",
       url:
@@ -344,9 +346,14 @@ function extractZhihu(el, doc) {
     id: comment
       ? el.getAttribute("data-comment-id") ||
         el.id ||
-        author + ":" + read(".CommentItem-content,.CommentRichText,.RichText")
-      : String(data.itemId || url),
+        author + ":" + (content?.textContent.trim() || "")
+      : identity?.id || String(data.itemId || url),
     isComment: comment,
+    parentId: comment
+      ? el.parentElement
+          ?.closest(ZHIHU_COMMENTS)
+          ?.getAttribute("data-comment-id") || null
+      : null,
     depth: comment ? 1 : 0,
     author,
     authorName: author,

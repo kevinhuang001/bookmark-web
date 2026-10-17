@@ -26,6 +26,7 @@ export function pageContext(value) {
       platform: site,
       isPost: !!match,
       postId: match?.[1] || null,
+      isQuestion: site === "zhihu" && /^\/question\/\d+\/?$/.test(u.pathname),
       url: u.href,
       host: u.hostname.replace(/^www\./, ""),
     };
