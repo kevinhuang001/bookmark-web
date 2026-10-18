@@ -105,9 +105,9 @@ try {
   await page.getByRole("button", { name: "创建标签", exact: true }).click();
   await caption("X 与 Reddit 各自建立标签，扩展保存时可直接指定 · 测试数据");
   await pause(1400);
-  await page.locator('.saved-tags [data-tag="设计灵感"]').click();
+  await page.locator('.collection-tabs [data-tag="设计灵感"]').click();
   await pause(1000);
-  await page.locator('.saved-tags [data-tag=""]').click();
+  await page.locator('.collection-tabs [data-tag=""]').click();
   await page.locator("#window-close").hover();
   await caption(
     "窗口按钮显示悬停符号与提示；顶部留有独立拖动区 · 原生拖动需实机验收",
@@ -129,7 +129,7 @@ try {
     videoItem.tags = ["Video lab"];
     await page.waitForTimeout(3300);
     await page.locator('button[data-view="x"]').click();
-    await page.locator('.saved-tags [data-tag="Video lab"]').click();
+    await page.locator('.collection-tabs [data-tag="Video lab"]').click();
     const video = page.locator("video").first();
     await video.waitFor();
     await video.evaluate((v) => v.play());
@@ -137,7 +137,7 @@ try {
       "实际从归档中播放视频；HLS 点播同时保存清单、音轨和分片 · 测试媒体",
     );
     await pause(2400);
-    await page.locator('.saved-tags [data-tag=""]').click();
+    await page.locator('.collection-tabs [data-tag=""]').click();
   }
   // The extension UI below uses the actual bundled popup and the test bridge.
   // Browser APIs are supplied by a preview harness; no capture is simulated.

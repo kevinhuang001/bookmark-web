@@ -401,7 +401,7 @@ try {
     await page.locator(".discussion-scope").textContent(),
     /已保存 2 条/,
   );
-  await page.getByRole("button", { name: "返回信息流", exact: true }).click();
+  await page.getByRole("button", { name: "返回收藏", exact: true }).click();
   pass("X has a saved-content timeline and structured thread detail");
   // Model a virtualized feed: only one DOM article exists at any point.
   await source.evaluate(() => {
@@ -455,7 +455,7 @@ try {
     /#39/,
   );
   await page.screenshot({ path: "artifacts/glassmark-reddit.png" });
-  await page.getByRole("button", { name: "返回信息流", exact: true }).click();
+  await page.getByRole("button", { name: "返回收藏", exact: true }).click();
   pass("Reddit has a saved-content feed and persistent comment tree");
   await source.evaluate(() => {
     const el = document.querySelector("shreddit-comment");
@@ -484,7 +484,7 @@ try {
   );
   await page.locator(".reddit-comment").last().scrollIntoViewIfNeeded();
   assert.equal(await page.locator(".reddit-comment").last().isVisible(), true);
-  await page.getByRole("button", { name: "返回信息流", exact: true }).click();
+  await page.getByRole("button", { name: "返回收藏", exact: true }).click();
   await call("/api/items/" + manyItem.id, { method: "DELETE" });
   pass(
     "discussion detail renders every archived comment, including more than 100 replies",
