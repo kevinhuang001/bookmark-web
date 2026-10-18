@@ -496,4 +496,9 @@ export default {
   "选择已失效，请重新选择回答":
     "The selection expired. Select the answer again.",
   请先选择要收藏的知乎回答: "Select the Zhihu answer to save first.",
+  "未找到所选回答的评论按钮，请展开回答后重试":
+    "The selected answer’s comment button was not found. Expand the answer and retry.",
+  "正在打开所选回答的评论…": "Opening comments for the selected answer…",
+  "所选回答的评论未能加载，请确认知乎已登录后重试":
+    "Comments for the selected answer did not load. Check that you are signed in to Zhihu and retry.",
 };

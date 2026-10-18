@@ -1,0 +1,31 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>自动加载评论 - 知乎</title></head><body>
+<main><h1 class="QuestionHeader-title">自动加载评论</h1>
+<section class="List-item"><div class="AnswerItem" data-zop='{"itemId":111}'><div class="RichContent-inner">其他回答</div></div><div class="ContentItem-actions"><button onclick="document.body.dataset.wrongClicks='1'">99 条评论</button></div></section>
+<section class="List-item" id="selected-card">
+<div class="AnswerItem" data-zop='{"itemId":222}'>
+<div class="AuthorInfo-name">选中作者</div><div class="RichContent-inner">选中回答的正文<img src="http://127.0.0.1:1420/fixtures/note-cover.svg"></div>
+<button hidden onclick="document.body.dataset.hiddenClicks='1'">隐藏的评论按钮</button>
+<div hidden><div class="CommentItemV2" data-comment-id="stale"><div class="CommentContent">隐藏的旧评论，不应保存</div></div></div>
+</div>
+<div class="ContentItem-actions"><button id="open-comments" aria-label="4 条评论"><svg class="Zi Zi--Comment" width="12" height="12"></svg><span>4</span></button></div>
+</section></main>
+<div class="Modal" role="dialog" id="foreign"><div class="CommentItemV2" data-comment-id="foreign"><div class="CommentContent">其他回答的弹窗</div></div></div>
+<script>
+document.querySelector('#open-comments').onclick = () => {
+ document.body.dataset.commentClicks = String(Number(document.body.dataset.commentClicks || 0) + 1);
+ document.querySelector('#foreign')?.remove();
+ const panel = document.createElement('div');panel.className='Modal';panel.setAttribute('role','dialog');panel.id='selected-comments';
+ panel.innerHTML='<div class="Comments-container">正在加载评论</div>';document.body.append(panel);
+ const params = new URL(location.href).searchParams;
+ if (params.has('blocked')) return;
+ setTimeout(() => {
+  if (params.has('empty')) { panel.querySelector('.Comments-container').textContent='暂无评论，欢迎发表你的看法'; return; }
+  panel.querySelector('.Comments-container').innerHTML='<div class="_CommentItem_root_test" data-id="c1"><a class="UserLink-link">读者甲</a><div class="CommentContent">异步加载的第一页评论</div><button id="reply">展开 1 条回复</button></div><button id="next" aria-label="下一页">›</button>';
+  panel.querySelector('#reply').onclick=(event)=>{ event.target.insertAdjacentHTML('beforebegin','<div class="_CommentItem_root_test" data-id="reply1"><div class="CommentContent">选中评论的嵌套回复</div></div>');event.target.remove(); };
+  let page=1;panel.querySelector('#next').onclick=()=>{
+   const item=panel.querySelector('._CommentItem_root_test');item.dataset.id='c'+(++page);item.innerHTML='<div class="CommentContent">第'+page+'页评论</div>';
+   if(page===3) panel.querySelector('#next').disabled=true;
+  };
+ }, Number(params.get('delay') || 3200));
+};
+</script></body></html>

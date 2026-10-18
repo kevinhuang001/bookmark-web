@@ -15,7 +15,9 @@ try {
   await source.route("https://www.zhihu.com/**", (route) =>
     route.fulfill({
       contentType: "text/html",
-      path: "tests/fixtures/zhihu-question.html",
+      path: route.request().url().includes("/question/124")
+        ? "tests/fixtures/zhihu-comments.html"
+        : "tests/fixtures/zhihu-question.html",
     }),
   );
   await source.route("http://127.0.0.1:1420/fixtures/**", (route) =>
@@ -36,7 +38,12 @@ try {
   await fetch(bridge.connection.base + "/api/preferences", {
     method: "PUT",
     headers: { ...headers, "Content-Type": "application/json" },
-    body: JSON.stringify({ ...preferences, language: "zh-CN" }),
+    body: JSON.stringify({
+      ...preferences,
+      language: "zh-CN",
+      maxPosts: 1,
+      autoLoadSeconds: 8,
+    }),
   });
   const list = async () =>
     (await fetch(bridge.connection.base + "/api/items", { headers })).json();
@@ -46,6 +53,9 @@ try {
       "https://www.zhihu.com/question/123/answer/222?utm_source=test#comments",
       false,
     ],
+    ["https://www.zhihu.com/question/124", false],
+    ["https://www.zhihu.com/question/124?blocked=1", false],
+    ["https://www.zhihu.com/question/124?empty=1&delay=50", false],
     ["https://www.zhihu.com/question/123", true],
   ]) {
     await source.goto(url);
@@ -90,10 +100,13 @@ try {
           await source.addScriptTag({ content: captureScript });
           return [];
         }
-        const capture = await source.evaluate(
-          (options) => globalThis.GlassmarkCapture.collect(options),
-          value.args[0],
-        );
+        const capture = await source.evaluate(async (options) => {
+          try {
+            return await globalThis.GlassmarkCapture.collect(options);
+          } catch (error) {
+            return { captureError: error.message };
+          }
+        }, value.args[0]);
         if (navigate)
           await source.evaluate(() =>
             history.pushState({}, "", "/question/999"),
@@ -138,7 +151,29 @@ try {
     const title = await progress.locator("#title").textContent();
     const detail = await progress.locator("#detail").textContent();
     const items = await list();
-    if (navigate) {
+    const modern = url.includes("/question/124");
+    if (modern) {
+      assert.equal(
+        await source.locator("body").getAttribute("data-comment-clicks"),
+        "1",
+      );
+      assert.equal(
+        await source.locator("body").getAttribute("data-hidden-clicks"),
+        null,
+      );
+      assert.equal(
+        await source.locator("body").getAttribute("data-wrong-clicks"),
+        null,
+      );
+    }
+    if (url.includes("blocked=1")) {
+      assert.equal(title, "收藏未完成");
+      assert.match(detail, /评论未能加载/);
+      assert.equal(items.length, before);
+      console.log(
+        "PASS inaccessible comments do not silently save an answer-only success",
+      );
+    } else if (navigate) {
       assert.equal(title, "收藏未完成");
       assert.match(detail, /捕获过程中来源页面已跳转/);
       assert.equal(items.length, before);
@@ -150,11 +185,16 @@ try {
       assert.equal(items.length, before + 1);
       const saved = items.find((item) => item.sourceUrl === url);
       assert.ok(saved);
-      assert.equal(saved.url, "https://www.zhihu.com/question/123/answer/222");
+      assert.equal(
+        saved.url,
+        modern
+          ? "https://www.zhihu.com/question/124/answer/222"
+          : "https://www.zhihu.com/question/123/answer/222",
+      );
       assert.equal(saved.posts[0].id, "222");
       assert.deepEqual(
         saved.posts.map((post) => post.id),
-        ["222", "c1", "reply1", "c2", "c3"],
+        url.includes("empty=1") ? ["222"] : ["222", "c1", "reply1", "c2", "c3"],
       );
       assert.ok(
         saved.resources.some((resource) => resource.status === "saved"),

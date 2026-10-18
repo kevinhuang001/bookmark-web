@@ -104,10 +104,22 @@ try {
   assert.equal(captured.length, 2);
   assert.equal(captured[0].posts.length, 3);
   assert.equal(captured[0].platform, "x");
+  await fetch(connection.base + "/api/preferences", {
+    method: "PUT",
+    headers: { ...auth, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      ...preferences,
+      language: "zh-CN",
+      maxPosts: 1,
+      autoLoadSeconds: 8,
+    }),
+  });
   await source.route("https://www.zhihu.com/**", (route) =>
     route.fulfill({
       contentType: "text/html",
-      path: "tests/fixtures/zhihu-question.html",
+      path: route.request().url().includes("/question/124")
+        ? "tests/fixtures/zhihu-comments.html"
+        : "tests/fixtures/zhihu-question.html",
     }),
   );
   // Exercise selection → background message → capture page → native persistence.
@@ -115,6 +127,7 @@ try {
   for (const url of [
     "https://www.zhihu.com/question/123?utm_source=test#top",
     "https://www.zhihu.com/question/123/answer/222?utm_source=test#comments",
+    "https://www.zhihu.com/question/124",
   ]) {
     await source.goto(url);
     await worker.evaluate(
@@ -161,7 +174,26 @@ try {
     ).json();
     const saved = archives.find((item) => item.sourceUrl === url);
     assert.ok(saved, "selected answer must reach native persistence");
-    assert.equal(saved.url, "https://www.zhihu.com/question/123/answer/222");
+    assert.equal(
+      saved.url,
+      url.includes("/question/124")
+        ? "https://www.zhihu.com/question/124/answer/222"
+        : "https://www.zhihu.com/question/123/answer/222",
+    );
+    if (url.includes("/question/124")) {
+      assert.equal(
+        await source.locator("body").getAttribute("data-comment-clicks"),
+        "1",
+      );
+      assert.equal(
+        await source.locator("body").getAttribute("data-hidden-clicks"),
+        null,
+      );
+      assert.equal(
+        await source.locator("body").getAttribute("data-wrong-clicks"),
+        null,
+      );
+    }
     assert.equal(saved.platform, "zhihu");
     assert.equal(saved.posts[0].id, "222");
     assert.deepEqual(

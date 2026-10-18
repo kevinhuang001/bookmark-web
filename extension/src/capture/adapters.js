@@ -1,5 +1,5 @@
 import { videoSources } from "./video.js";
-import { zhihuIdentity, ZHIHU_COMMENTS } from "./zhihu.js";
+import { zhihuIdentity, ZHIHU_COMMENTS, ZHIHU_COMMENT_BODY } from "./zhihu.js";
 /** DOM adapters deliberately use the user's rendered session, never private APIs. */
 export function platform(host) {
   if (/(^|\.)(x\.com|twitter\.com)$/.test(host)) return "x";
@@ -294,15 +294,18 @@ function extractNote(el, doc) {
 
 /** Scope every field to this answer/article; recommendations are never a root. */
 function extractZhihu(el, doc) {
-  const comment = el.matches(
-    "[data-comment-id],.CommentItem,.NestComment--rootComment,.CommentItemV2",
-  );
-  const owned = (node) => !comment || node.closest(ZHIHU_COMMENTS) === el;
-  const find = (selector) => [...el.querySelectorAll(selector)].find(owned);
+  const comment = el.matches(ZHIHU_COMMENTS + "," + ZHIHU_COMMENT_BODY);
+  const owned = (node) =>
+    !comment ||
+    node === el ||
+    node.closest(ZHIHU_COMMENTS) === el ||
+    (el.matches(ZHIHU_COMMENT_BODY) && el.contains(node));
+  const find = (selector) =>
+    el.matches(selector) ? el : [...el.querySelectorAll(selector)].find(owned);
   const read = (selector) => find(selector)?.textContent.trim() || "";
   const content = find(
     comment
-      ? '.CommentItem-content,.CommentItemV2-content,.CommentContent,.CommentRichText,.RichText,[class*="commentContent"]'
+      ? ZHIHU_COMMENT_BODY + ",.RichText"
       : ".RichContent-inner,.Post-RichTextContainer,.RichText",
   );
   const avatar = find(
@@ -345,6 +348,10 @@ function extractZhihu(el, doc) {
   return {
     id: comment
       ? el.getAttribute("data-comment-id") ||
+        el.getAttribute("data-id") ||
+        (el.matches(ZHIHU_COMMENT_BODY)
+          ? el.parentElement?.getAttribute("data-id")
+          : "") ||
         el.id ||
         author + ":" + (content?.textContent.trim() || "")
       : identity?.id || String(data.itemId || url),
@@ -352,7 +359,9 @@ function extractZhihu(el, doc) {
     parentId: comment
       ? el.parentElement
           ?.closest(ZHIHU_COMMENTS)
-          ?.getAttribute("data-comment-id") || null
+          ?.getAttribute("data-comment-id") ||
+        el.parentElement?.closest(ZHIHU_COMMENTS)?.getAttribute("data-id") ||
+        null
       : null,
     depth: comment ? 1 : 0,
     author,

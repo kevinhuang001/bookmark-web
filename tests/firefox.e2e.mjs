@@ -17,6 +17,56 @@ try {
   assert.match(capture.content, /FIELDNOTES/);
   assert.equal(capture.version, 2);
   assert.doesNotMatch(capture.content, /<script/);
+  await page.route("https://www.zhihu.com/**", (route) =>
+    route.fulfill({
+      contentType: "text/html",
+      path: "tests/fixtures/zhihu-comments.html",
+    }),
+  );
+  await page.goto("https://www.zhihu.com/question/124");
+  await page.evaluate(() => {
+    globalThis.__glassmarkLanguage = "zh-CN";
+    globalThis.__glassmarkPickerMode = "zhihu-answer";
+    globalThis.browser = { runtime: { sendMessage: async () => {} } };
+  });
+  await page.addScriptTag({
+    content: await readFile("dist/extension-firefox/picker.js", "utf8"),
+  });
+  await page
+    .locator(".AnswerItem")
+    .nth(1)
+    .locator(".RichContent-inner")
+    .click();
+  await page
+    .getByRole("button", { name: "保存回答与评论", exact: true })
+    .click();
+  await page.addScriptTag({
+    content: await readFile("dist/extension-firefox/content.js", "utf8"),
+  });
+  const zhihu = await page.evaluate(() =>
+    GlassmarkCapture.collect({
+      mode: "thread",
+      language: "zh-CN",
+      maxPosts: 1,
+      autoLoadSeconds: 8,
+    }),
+  );
+  assert.deepEqual(
+    zhihu.posts.map((post) => post.id),
+    ["222", "c1", "reply1", "c2", "c3"],
+  );
+  assert.equal(
+    await page.locator("body").getAttribute("data-comment-clicks"),
+    "1",
+  );
+  assert.equal(
+    await page.locator("body").getAttribute("data-hidden-clicks"),
+    null,
+  );
+  assert.equal(
+    await page.locator("body").getAttribute("data-wrong-clicks"),
+    null,
+  );
   const manifest = JSON.parse(
     await readFile("dist/extension-firefox/manifest.json", "utf8"),
   );
@@ -28,6 +78,7 @@ try {
       {
         browser: await browser.version(),
         collector: true,
+        zhihuAutomaticComments: true,
         manifest: true,
         installedAddon: false,
       },

@@ -8,7 +8,7 @@ import { serializeElement, contentDocument, escapeHtml } from "./serialize.js";
 import {
   zhihuRoot,
   zhihuIdentity,
-  ZHIHU_COMMENTS,
+  zhihuCommentElements,
   loadZhihuComments,
 } from "./zhihu.js";
 export async function collect({
@@ -53,7 +53,11 @@ export async function collect({
     mode = "thread";
   }
   const limit =
-    kind === "reddit" ? 100000 : kind === "x" ? maxPosts + 1 : maxPosts;
+    kind === "reddit" || kind === "zhihu"
+      ? 100000
+      : kind === "x"
+        ? maxPosts + 1
+        : maxPosts;
   let rootId = null;
   const candidates = () => {
     if (kind === "x" && pageContext(location.href).postId !== context.postId) {
@@ -150,7 +154,7 @@ export async function collect({
       const root = extractPost(primary, kind);
       if (!root.text && !root.media.length) return [];
       rootId = root.id;
-      elements = [primary, ...primary.querySelectorAll(ZHIHU_COMMENTS)];
+      elements = [primary, ...zhihuCommentElements(primary)];
     }
     return elements.filter((el) => !isAdvertisement(el));
   };
@@ -222,6 +226,9 @@ export async function collect({
       if (kind === "zhihu")
         await loadZhihuComments(selectedZhihu, {
           seconds: autoLoadSeconds,
+          progress: (message) => {
+            control.querySelector("span").textContent = message;
+          },
           stop: () => finish || posts.size >= limit,
           collect: (comments) => {
             if (
