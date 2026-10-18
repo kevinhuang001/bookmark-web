@@ -299,12 +299,15 @@
           Number(document.body.dataset.commentClicks || 0) + 1,
         );
         if (params.has("blocked")) return;
-        setTimeout(() => {
-          inline.hidden = false;
-          all.hidden = false;
-          primary.textContent = "收起评论";
-          primary.setAttribute("aria-expanded", "true");
-        }, 250);
+        setTimeout(
+          () => {
+            inline.hidden = false;
+            all.hidden = false;
+            primary.textContent = "收起评论";
+            primary.setAttribute("aria-expanded", "true");
+          },
+          Number(params.get("delay") || 250),
+        );
       };
 
       const rowTemplate = document.querySelector("[data-id=c1]").outerHTML;

@@ -10,11 +10,13 @@ import { pageContext } from "../context.js";
 hydrateIcons();
 translateDOM();
 const $ = (id) => document.getElementById(id);
+$("extension-version").textContent = api.runtime.getManifest?.().version || "";
 let currentTab,
   context,
   threadPage,
   busy = false,
-  captureLanguage = "system";
+  captureLanguage = "system",
+  captureSeconds = 20;
 const esc = (s) =>
   String(s || "").replace(
     /[&<>"']/g,
@@ -37,6 +39,7 @@ async function init() {
       options.preferences?.resolvedLanguage ||
       options.preferences?.language ||
       "system";
+    captureSeconds = options.preferences?.autoLoadSeconds || 20;
     setLanguage(captureLanguage);
   } else {
     const stored = await api.storage.local.get("uiLanguage");
@@ -215,13 +218,15 @@ for (const button of document.querySelectorAll("[data-mode]"))
       ) {
         await api.scripting.executeScript({
           target: { tabId: tab.id },
-          func: (language, pickerMode) => {
+          func: (language, pickerMode, seconds) => {
             globalThis.__glassmarkLanguage = language;
             globalThis.__glassmarkPickerMode = pickerMode;
+            globalThis.__glassmarkZhihuOpenSeconds = seconds;
           },
           args: [
             captureLanguage,
             mode === "thread" ? "zhihu-answer" : "selection",
+            captureSeconds,
           ],
         });
         await api.scripting.executeScript({

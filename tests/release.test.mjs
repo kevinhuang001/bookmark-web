@@ -93,7 +93,12 @@ test("release publishes installable assets and removes old JSON reports with mat
     for (const name of ["e2e", "extension", "firefox"])
       await writeFile(
         path.join(root, "release-input", name + "-report.json"),
-        JSON.stringify({ backend: "native-rust" }),
+        JSON.stringify({
+          backend: "native-rust",
+          installedAddon: true,
+          installedAddonBackend: "native-rust",
+          addonVersion: "0.7.0",
+        }),
       );
     process.chdir(root);
     const AsyncFunction = Object.getPrototypeOf(

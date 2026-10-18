@@ -1,12 +1,14 @@
 import { t as tr, setLanguage } from "../../app/i18n.js";
-import { zhihuIdentity } from "./capture/zhihu.js";
+import { zhihuIdentity, loadZhihuComments } from "./capture/zhihu.js";
 (() => {
   setLanguage(globalThis.__glassmarkLanguage || "system");
   globalThis.__glassmarkPickerCleanup?.();
   const answerMode = globalThis.__glassmarkPickerMode === "zhihu-answer";
   delete globalThis.__glassmarkZhihuAnswer;
   const selected = [];
-  let hovered;
+  let hovered,
+    opening = false,
+    canceled = false;
   const overlay = document.createElement("div");
   overlay.setAttribute("data-glassmark-ui", "");
   overlay.style.cssText =
@@ -62,7 +64,11 @@ import { zhihuIdentity } from "./capture/zhihu.js";
   };
   const key = (e) => {
     if (e.key === "Escape") cleanup();
-    else if (!answerMode && ["ArrowUp", "ArrowDown"].includes(e.key)) {
+    else if (
+      !opening &&
+      !answerMode &&
+      ["ArrowUp", "ArrowDown"].includes(e.key)
+    ) {
       e.preventDefault();
       hovered =
         e.key === "ArrowUp"
@@ -71,27 +77,64 @@ import { zhihuIdentity } from "./capture/zhihu.js";
       draw();
     }
   };
-  function cleanup() {
+  function releaseSelection() {
     overlay.remove();
-    toolbar.remove();
     document.removeEventListener("mousemove", move, true);
     document.removeEventListener("click", click, true);
-    document.removeEventListener("keydown", key, true);
     window.removeEventListener("scroll", draw, true);
+  }
+  function cleanup() {
+    canceled = true;
+    releaseSelection();
+    toolbar.remove();
+    document.removeEventListener("keydown", key, true);
     delete globalThis.__glassmarkPickerCleanup;
   }
-  toolbar.addEventListener("click", (e) => {
+  toolbar.addEventListener("click", async (e) => {
     const action = e.target.dataset.action;
     if (action === "cancel") cleanup();
-    if (action === "done" && selected.length) {
+    if (action === "done" && selected.length && !opening) {
       if (answerMode) {
         const identity = zhihuIdentity(selected[0]);
         if (!selected[0].isConnected || !identity) return;
-        globalThis.__glassmarkZhihuAnswer = {
+        const selection = (globalThis.__glassmarkZhihuAnswer = {
           element: selected[0],
           id: identity.id,
           pageUrl: location.href,
-        };
+        });
+        // Release the picker's capture listener before dispatching the site's click.
+        // Keep the source tab and cancel control in place until comments open.
+        releaseSelection();
+        opening = true;
+        globalThis.__glassmarkCaptureCanceled = false;
+        const done = toolbar.querySelector("[data-action=done]");
+        done.disabled = true;
+        const status = toolbar.querySelector("span");
+        status.setAttribute("role", "status");
+        status.textContent = tr("正在打开所选回答的评论…");
+        try {
+          selection.comments = await loadZhihuComments(selection.element, {
+            seconds: globalThis.__glassmarkZhihuOpenSeconds || 20,
+            openOnly: true,
+            stop: () => canceled,
+            progress: (message) => {
+              status.textContent = message;
+            },
+          });
+          if (canceled) return;
+          if (
+            location.href !== selection.pageUrl ||
+            zhihuIdentity(selection.element)?.id !== selection.id
+          )
+            throw new Error(tr("选择已失效，请重新选择回答"));
+        } catch (error) {
+          if (!canceled) {
+            status.textContent = error.message;
+            done.disabled = false;
+          }
+          opening = false;
+          return;
+        }
       } else globalThis.__glassmarkSelection = selected;
       cleanup();
       (globalThis.browser || chrome).runtime.sendMessage({

@@ -44,15 +44,18 @@ jobs:
             if (reports.length !== 3) throw new Error('All three browser reports must be present');
             const report = JSON.parse(fs.readFileSync(reports.find(f=>f.endsWith('e2e-report.json'))));
             if (report.backend !== 'native-rust') throw new Error('Release requires production Rust backend validation');
+            const firefoxReport = JSON.parse(fs.readFileSync(reports.find(f=>f.endsWith('firefox-report.json'))));
+            if (!firefoxReport.installedAddon || firefoxReport.installedAddonBackend !== 'native-rust' || firefoxReport.addonVersion !== version) throw new Error('Release requires the actual Firefox add-on and native persistence at this version');
             const existing = await github.rest.repos.getReleaseByTag({owner,repo,tag}).then(r=>r.data).catch(e=>{if(e.status===404)return null;throw e;});
             if (existing && !existing.draft) { core.notice(`${tag} is already published; bump package version for another release.`); return; }
             const notes = [
               'Tauri desktop archive with Chromium and Firefox capture extensions.',
               '',
-              '- Automatically click the selected Zhihu answer’s comment button whenever it is closed, even if hot-comment previews are already visible.',
-              '- Wait for the action to expand or the comment panel to change before collecting full comments and replies.',
-              '- A blocked comment action now reports failure instead of silently saving only the preview comments.',
-              '- Regressions cover initially closed, preview-only and already-open comments through native persistence, the installed Chromium extension and Firefox collector.',
+              '- Confirming a selected Zhihu answer now opens its comments on the source page before any capture tab starts.',
+              '- Keep the source-page opening status, retry and cancellation available; a failed opening cannot create an answer-only archive.',
+              '- Hand the opened comment panel to the collector so it is not toggled closed or clicked twice.',
+              '- Validate the actual Firefox add-on ZIP, including closed comments, visible previews, already-open comments, blocked opening and cancellation, with native persistence in CI.',
+              '- Show the installed extension version in the popup.',
               '',
               'Downloads: macOS universal (Apple Silicon + Intel), Windows x64, Linux x64 (DEB, RPM, Arch package and AppImage); Chromium and Firefox extension ZIPs.',
               'The macOS app is ad-hoc signed; Windows installers and Firefox ZIP are not store-signed. Firefox ZIP is for temporary loading via about:debugging. These are GitHub Releases, not browser-store listings.',

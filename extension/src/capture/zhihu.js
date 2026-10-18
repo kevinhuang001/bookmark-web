@@ -186,11 +186,24 @@ function loadControls(panels) {
 /** Open the selected answer's visible action, then wait for its actual comment UI. */
 export async function loadZhihuComments(
   root,
-  { seconds, stop, collect, progress = () => {}, doc = document },
+  {
+    seconds,
+    stop,
+    collect = () => {},
+    progress = () => {},
+    doc = document,
+    openOnly = false,
+  },
 ) {
   const deadline = performance.now() + Math.max(1, Number(seconds) || 1) * 1000;
   const owner = answerContainer(root);
-  const panels = new Set([owner]);
+  const selection = globalThis.__glassmarkZhihuAnswer;
+  const prepared =
+    selection?.element === root && selection.pageUrl === doc.URL
+      ? selection.comments
+      : null;
+  const panels = new Set([owner, ...(prepared?.panels || []).filter(visible)]);
+  const result = (empty = false) => ({ panels: [...panels], empty });
   const check = () => {
     if (globalThis.__glassmarkCaptureCanceled)
       throw new Error(tr("已取消收藏"));
@@ -258,6 +271,8 @@ export async function loadZhihuComments(
   }
   let comments = harvest();
   let button = commentButton(owner, root);
+  const preparedOpen = !!prepared && panels.size > 1;
+  if (preparedOpen && prepared.empty) return result(true);
   while (
     !comments.length &&
     !button &&
@@ -270,7 +285,11 @@ export async function loadZhihuComments(
   }
   // A visible hot-comment preview does not mean the comment action is open.
   // Decide from the selected answer's action, rather than the preview count.
-  if ((!comments.length || (button && !commentsExpanded(button))) && !stop()) {
+  if (
+    (!comments.length ||
+      (button && !commentsExpanded(button) && !preparedOpen)) &&
+    !stop()
+  ) {
     if (!button)
       throw new Error(tr("未找到所选回答的评论按钮，请展开回答后重试"));
     progress(tr("正在打开所选回答的评论…"));
@@ -299,7 +318,7 @@ export async function loadZhihuComments(
       comments = harvest();
       if (opened && comments.length) break;
       if ([...panels].some((panel) => visible(panel) && emptyPanel(panel)))
-        return;
+        return result(true);
       if (
         noComments &&
         [...doc.querySelectorAll(PANELS)].some(
@@ -308,12 +327,21 @@ export async function loadZhihuComments(
             !before.get(panel)?.visible &&
             panel.querySelector("textarea,[contenteditable],.InputLike"),
         )
-      )
-        return;
+      ) {
+        for (const panel of doc.querySelectorAll(PANELS))
+          if (
+            visible(panel) &&
+            !before.get(panel)?.visible &&
+            panel.querySelector("textarea,[contenteditable],.InputLike")
+          )
+            panels.add(panel);
+        return result(true);
+      }
     }
     if ((!opened || !comments.length) && !stop())
       throw new Error(tr("所选回答的评论未能加载，请确认知乎已登录后重试"));
   }
+  if (openOnly) return result();
   const clicked = new WeakSet();
   while (!stop() && performance.now() < deadline) {
     check();
@@ -377,4 +405,5 @@ export async function loadZhihuComments(
       clicked.delete(next);
   }
   harvest();
+  return result();
 }

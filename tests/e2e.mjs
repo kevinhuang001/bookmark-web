@@ -1436,6 +1436,9 @@ try {
   await source
     .getByRole("button", { name: "保存回答与评论", exact: true })
     .click();
+  await source.waitForFunction(
+    () => globalThis.pickerMessage?.type === "selection-ready",
+  );
   assert.deepEqual(await source.evaluate(() => globalThis.pickerMessage), {
     type: "selection-ready",
     mode: "thread",

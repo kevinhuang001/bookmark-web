@@ -42,6 +42,7 @@ try {
   await page
     .getByRole("button", { name: "保存回答与评论", exact: true })
     .click();
+  await page.locator("[data-action=done]").waitFor({ state: "hidden" });
   await page.addScriptTag({
     content: await readFile("dist/extension-firefox/content.js", "utf8"),
   });

@@ -68,7 +68,19 @@ try {
     await source.evaluate(() => {
       globalThis.__glassmarkLanguage = "zh-CN";
       globalThis.__glassmarkPickerMode = "zhihu-answer";
-      globalThis.chrome = { runtime: { sendMessage: async () => {} } };
+      globalThis.__glassmarkZhihuOpenSeconds = 8;
+      globalThis.__pickerReady = false;
+      globalThis.chrome = {
+        runtime: {
+          sendMessage: async () => {
+            globalThis.__pickerAtReady = {
+              clicks: document.body.dataset.commentClicks,
+              panels: globalThis.__glassmarkZhihuAnswer.comments?.panels.length,
+            };
+            globalThis.__pickerReady = true;
+          },
+        },
+      };
     });
     await source.addScriptTag({ content: pickerScript });
     await source
@@ -79,6 +91,43 @@ try {
     await source
       .getByRole("button", { name: "保存回答与评论", exact: true })
       .click();
+    if (url.includes("blocked=1")) {
+      await source.waitForFunction(() =>
+        document
+          .querySelector("[data-glassmark-ui] [role=status]")
+          ?.textContent.includes("评论未能加载"),
+      );
+      assert.equal(
+        await source.evaluate(() => globalThis.__pickerReady),
+        false,
+        "a failed automatic opening must not start capture",
+      );
+      assert.equal(
+        await source.locator("body").getAttribute("data-comment-clicks"),
+        "1",
+      );
+      console.log(
+        "PASS failed automatic comment opening stays on source page without starting capture",
+      );
+      continue;
+    }
+    await source.waitForFunction(() => globalThis.__pickerReady === true);
+    if (
+      url.includes("/question/124") ||
+      (url.includes("/question/125") && !url.includes("opened=1"))
+    ) {
+      const ready = await source.evaluate(() => globalThis.__pickerAtReady);
+      assert.equal(
+        ready.clicks,
+        "1",
+        "the comment click must happen BEFORE selection-ready starts capture",
+      );
+      assert.ok(
+        ready.panels > 1,
+        "the opened panel must be handed to the collector",
+      );
+    }
+
     const before = (await list()).length;
     const storage = {
       connection: { token: bridge.connection.token },
