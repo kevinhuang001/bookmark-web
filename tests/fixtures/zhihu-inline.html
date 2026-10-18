@@ -295,6 +295,19 @@
       primary.textContent = opened ? "收起评论" : "162 条评论";
       primary.setAttribute("aria-expanded", String(opened));
       const preview = inline.querySelector(".preview-list");
+      function stagedLoading() {
+        // First body, remaining bodies and the all-comments control render separately.
+        preview.querySelector('[data-id="c2"]').hidden = true;
+        all.hidden = true;
+        document.body.dataset.firstBodyAt = String(performance.now());
+        setTimeout(() => {
+          preview.querySelector('[data-id="c2"]').hidden = false;
+        }, 1800);
+        setTimeout(() => {
+          all.hidden = false;
+          document.body.dataset.controlsReady = "1";
+        }, 2500);
+      }
       function finishLoading() {
         inline.hidden = false;
         inline.removeAttribute("aria-busy");
@@ -339,6 +352,14 @@
             all.hidden = false;
             primary.textContent = "收起评论";
             primary.setAttribute("aria-expanded", "true");
+            if (params.has("staged")) stagedLoading();
+            if (params.has("unstable")) {
+              let revision = 0;
+              setInterval(() => {
+                preview.querySelector(".CommentContent").textContent =
+                  "尚在更新的评论 " + ++revision;
+              }, 600);
+            }
           },
           Number(params.get("delay") || 250),
         );

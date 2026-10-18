@@ -16,7 +16,7 @@ let currentTab,
   threadPage,
   busy = false,
   captureLanguage = "system",
-  captureSeconds = 20;
+  captureSeconds = 60;
 const esc = (s) =>
   String(s || "").replace(
     /[&<>"']/g,
@@ -39,7 +39,7 @@ async function init() {
       options.preferences?.resolvedLanguage ||
       options.preferences?.language ||
       "system";
-    captureSeconds = options.preferences?.autoLoadSeconds || 20;
+    captureSeconds = Math.max(60, options.preferences?.autoLoadSeconds || 60);
     setLanguage(captureLanguage);
   } else {
     const stored = await api.storage.local.get("uiLanguage");

@@ -114,7 +114,7 @@ import { zhihuIdentity, loadZhihuComments } from "./capture/zhihu.js";
         status.textContent = tr("正在打开所选回答的评论…");
         try {
           selection.comments = await loadZhihuComments(selection.element, {
-            seconds: globalThis.__glassmarkZhihuOpenSeconds || 20,
+            seconds: globalThis.__glassmarkZhihuOpenSeconds || 60,
             openOnly: true,
             stop: () => canceled,
             progress: (message) => {

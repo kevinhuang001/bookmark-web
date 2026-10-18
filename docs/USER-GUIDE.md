@@ -4,7 +4,7 @@
 
 Use the extension on an HTTP or HTTPS page. Normal pages offer whole-page and multi-region capture. Post detail pages offer structured capture for X, Reddit, Xiaohongshu and Zhihu. Pick a webpage folder or the platform's tags before saving.
 
-X automatically loads replies within the configured time and post limits. You can save loaded content immediately or cancel from the source-page control. Reddit, Xiaohongshu and Zhihu capture comments already loaded in the page; expand the comments you want before saving.
+X automatically loads replies within the configured time and post limits. You can save loaded content immediately or cancel from the source-page control. Reddit and Xiaohongshu capture comments already loaded in the page; expand the comments you want before saving. Zhihu opens the selected answer's comments automatically and waits on the source page before starting capture.
 
 Webpages live in nested folders. Social sources have independent tag collections and search. Global search covers all sources, including sources hidden from the sidebar. Repeated captures create independent saves. Delete a save from its toolbar or detail menu.
 
@@ -39,7 +39,7 @@ Content, folders, tags and deletions sync. UI preferences remain local. Remote c
 
 ## Distribution
 
-GitHub Releases includes a universal macOS DMG, Windows x64 EXE/MSI, Linux x64 AppImage/DEB, Chromium and Firefox extension ZIPs, test reports and checksums. The macOS app is ad-hoc signed. Windows installers and Firefox ZIPs are not store-signed. Firefox temporary add-ons must be reloaded after a browser restart.
+GitHub Releases includes a universal macOS DMG, Windows x64 EXE/MSI, Linux x64 AppImage/DEB/RPM/Arch packages, Chromium and Firefox extension ZIPs and checksums. Browser test reports are available in CI artifacts. The macOS app is ad-hoc signed. Windows installers and Firefox ZIPs are not store-signed. Firefox temporary add-ons must be reloaded after a browser restart.
 
 ## Getting help
 
@@ -47,7 +47,7 @@ Include your app version, operating system, browser and the relevant resource re
 
 ## Zhihu and keyboard navigation
 
-On a Zhihu question or answer page, click “Select an answer and save comments” in the extension, click the answer you want, then confirm “Save answer and comments”. The picker highlights one whole answer at a time; Escape cancels. Glassmark opens that answer’s comments and follows available reply expansion, pagination and comment-panel scrolling within the configured loading time. The X reply-count limit does not apply to Zhihu. Hidden cached comments are excluded, and a failure to open or load the selected answer’s comments is reported as an incomplete capture. The saved URL points to the selected answer, even when you started on a question page. Other answers and unrelated comment dialogs are excluded. Hidden, restricted or still-unloaded comments may be missing; see the capture report. `zhuanlan.zhihu.com/p/…` articles continue to save directly. The Zhihu collection supports search, tags and sorting, with a full-text reader for saved content. Existing sidebar preferences are preserved; enable Zhihu in Settings → General if it is hidden.
+On a Zhihu question or answer page, click “Select an answer and save comments” in the extension, click the answer you want, then confirm “Save answer and comments”. The picker highlights one whole answer at a time; Escape cancels. The opening timeout is at least 60 seconds (or the configured automatic loading time if longer). After comment bodies appear, Glassmark stays on the source for at least 3 seconds and waits until bodies, media, loading indicators and expansion controls have stayed stable for 1.5 seconds. A timeout or cancellation during this wait does not open the save page. Glassmark opens that answer’s comments and follows available reply expansion, pagination and comment-panel scrolling within the configured loading time. The X reply-count limit does not apply to Zhihu. Hidden cached comments are excluded, and a failure to open or load the selected answer’s comments is reported as an incomplete capture. The saved URL points to the selected answer, even when you started on a question page. Other answers and unrelated comment dialogs are excluded. Hidden, restricted or still-unloaded comments may be missing; see the capture report. `zhuanlan.zhihu.com/p/…` articles continue to save directly. The Zhihu collection supports search, tags and sorting, with a full-text reader for saved content. Existing sidebar preferences are preserved; enable Zhihu in Settings → General if it is hidden.
 
 Press ⌘/Ctrl + K for global search. Press Escape outside a text input or dialog to return from a discussion to its collection. Filtered empty states offer a reset, and the interface respects reduced-motion preferences.
 

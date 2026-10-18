@@ -59,6 +59,8 @@ try {
     ["https://www.zhihu.com/question/125", false],
     ["https://www.zhihu.com/question/125?preview=1", false],
     ["https://www.zhihu.com/question/125?opened=1", false],
+    ["https://www.zhihu.com/question/125?staged=1", false],
+    ["https://www.zhihu.com/question/125?unstable=1", false],
     ["https://www.zhihu.com/question/125?adsonly=1", false],
     [
       "https://www.zhihu.com/question/125?skeleton=1&delay=1200&pageDelay=800",
@@ -88,6 +90,9 @@ try {
               loaded: document.body.dataset.commentsLoaded,
               clicks: document.body.dataset.commentClicks,
               panels: globalThis.__glassmarkZhihuAnswer.comments?.panels.length,
+              controlsReady: document.body.dataset.controlsReady,
+              sinceFirstBody:
+                performance.now() - Number(document.body.dataset.firstBodyAt),
             };
             globalThis.__pickerReady = true;
           },
@@ -103,11 +108,11 @@ try {
     await source
       .getByRole("button", { name: "保存回答与评论", exact: true })
       .click();
-    if (url.includes("blocked=1")) {
+    if (/blocked=1|unstable=1/.test(url)) {
       await source.waitForFunction(() =>
         document
           .querySelector("[data-glassmark-ui] [role=status]")
-          ?.textContent.includes("评论未能加载"),
+          ?.textContent.match(/评论未能加载|仍在加载/),
       );
       assert.equal(
         await source.evaluate(() => globalThis.__pickerReady),
@@ -124,6 +129,18 @@ try {
       continue;
     }
     await source.waitForFunction(() => globalThis.__pickerReady === true);
+    if (url.includes("staged=1")) {
+      const ready = await source.evaluate(() => globalThis.__pickerAtReady);
+      assert.equal(
+        ready.controlsReady,
+        "1",
+        "late comment controls must render before capture starts",
+      );
+      assert.ok(
+        ready.sinceFirstBody >= 3900,
+        "wait at least three seconds after a body and 1.5 seconds after the last control change",
+      );
+    }
     if (/skeleton=1|staleempty=1/.test(url)) {
       assert.equal(
         await source.evaluate(() => globalThis.__pickerAtReady.loaded),

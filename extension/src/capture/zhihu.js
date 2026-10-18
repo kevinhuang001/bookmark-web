@@ -190,7 +190,18 @@ const fingerprint = (panel) =>
           node.getAttribute("data-id") ||
           "") +
         ":" +
-        node.textContent,
+        node.textContent +
+        [...node.querySelectorAll("img,video")]
+          .map((media) =>
+            [
+              media.currentSrc,
+              media.src,
+              media.poster,
+              media.getAttribute("data-original"),
+              media.getAttribute("data-actualsrc"),
+            ].join("|"),
+          )
+          .join("\n"),
     )
     .join("\n");
 
@@ -301,6 +312,48 @@ export async function loadZhihuComments(
     }
     return changedPanel;
   };
+  // A first rendered comment is only the beginning of an asynchronous render.
+  // Keep the source active while bodies, load controls or loading indicators change.
+  const settle = async (minimum = 0) => {
+    const before = snapshot();
+    let firstReady = 0,
+      unchangedSince = performance.now(),
+      previous = "";
+    while (!stop() && performance.now() < deadline) {
+      discoverPanels(before);
+      comments = harvest();
+      const empty = !comments.length && [...panels].some(emptyPanel);
+      const loading = [...panels].some((panel) =>
+        [
+          panel,
+          ...panel.querySelectorAll(
+            '[aria-busy="true"],[role="progressbar"],.Comments-loading,.CommentsV2-loading',
+          ),
+        ].some(
+          (node) =>
+            node.matches(
+              '[aria-busy="true"],[role="progressbar"],.Comments-loading,.CommentsV2-loading',
+            ) && visible(node),
+        ),
+      );
+      const state =
+        [...panels].filter(visible).map(fingerprint).join("\n") +
+        loadControls(panels).map(label).join("\n") +
+        String(empty) +
+        String(loading);
+      const now = performance.now();
+      if (state !== previous) unchangedSince = now;
+      previous = state;
+      if ((!comments.length && !empty) || loading) firstReady = 0;
+      else {
+        firstReady ||= now;
+        if (now - firstReady >= minimum && now - unchangedSince >= 1500)
+          return { ready: true, empty };
+      }
+      await wait();
+    }
+    return { ready: false, empty: false };
+  };
   const expand = [
     ...root.querySelectorAll(
       ".ContentItem-expandButton,.RichContent-expandButton",
@@ -313,8 +366,8 @@ export async function loadZhihuComments(
   let comments = harvest();
   let button = commentButton(owner, root);
   const preparedOpen = !!prepared && panels.size > 1;
-  if (preparedOpen && prepared.empty && [...panels].some(emptyPanel))
-    return result(true);
+  const preparedEmpty =
+    preparedOpen && prepared.empty && [...panels].some(emptyPanel);
   while (
     !comments.length &&
     !button &&
@@ -328,7 +381,7 @@ export async function loadZhihuComments(
   // A visible hot-comment preview does not mean the comment action is open.
   // Decide from the selected answer's action, rather than the preview count.
   if (
-    (!comments.length ||
+    ((!comments.length && !preparedEmpty) ||
       (button && !commentsExpanded(button) && !preparedOpen)) &&
     !stop()
   ) {
@@ -355,12 +408,22 @@ export async function loadZhihuComments(
       comments = harvest();
       if (opened && comments.length) break;
       if ([...panels].some((panel) => visible(panel) && emptyPanel(panel)))
-        return result(true);
+        break;
     }
-    if ((!opened || !comments.length) && !stop())
+    if (
+      (!opened || (!comments.length && ![...panels].some(emptyPanel))) &&
+      !stop()
+    )
       throw new Error(tr("所选回答的评论未能加载，请确认知乎已登录后重试"));
   }
-  if (openOnly) return result();
+  progress(tr("正在等待评论区加载稳定，请勿关闭来源标签页…"));
+  const settled = await settle(openOnly ? 3000 : 0);
+  if (openOnly) {
+    if (!settled.ready && !stop())
+      throw new Error(tr("评论区仍在加载，请稍后重试"));
+    return result(settled.empty);
+  }
+  if (settled.empty) return result(true);
   const clicked = new WeakSet();
   while (!stop() && performance.now() < deadline) {
     check();
@@ -418,6 +481,7 @@ export async function loadZhihuComments(
       }
     }
     if (!changed) break;
+    await settle();
     if (
       next &&
       labels(next).some((text) => /^(下一页|next(?: page)?)$/i.test(text))

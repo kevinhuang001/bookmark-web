@@ -82,7 +82,7 @@ try {
     body: JSON.stringify({
       ...preferences,
       language: "zh-CN",
-      autoLoadSeconds: 5,
+      autoLoadSeconds: 8,
     }),
   });
   const items = async () =>
@@ -172,12 +172,15 @@ try {
     "",
     "?preview=1",
     "?opened=1",
+    "?staged=1",
+    "?unstable=1",
     "?skeleton=1&delay=1200&pageDelay=800",
     "?opened=1&skeleton=1&delay=1200",
     "?staleempty=1&delay=1200",
     "?skeleton=1&blocked=1",
     "?preview=1&blocked=1",
     "?delay=2000&cancel=1",
+    "?staged=1&cancel=1",
   ]) {
     await command("/window", { handle: control });
     const before = (await items()).length;
@@ -199,7 +202,7 @@ try {
       `const done=arguments[arguments.length-1];(async()=>{
       const tabId=arguments[0];
       await browser.storage.local.set({['pendingCapture_'+tabId]:{mode:'thread',expectedUrl:arguments[1],tags:[],folderId:null,createdAt:Date.now()}});
-      await browser.scripting.executeScript({target:{tabId},func:()=>{globalThis.__glassmarkPickerMode='zhihu-answer';globalThis.__glassmarkLanguage='zh-CN';globalThis.__glassmarkZhihuOpenSeconds=2;}});
+      await browser.scripting.executeScript({target:{tabId},func:(seconds)=>{globalThis.__glassmarkPickerMode='zhihu-answer';globalThis.__glassmarkLanguage='zh-CN';globalThis.__glassmarkZhihuOpenSeconds=seconds;},args:[arguments[1].includes('blocked=1')?2:8]});
       await browser.scripting.executeScript({target:{tabId},files:['picker.js']});return true;
     })().then(done,error=>done({error:error.message}));`,
       [source.id, url],
@@ -224,13 +227,18 @@ try {
         () => evaluate("return document.body.dataset.commentClicks==='1';"),
         "Comment button was not clicked before cancellation",
       );
+      if (query.includes("staged=1"))
+        await until(
+          () => evaluate("return !!document.body.dataset.firstBodyAt;"),
+          "First comment did not render before cancellation during stabilization",
+        );
       await click("[data-action=cancel]");
       await pause(400);
-    } else if (query.includes("blocked=1")) {
+    } else if (/blocked=1|unstable=1/.test(query)) {
       await until(
         () =>
           evaluate(
-            "return document.querySelector('[data-glassmark-ui] [role=status]')?.textContent.includes('评论未能加载');",
+            "return !!document.querySelector('[data-glassmark-ui] [role=status]')?.textContent.match(/评论未能加载|仍在加载/);",
           ),
         "Failed opening did not report an error on source",
       );
@@ -244,6 +252,11 @@ try {
         "Selected answer was not persisted",
       );
       assert.equal(saved.platform, "zhihu");
+      if (query.includes("staged=1"))
+        assert.equal(
+          await evaluate("return document.body.dataset.controlsReady;"),
+          "1",
+        );
       assert.deepEqual(
         saved.posts.map((post) => post.id),
         ["222", "c1", "c2", "reply1", "reply2", "reply3", "c3"],
@@ -267,7 +280,7 @@ try {
         tab.url?.startsWith(`moz-extension://${uuid}/capture.html`) &&
         new URL(tab.url).searchParams.get("tab") === String(source.id),
     );
-    if (query.includes("blocked=1") || query.includes("cancel=1")) {
+    if (/blocked=1|unstable=1|cancel=1/.test(query)) {
       assert.equal((await items()).length, before);
       assert.equal(
         captures.length,
@@ -293,6 +306,7 @@ try {
     installedBrowser: session.capabilities.browserVersion,
     commentsOpenBeforeCapture: true,
     waitsForCommentBodies: true,
+    waitsForStableComments: true,
     blockedOpeningPreventsCapture: true,
     cancelOpeningPreventsCapture: true,
     installedAddonBackend: native ? "native-rust" : "fixture",

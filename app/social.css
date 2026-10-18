@@ -155,14 +155,7 @@
 .post-menu div button:hover {
   background: #eff3f4;
 }
-/* X desktop: narrow navigation, a 600px timeline, sticky tabs and right rail. */
-.x-shell {
-  max-width: 650px;
-  min-height: 100%;
-  margin: auto;
-  font-family:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", sans-serif;
-}
+/* X saved posts and discussion reader. */
 .x-timeline {
   border-left: 1px solid #eff3f4;
   border-right: 1px solid #eff3f4;
@@ -319,17 +312,6 @@
 .locally-liked .icon {
   fill: #f91880;
 }
-.show-thread {
-  font-size: 13px;
-  color: #1d9bf0;
-  background: none;
-  border: 0;
-  padding: 6px 0 11px;
-  text-align: left;
-}
-.show-thread span {
-  margin-left: 5px;
-}
 .x-post-detail {
   cursor: default;
   padding-top: 18px;
@@ -371,7 +353,6 @@
   height: 13px;
   width: 13px;
 }
-/* Reddit desktop: global header, community navigation and post cards. */
 /* Reddit: saved posts, community navigation, vote pills and threaded comments. */
 .reddit-shell {
   display: grid;
@@ -478,9 +459,6 @@
 .reddit-saved-sidebar .saved-tags > button {
   border-radius: 6px;
   padding: 9px 8px;
-}
-.reddit-main {
-  min-width: 0;
 }
 .reddit-saved-heading {
   display: flex;
@@ -770,6 +748,9 @@
 
 /* Site navigation retains the familiar saved-content shell. */
 .x-shell {
+  min-height: 100%;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", sans-serif;
   display: grid;
   grid-template-columns: 200px minmax(0, 650px);
   gap: 28px;
@@ -796,9 +777,6 @@
 .saved-site-brand > .icon {
   width: 30px;
   height: 30px;
-}
-.reddit-saved-sidebar .saved-site-brand {
-  color: #ff4500;
 }
 .saved-nav-entry {
   display: flex;
@@ -918,10 +896,6 @@
 .reddit-main {
   min-width: 0;
 }
-.reddit-bookmarks-header {
-  padding-left: 20px;
-  padding-right: 20px;
-}
 .discussion-scope {
   display: flex;
   align-items: flex-start;
@@ -952,11 +926,6 @@
 .discussion-scope button .icon {
   width: 13px;
   height: 13px;
-}
-.show-thread > .icon {
-  width: 14px;
-  height: 14px;
-  margin-left: 7px;
 }
 @media (max-width: 1200px) {
   .x-shell {
@@ -1539,7 +1508,7 @@
 .zhihu-shell {
   min-height: 100%;
   background: #f5f6f8;
-  color: #182539;
+  color: #1a1a1a;
 }
 .zhihu-header {
   display: flex;
@@ -1571,30 +1540,43 @@
 }
 .zhihu-layout {
   display: grid;
-  grid-template-columns: 180px minmax(0, 760px);
+  grid-template-columns: minmax(0, 900px) 210px;
   justify-content: center;
   align-items: start;
-  gap: 24px;
-  padding: 28px;
+  gap: 20px;
+  padding: 20px 28px 40px;
 }
 .zhihu-sidebar {
+  grid-column: 2;
+  grid-row: 1;
   position: sticky;
-  top: 24px;
+  top: 20px;
+  background: #fff;
+  border-radius: 3px;
+  padding: 16px 12px;
+  box-shadow: 0 1px 4px #1a1a1a14;
 }
 .zhihu-sidebar .saved-tags {
   margin-top: 24px;
 }
 .zhihu-main {
+  grid-column: 1;
+  grid-row: 1;
   min-width: 0;
 }
 .zhihu-heading {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 0 4px 18px;
+  flex-wrap: wrap;
+  padding: 30px 24px;
+  margin-bottom: 12px;
+  background: #fff;
+  border-radius: 3px;
+  box-shadow: 0 1px 4px #1a1a1a14;
 }
 .zhihu-heading h2 {
-  font-size: 20px;
+  font-size: 24px;
   margin: 0;
 }
 .zhihu-heading > span {
@@ -1612,7 +1594,7 @@
 .zhihu-sort {
   display: flex;
   gap: 20px;
-  padding: 0 4px 16px;
+  padding: 0;
 }
 .zhihu-sort button {
   border: 0;
@@ -1625,23 +1607,43 @@
   color: #1772f6;
   font-weight: 650;
 }
+.zhihu-list {
+  background: #fff;
+  border-radius: 3px;
+  box-shadow: 0 1px 4px #1a1a1a14;
+  overflow: hidden;
+}
+.zhihu-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 24px;
+  border-bottom: 1px solid #f0f2f7;
+}
 .zhihu-post {
   background: #fff;
-  border: 1px solid #e9edf2;
-  border-radius: 12px;
-  padding: 24px 28px;
-  margin-bottom: 14px;
+  border-bottom: 1px solid #f0f2f7;
+  padding: 24px;
   overflow-wrap: anywhere;
 }
 .zhihu-post[role="link"] {
   cursor: pointer;
-  transition: border-color 0.15s;
 }
-.zhihu-post[role="link"]:hover {
-  border-color: #c4d6ef;
+.zhihu-post[role="link"]:hover h1 {
+  color: #175199;
+}
+.zhihu-post:focus-visible {
+  outline: 2px solid #1772f6;
+  outline-offset: -2px;
+}
+.zhihu-detail {
+  border-radius: 3px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 4px #1a1a1a14;
 }
 .zhihu-post h1 {
-  font-size: 20px;
+  font-size: 21px;
   line-height: 1.5;
   margin: 0 0 16px;
 }
@@ -1655,13 +1657,30 @@
   width: 28px;
   height: 28px;
   font-size: 12px;
+  border-radius: 3px;
 }
 .zhihu-author > span:not(.social-avatar) {
   color: #8590a6;
   font-size: 12px;
 }
-.zhihu-author .post-menu {
+.zhihu-actions .post-menu {
   margin-left: auto;
+}
+.zhihu-read-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  margin: 0 0 16px;
+  border: 0;
+  background: none;
+  color: #175199;
+  font-size: 14px;
+}
+.zhihu-read-more .icon {
+  width: 16px;
+  height: 16px;
+  transform: rotate(90deg);
 }
 .zhihu-body {
   font-size: 15px;
@@ -1709,9 +1728,9 @@
 }
 .zhihu-comments {
   border: 1px solid #e9edf2;
-  border-radius: 12px;
+  border-radius: 3px;
   background: #fff;
-  padding: 24px 28px;
+  padding: 24px;
 }
 .zhihu-comments h2 {
   margin: 0 0 14px;
@@ -1730,7 +1749,7 @@
 }
 @media (max-width: 1150px) {
   .zhihu-layout {
-    grid-template-columns: 145px minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) 170px;
     gap: 16px;
     padding: 24px 18px;
   }
@@ -1740,11 +1759,16 @@
 }
 @media (max-width: 1000px) {
   .zhihu-layout {
-    display: block;
+    display: flex;
+    flex-direction: column;
+  }
+  .zhihu-main,
+  .zhihu-sidebar {
+    width: 100%;
   }
   .zhihu-sidebar {
     position: static;
-    margin-bottom: 20px;
+    order: 1;
   }
   .zhihu-sidebar .saved-tags {
     margin-top: 12px;

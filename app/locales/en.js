@@ -501,4 +501,9 @@ export default {
   "正在打开所选回答的评论…": "Opening comments for the selected answer…",
   "所选回答的评论未能加载，请确认知乎已登录后重试":
     "Comments for the selected answer did not load. Check that you are signed in to Zhihu and retry.",
+  "正在等待评论区加载稳定，请勿关闭来源标签页…":
+    "Waiting for comments to finish loading. Keep the source tab open…",
+  "评论区仍在加载，请稍后重试":
+    "Comments are still loading. Please retry shortly.",
+  阅读全文: "Read full answer",
 };
