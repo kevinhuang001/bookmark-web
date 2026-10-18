@@ -287,6 +287,13 @@
     <script>
       const inline = document.querySelector("#inline-comments");
       const params = new URL(location.href).searchParams;
+      if (params.has("unrelated")) {
+        const other = document.createElement("div");
+        other.className = "Comments-container";
+        other.innerHTML =
+          '<div data-id="unrelated"><div class="CommentContent">其他回答的评论不应保存</div></div>';
+        document.body.append(other);
+      }
       const primary = document.querySelector(".ContentItem-actions button");
       const all = inline.querySelector(".css-wu78cf");
       const opened = params.has("opened");

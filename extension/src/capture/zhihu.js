@@ -290,7 +290,9 @@ export async function loadZhihuComments(
       action?.getAttribute("aria-controls") ||
       action?.getAttribute("aria-owns") ||
       ""
-    ).split(/\s+/);
+    )
+      .split(/\s+/)
+      .filter(Boolean);
     for (const panel of doc.querySelectorAll(PANELS)) {
       if (
         !visible(panel) ||

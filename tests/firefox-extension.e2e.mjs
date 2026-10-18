@@ -173,6 +173,7 @@ try {
     "?preview=1",
     "?opened=1",
     "?staged=1",
+    "?unrelated=1",
     "?unstable=1",
     "?skeleton=1&delay=1200&pageDelay=800",
     "?opened=1&skeleton=1&delay=1200",

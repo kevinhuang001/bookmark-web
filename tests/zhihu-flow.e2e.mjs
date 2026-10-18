@@ -60,6 +60,7 @@ try {
     ["https://www.zhihu.com/question/125?preview=1", false],
     ["https://www.zhihu.com/question/125?opened=1", false],
     ["https://www.zhihu.com/question/125?staged=1", false],
+    ["https://www.zhihu.com/question/125?unrelated=1", false],
     ["https://www.zhihu.com/question/125?unstable=1", false],
     ["https://www.zhihu.com/question/125?adsonly=1", false],
     [
