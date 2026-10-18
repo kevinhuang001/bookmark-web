@@ -1629,8 +1629,9 @@ try {
   const popup = await context.newPage();
   popup.on("pageerror", (e) => errors.push(e.message));
   await popup.addInitScript(
-    ({ token }) => {
+    ({ token, version }) => {
       globalThis.browser = {
+        runtime: { getManifest: () => ({ version }) },
         tabs: {
           query: async () => [
             {
@@ -1652,7 +1653,10 @@ try {
         },
       };
     },
-    { token: connection.token },
+    {
+      token: connection.token,
+      version: JSON.parse(await readFile("package.json", "utf8")).version,
+    },
   );
   for (const url of [
     "https://x.com/a/status/123",
@@ -1670,6 +1674,9 @@ try {
     );
     await popup.reload();
     await expect(popup.locator("#actions")).toBeVisible();
+    await expect(popup.locator("#extension-version")).toHaveText(
+      JSON.parse(await readFile("package.json", "utf8")).version,
+    );
     const isPost = !url.includes("example.com");
     if (isPost) {
       await expect(popup.locator("#save-post")).toBeVisible();
