@@ -117,9 +117,11 @@ try {
   await source.route("https://www.zhihu.com/**", (route) =>
     route.fulfill({
       contentType: "text/html",
-      path: route.request().url().includes("/question/124")
-        ? "tests/fixtures/zhihu-comments.html"
-        : "tests/fixtures/zhihu-question.html",
+      path: route.request().url().includes("/question/125")
+        ? "tests/fixtures/zhihu-inline.html"
+        : route.request().url().includes("/question/124")
+          ? "tests/fixtures/zhihu-comments.html"
+          : "tests/fixtures/zhihu-question.html",
     }),
   );
   // Exercise selection → background message → capture page → native persistence.
@@ -128,6 +130,7 @@ try {
     "https://www.zhihu.com/question/123?utm_source=test#top",
     "https://www.zhihu.com/question/123/answer/222?utm_source=test#comments",
     "https://www.zhihu.com/question/124",
+    "https://www.zhihu.com/question/125",
   ]) {
     await source.goto(url);
     await worker.evaluate(
@@ -157,7 +160,7 @@ try {
     );
     await source
       .locator(".AnswerItem")
-      .nth(1)
+      .nth(url.includes("/question/125") ? 0 : 1)
       .locator(".RichContent-inner")
       .click();
     const newPage = context.waitForEvent("page");
@@ -176,9 +179,11 @@ try {
     assert.ok(saved, "selected answer must reach native persistence");
     assert.equal(
       saved.url,
-      url.includes("/question/124")
-        ? "https://www.zhihu.com/question/124/answer/222"
-        : "https://www.zhihu.com/question/123/answer/222",
+      url.includes("/question/125")
+        ? "https://www.zhihu.com/question/125/answer/222"
+        : url.includes("/question/124")
+          ? "https://www.zhihu.com/question/124/answer/222"
+          : "https://www.zhihu.com/question/123/answer/222",
     );
     if (url.includes("/question/124")) {
       assert.equal(
@@ -198,8 +203,29 @@ try {
     assert.equal(saved.posts[0].id, "222");
     assert.deepEqual(
       saved.posts.map((post) => post.id),
-      ["222", "c1", "reply1", "c2", "c3"],
+      url.includes("/question/125")
+        ? ["222", "c1", "c2", "reply1", "reply2", "reply3", "c3"]
+        : ["222", "c1", "reply1", "c2", "c3"],
     );
+    if (url.includes("/question/125")) {
+      assert.equal(
+        await source.locator("body").getAttribute("data-all-comment-clicks"),
+        "1",
+      );
+      assert.equal(
+        await source.locator("body").getAttribute("data-reply-clicks"),
+        "1",
+      );
+      const first = saved.posts.find((post) => post.id === "c1");
+      assert.equal(first.authorName, "读者1");
+      assert.match(first.avatarUrl, /avatar\.svg/);
+      assert.equal(first.stats.likes, "7");
+      assert.equal(first.media.length, 1);
+      assert.equal(
+        new Set(saved.posts.map((post) => post.id)).size,
+        saved.posts.length,
+      );
+    }
     assert.ok(saved.resources.some((resource) => resource.status === "saved"));
     await capturePage.close();
   }

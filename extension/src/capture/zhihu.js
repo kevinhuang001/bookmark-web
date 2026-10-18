@@ -59,11 +59,24 @@ export function zhihuRoot(context, doc = document) {
   );
 }
 
-/** Some current comment UIs use CSS modules rather than CommentItemV2. */
+/** Current inline comments identify the whole row with data-id, not a class. */
+export function zhihuCommentOwner(node) {
+  let owner = node.closest(ZHIHU_COMMENTS + ",[data-id]");
+  while (owner) {
+    if (
+      !owner.matches(".AnswerItem,.Post-Main") &&
+      (owner.matches(ZHIHU_COMMENTS) || owner.querySelector(ZHIHU_COMMENT_BODY))
+    )
+      return owner;
+    owner = owner.parentElement?.closest(ZHIHU_COMMENTS + ",[data-id]");
+  }
+  return node.closest(ZHIHU_COMMENT_BODY);
+}
+
 export function zhihuCommentElements(scope) {
   const elements = new Set(scope.querySelectorAll(ZHIHU_COMMENTS));
   for (const content of scope.querySelectorAll(ZHIHU_COMMENT_BODY)) {
-    const owner = content.closest(ZHIHU_COMMENTS);
+    const owner = zhihuCommentOwner(content);
     if (owner && scope.contains(owner)) elements.add(owner);
     else elements.add(content);
   }
@@ -110,7 +123,7 @@ function commentButton(scope, root) {
           node.closest(".AnswerItem,.Post-Main") === root) &&
         (/评论|comments?/i.test(label(node)) ||
           node.querySelector(
-            '.Zi--Comment,svg[class*="--Comment"],[data-icon="comment"]',
+            '.Zi--Comment,.ZDI--ChatBubbleFill24,svg[class*="--Comment"],[data-icon="comment"]',
           )),
     )
     .sort(
@@ -135,6 +148,36 @@ const fingerprint = (panel) =>
         node.textContent,
     )
     .join("\n");
+
+const MORE_COMMENTS =
+  /^(?:(?:展开|查看)(?:全部|更多|其他)?(?:\s*\d+\s*条)?(?:回复|评论)|加载更多(?:评论|回复)?|(?:点击)?查看(?:全部|所有)(?:\s*\d+\s*条)?评论|下一页|更多评论|load more(?: comments| replies)?|next(?: page)?|view (?:more|all)(?: \d+)? replies)$/i;
+const ALL_COMMENTS = /^(?:点击)?查看(?:全部|所有)(?:\s*\d+\s*条)?评论$/;
+function loadControls(panels) {
+  return [
+    ...new Set(
+      [...panels].flatMap((panel) => [
+        ...panel.querySelectorAll("button,[role=button],a,[tabindex],div,span"),
+      ]),
+    ),
+  ]
+    .filter(
+      (node) =>
+        visible(node) &&
+        !node.disabled &&
+        node.getAttribute("aria-disabled") !== "true" &&
+        !node.closest(ZHIHU_COMMENT_BODY) &&
+        !node.querySelector(ZHIHU_COMMENT_BODY) &&
+        labels(node).some((text) => MORE_COMMENTS.test(text)) &&
+        ![...node.children].some((child) =>
+          labels(child).some((text) => MORE_COMMENTS.test(text)),
+        ),
+    )
+    .sort(
+      (a, b) =>
+        Number(labels(b).some((text) => ALL_COMMENTS.test(text))) -
+        Number(labels(a).some((text) => ALL_COMMENTS.test(text))),
+    );
+}
 
 /** Open the selected answer's visible action, then wait for its actual comment UI. */
 export async function loadZhihuComments(
@@ -172,6 +215,33 @@ export async function loadZhihuComments(
         { visible: visible(panel), content: fingerprint(panel) },
       ]),
     );
+  const discoverPanels = (before, action) => {
+    const count = panels.size;
+    const controls = (
+      action?.getAttribute("aria-controls") ||
+      action?.getAttribute("aria-owns") ||
+      ""
+    ).split(/\s+/);
+    for (const panel of doc.querySelectorAll(PANELS)) {
+      if (
+        !visible(panel) ||
+        (panel.closest(".AnswerItem,.Post-Main") && !owner.contains(panel))
+      )
+        continue;
+      const previous = before.get(panel);
+      const changed =
+        !previous ||
+        !previous.visible ||
+        previous.content !== fingerprint(panel);
+      if (
+        (owner.contains(panel) || controls.includes(panel.id) || changed) &&
+        (zhihuCommentElements(panel).length || emptyPanel(panel))
+      ) {
+        panels.add(panel.closest('[role="dialog"],.Modal') || panel);
+      }
+    }
+    return panels.size > count;
+  };
   const expand = [
     ...root.querySelectorAll(
       ".ContentItem-expandButton,.RichContent-expandButton",
@@ -215,29 +285,7 @@ export async function loadZhihuComments(
     button.click();
     while (!stop() && performance.now() < deadline) {
       await wait();
-      const controls = (
-        button.getAttribute("aria-controls") ||
-        button.getAttribute("aria-owns") ||
-        ""
-      ).split(/\s+/);
-      for (const panel of doc.querySelectorAll(PANELS)) {
-        if (
-          !visible(panel) ||
-          (panel.closest(".AnswerItem,.Post-Main") && !owner.contains(panel))
-        )
-          continue;
-        const previous = before.get(panel);
-        const changed =
-          !previous ||
-          !previous.visible ||
-          previous.content !== fingerprint(panel);
-        if (
-          (owner.contains(panel) || controls.includes(panel.id) || changed) &&
-          (zhihuCommentElements(panel).length || emptyPanel(panel))
-        ) {
-          panels.add(panel.closest('[role="dialog"],.Modal') || panel);
-        }
-      }
+      discoverPanels(before, button);
       comments = harvest();
       if (comments.length) break;
       if ([...panels].some((panel) => visible(panel) && emptyPanel(panel)))
@@ -259,21 +307,7 @@ export async function loadZhihuComments(
   const clicked = new WeakSet();
   while (!stop() && performance.now() < deadline) {
     check();
-    const controls = [...panels].flatMap((panel) => [
-      ...panel.querySelectorAll("button,[role=button],a"),
-    ]);
-    const next = controls.find(
-      (node) =>
-        visible(node) &&
-        !node.disabled &&
-        node.getAttribute("aria-disabled") !== "true" &&
-        !clicked.has(node) &&
-        labels(node).some((text) =>
-          /^(?:展开(?:全部|更多)?(?:\s*\d+\s*条)?(?:回复|评论)|查看(?:全部|更多)?(?:\s*\d+\s*条)?(?:回复|评论)|加载更多(?:评论|回复)?|下一页|更多评论|load more(?: comments| replies)?|next(?: page)?|view (?:more|all)(?: \d+)? replies)$/i.test(
-            text,
-          ),
-        ),
-    );
+    const next = loadControls(panels).find((node) => !clicked.has(node));
     const scroller =
       !next &&
       [...panels]
@@ -282,6 +316,20 @@ export async function loadZhihuComments(
           ...panel.querySelectorAll(
             ".Comments-container,.CommentsV2,[class*=CommentList],[class*=_CommentList_root_]",
           ),
+          ...(!owner.contains(panel)
+            ? [
+                ...(function* () {
+                  for (
+                    let parent = panel.parentElement;
+                    parent &&
+                    parent !== doc.body &&
+                    parent !== doc.documentElement;
+                    parent = parent.parentElement
+                  )
+                    yield parent;
+                })(),
+              ]
+            : []),
         ])
         .find(
           (node) =>
@@ -293,6 +341,7 @@ export async function loadZhihuComments(
         );
     if (!next && !scroller) break;
     const previous = comments.map((node) => node.textContent).join("\n");
+    const before = snapshot();
     if (next) {
       clicked.add(next);
       next.click();
@@ -300,8 +349,12 @@ export async function loadZhihuComments(
     let changed = false;
     while (!stop() && performance.now() < deadline) {
       await wait();
+      const panelChanged = discoverPanels(before, next);
       comments = harvest();
-      if (comments.map((node) => node.textContent).join("\n") !== previous) {
+      if (
+        panelChanged ||
+        comments.map((node) => node.textContent).join("\n") !== previous
+      ) {
         changed = true;
         break;
       }

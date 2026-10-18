@@ -1,0 +1,330 @@
+<!doctype html>
+
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>真实评论结构回归</title>
+    <style>
+      img.Avatar {
+        width: 24px;
+        height: 24px;
+      }
+      .CommentContent img {
+        width: 40px;
+      }
+      .Comments-container {
+        padding: 12px;
+      }
+      [data-id] {
+        margin: 12px;
+      }
+      button {
+        margin: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1 class="QuestionHeader-title">真实评论结构回归</h1>
+      <div class="List-item">
+        <div>
+          <div class="ContentItem AnswerItem" data-zop='{"itemId":"222"}'>
+            <div class="AuthorInfo-name">回答作者</div>
+            <div
+              class="RichContent RichContent--hasHotComment RichContent--hotCommentExpanded"
+            >
+              <div class="RichContent-inner">选中回答的正文</div>
+              <div
+                class="ContentItem-actions ContentItem-actions--hotCommentExpanded"
+              >
+                <button>
+                  <svg class="ZDI ZDI--ChatBubbleFill24"></svg>收起评论
+                </button>
+              </div>
+            </div>
+            <div>
+              <div class="Comments-container css-plbgu" id="inline-comments">
+                <div class="css-79elbk">
+                  <div class="preview-list">
+                    <div data-id="c1">
+                      <div class="css-jp43l4">
+                        <div class="css-1jll2aj">
+                          <div class="css-1gomreu">
+                            <a
+                              class="css-1dxejhk"
+                              href="https://www.zhihu.com/people/reader-1"
+                              target="_blank"
+                              ><img
+                                alt="示例图片"
+                                class="Avatar css-inejps"
+                                height="24"
+                                loading="lazy"
+                                src="http://127.0.0.1:1420/fixtures/avatar.svg"
+                                width="24"
+                            /></a>
+                          </div>
+                        </div>
+                        <div class="css-1bklfe6">
+                          <div class="css-z0cc58">
+                            <div class="css-swj9d4">
+                              <div class="css-1tww9qq">
+                                <div class="css-1gomreu">
+                                  <a
+                                    class="css-10u695f"
+                                    href="https://www.zhihu.com/people/reader-1"
+                                    target="_blank"
+                                    >读者1</a
+                                  >
+                                </div>
+                                <div class="css-1qe0v6x">
+                                  <div class="css-1ssbn0c"></div>
+                                </div>
+                              </div>
+                            </div>
+                            <svg
+                              class="ZDI ZDI--Dots24 css-zgte1c"
+                              fill="currentColor"
+                              height="16"
+                              viewbox="0 0 24 24"
+                              width="16"
+                            >
+                              <path
+                                d="M6 10.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3ZM10.5 12a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0ZM16.5 12a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0Z"
+                              ></path>
+                            </svg>
+                          </div>
+                          <div class="CommentContent css-va72p6">
+                            参考页面结构的评论1<img
+                              src="http://127.0.0.1:1420/fixtures/note-cover.svg"
+                            />
+                          </div>
+                          <div class="css-140jo2">
+                            <div class="css-1a5a57m">
+                              <div class="css-x1xlu5">
+                                <span class="css-12cl38p">占位文本</span
+                                ><span>占位文本</span
+                                ><span class="css-ntkn7q" href=""
+                                  >占位文本</span
+                                >
+                              </div>
+                            </div>
+                            <div class="css-18opwoy">
+                              <button
+                                class="Button Button--plain Button--withIcon Button--withLabel css-1ij6qqc"
+                                type="button"
+                              >
+                                <span
+                                  style="
+                                    display: inline-flex;
+                                    align-items: center;
+                                  "
+                                  >​<svg
+                                    class="ZDI ZDI--ChatBubbleFill24 css-15ro776"
+                                    fill="currentColor"
+                                    height="1.2em"
+                                    viewbox="0 0 24 24"
+                                    width="1.2em"
+                                  >
+                                    <path
+                                      d="M12 2.37c5.67 0 10.266 4.085 10.267 9.125 0 2.08-.786 3.997-2.105 5.532a1.064 1.064 0 0 0-.247.91l.644 3.056c.24 1.157-.66 1.58-1.444 1.157l-2.925-1.584c-.53-.287-1.153-.338-1.743-.21-.784.172-1.604.265-2.447.265-5.67 0-10.268-4.087-10.268-9.126C1.732 6.455 6.33 2.37 12 2.37Z"
+                                    ></path></svg></span
+                                >回复</button
+                              ><button
+                                class="Button Button--plain Button--grey Button--withIcon Button--withLabel css-1vd72tl"
+                                style="transform: none"
+                                type="button"
+                              >
+                                <span
+                                  style="
+                                    display: inline-flex;
+                                    align-items: center;
+                                  "
+                                  ><svg
+                                    class="ZDI ZDI--HeartFill24 css-15ro776"
+                                    fill="currentColor"
+                                    height="1.2em"
+                                    viewbox="0 0 24 24"
+                                    width="1.2em"
+                                  >
+                                    <path
+                                      clip-rule="evenodd"
+                                      d="M16.984 3.324c1.73.315 3.125 1.472 4.04 2.978 1.893 3.116.758 6.989-1.384 9.556a23.241 23.241 0 0 1-3.96 3.737c-.66.486-1.308.895-1.902 1.196-.579.294-1.166.517-1.695.57a.845.845 0 0 1-.145.002c-.529-.038-1.127-.267-1.708-.564a14.407 14.407 0 0 1-1.947-1.232 23.512 23.512 0 0 1-4.081-3.88C2.165 13.207 1.139 9.536 2.85 6.514 3.742 4.94 5.14 3.71 6.896 3.348c1.606-.332 3.363.094 5.103 1.394 1.696-1.267 3.409-1.704 4.985-1.418Z"
+                                      fill-rule="evenodd"
+                                    ></path></svg></span
+                                >7
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        class="Button Button--secondary Button--grey css-7dh30y"
+                      >
+                        展开其他 3 条回复
+                      </button>
+                    </div>
+                    <div data-id="c2">
+                      <div class="css-jp43l4">
+                        <div class="css-1jll2aj">
+                          <div class="css-1gomreu">
+                            <a
+                              class="css-1dxejhk"
+                              href="https://www.zhihu.com/people/reader-2"
+                              target="_blank"
+                              ><img
+                                alt="示例图片"
+                                class="Avatar css-inejps"
+                                height="24"
+                                loading="lazy"
+                                src="http://127.0.0.1:1420/fixtures/avatar.svg"
+                                width="24"
+                            /></a>
+                          </div>
+                        </div>
+                        <div class="css-1bklfe6">
+                          <div class="css-z0cc58">
+                            <div class="css-swj9d4">
+                              <div class="css-1tww9qq">
+                                <div class="css-1gomreu">
+                                  <a
+                                    class="css-10u695f"
+                                    href="https://www.zhihu.com/people/reader-2"
+                                    target="_blank"
+                                    >读者2</a
+                                  >
+                                </div>
+                                <div class="css-1qe0v6x">
+                                  <div class="css-1ssbn0c"></div>
+                                </div>
+                              </div>
+                            </div>
+                            <svg
+                              class="ZDI ZDI--Dots24 css-zgte1c"
+                              fill="currentColor"
+                              height="16"
+                              viewbox="0 0 24 24"
+                              width="16"
+                            >
+                              <path
+                                d="M6 10.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3ZM10.5 12a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0ZM16.5 12a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0Z"
+                              ></path>
+                            </svg>
+                          </div>
+                          <div class="CommentContent css-va72p6">
+                            参考页面结构的评论2
+                          </div>
+                          <div class="css-140jo2">
+                            <div class="css-1a5a57m">
+                              <div class="css-x1xlu5">
+                                <span class="css-12cl38p">占位文本</span
+                                ><span>占位文本</span
+                                ><span class="css-ntkn7q" href=""
+                                  >占位文本</span
+                                >
+                              </div>
+                            </div>
+                            <div class="css-18opwoy">
+                              <button
+                                class="Button Button--plain Button--withIcon Button--withLabel css-1ij6qqc"
+                                type="button"
+                              >
+                                <span
+                                  style="
+                                    display: inline-flex;
+                                    align-items: center;
+                                  "
+                                  >​<svg
+                                    class="ZDI ZDI--ChatBubbleFill24 css-15ro776"
+                                    fill="currentColor"
+                                    height="1.2em"
+                                    viewbox="0 0 24 24"
+                                    width="1.2em"
+                                  >
+                                    <path
+                                      d="M12 2.37c5.67 0 10.266 4.085 10.267 9.125 0 2.08-.786 3.997-2.105 5.532a1.064 1.064 0 0 0-.247.91l.644 3.056c.24 1.157-.66 1.58-1.444 1.157l-2.925-1.584c-.53-.287-1.153-.338-1.743-.21-.784.172-1.604.265-2.447.265-5.67 0-10.268-4.087-10.268-9.126C1.732 6.455 6.33 2.37 12 2.37Z"
+                                    ></path></svg></span
+                                >回复</button
+                              ><button
+                                class="Button Button--plain Button--grey Button--withIcon Button--withLabel css-1vd72tl"
+                                style="transform: none"
+                                type="button"
+                              >
+                                <span
+                                  style="
+                                    display: inline-flex;
+                                    align-items: center;
+                                  "
+                                  ><svg
+                                    class="ZDI ZDI--HeartFill24 css-15ro776"
+                                    fill="currentColor"
+                                    height="1.2em"
+                                    viewbox="0 0 24 24"
+                                    width="1.2em"
+                                  >
+                                    <path
+                                      clip-rule="evenodd"
+                                      d="M16.984 3.324c1.73.315 3.125 1.472 4.04 2.978 1.893 3.116.758 6.989-1.384 9.556a23.241 23.241 0 0 1-3.96 3.737c-.66.486-1.308.895-1.902 1.196-.579.294-1.166.517-1.695.57a.845.845 0 0 1-.145.002c-.529-.038-1.127-.267-1.708-.564a14.407 14.407 0 0 1-1.947-1.232 23.512 23.512 0 0 1-4.081-3.88C2.165 13.207 1.139 9.536 2.85 6.514 3.742 4.94 5.14 3.71 6.896 3.348c1.606-.332 3.363.094 5.103 1.394 1.696-1.267 3.409-1.704 4.985-1.418Z"
+                                      fill-rule="evenodd"
+                                    ></path></svg></span
+                                >7
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="css-wu78cf">
+                    <div class="css-vurnku">点击查看全部评论</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+    <script>
+      const inline = document.querySelector("#inline-comments");
+      const rowTemplate = document.querySelector("[data-id=c1]").outerHTML;
+      function row(id, text) {
+        const holder = document.createElement("div");
+        holder.innerHTML = rowTemplate;
+        const node = holder.firstElementChild;
+        node.dataset.id = id;
+        node.querySelector(".css-7dh30y")?.remove();
+        node.querySelector(".CommentContent").textContent = text;
+        return node;
+      }
+      document.querySelector(".css-wu78cf").onclick = () => {
+        document.body.dataset.allCommentClicks = String(
+          Number(document.body.dataset.allCommentClicks || 0) + 1,
+        );
+        const modal = document.createElement("div");
+        modal.className = "Modal";
+        modal.setAttribute("role", "dialog");
+        modal.innerHTML =
+          '<div class="Comments-container"><div id="full-list"></div><button id="next">下一页</button></div>';
+        // The initial full-comment page deliberately repeats exactly the same comments.
+        modal.querySelector("#full-list").innerHTML =
+          document.querySelector(".preview-list").innerHTML;
+        inline.hidden = true;
+        document.body.append(modal);
+        const first = modal.querySelector("[data-id=c1]");
+        const replies = first.querySelector(".css-7dh30y");
+        replies.onclick = () => {
+          document.body.dataset.replyClicks = "1";
+          for (let i = 1; i <= 3; i++)
+            first.append(row("reply" + i, "嵌套回复" + i));
+          replies.remove();
+        };
+        modal.querySelector("#next").onclick = (event) => {
+          modal
+            .querySelector("#full-list")
+            .append(row("c3", "完整评论区下一页"));
+          event.target.disabled = true;
+        };
+      };
+    </script>
+  </body>
+</html>

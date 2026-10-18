@@ -15,9 +15,11 @@ try {
   await source.route("https://www.zhihu.com/**", (route) =>
     route.fulfill({
       contentType: "text/html",
-      path: route.request().url().includes("/question/124")
-        ? "tests/fixtures/zhihu-comments.html"
-        : "tests/fixtures/zhihu-question.html",
+      path: route.request().url().includes("/question/125")
+        ? "tests/fixtures/zhihu-inline.html"
+        : route.request().url().includes("/question/124")
+          ? "tests/fixtures/zhihu-comments.html"
+          : "tests/fixtures/zhihu-question.html",
     }),
   );
   await source.route("http://127.0.0.1:1420/fixtures/**", (route) =>
@@ -54,6 +56,7 @@ try {
       false,
     ],
     ["https://www.zhihu.com/question/124", false],
+    ["https://www.zhihu.com/question/125", false],
     ["https://www.zhihu.com/question/124?blocked=1", false],
     ["https://www.zhihu.com/question/124?empty=1&delay=50", false],
     ["https://www.zhihu.com/question/123", true],
@@ -67,7 +70,7 @@ try {
     await source.addScriptTag({ content: pickerScript });
     await source
       .locator(".AnswerItem")
-      .nth(1)
+      .nth(url.includes("/question/125") ? 0 : 1)
       .locator(".RichContent-inner")
       .click();
     await source
@@ -187,15 +190,40 @@ try {
       assert.ok(saved);
       assert.equal(
         saved.url,
-        modern
-          ? "https://www.zhihu.com/question/124/answer/222"
-          : "https://www.zhihu.com/question/123/answer/222",
+        url.includes("/question/125")
+          ? "https://www.zhihu.com/question/125/answer/222"
+          : modern
+            ? "https://www.zhihu.com/question/124/answer/222"
+            : "https://www.zhihu.com/question/123/answer/222",
       );
       assert.equal(saved.posts[0].id, "222");
       assert.deepEqual(
         saved.posts.map((post) => post.id),
-        url.includes("empty=1") ? ["222"] : ["222", "c1", "reply1", "c2", "c3"],
+        url.includes("/question/125")
+          ? ["222", "c1", "c2", "reply1", "reply2", "reply3", "c3"]
+          : url.includes("empty=1")
+            ? ["222"]
+            : ["222", "c1", "reply1", "c2", "c3"],
       );
+      if (url.includes("/question/125")) {
+        assert.equal(
+          await source.locator("body").getAttribute("data-all-comment-clicks"),
+          "1",
+        );
+        assert.equal(
+          await source.locator("body").getAttribute("data-reply-clicks"),
+          "1",
+        );
+        const first = saved.posts.find((post) => post.id === "c1");
+        assert.equal(first.authorName, "读者1");
+        assert.match(first.avatarUrl, /avatar\.svg/);
+        assert.equal(first.stats.likes, "7");
+        assert.equal(first.media.length, 1);
+        assert.equal(
+          new Set(saved.posts.map((post) => post.id)).size,
+          saved.posts.length,
+        );
+      }
       assert.ok(
         saved.resources.some((resource) => resource.status === "saved"),
       );

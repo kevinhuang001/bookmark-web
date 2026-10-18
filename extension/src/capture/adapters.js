@@ -1,5 +1,10 @@
 import { videoSources } from "./video.js";
-import { zhihuIdentity, ZHIHU_COMMENTS, ZHIHU_COMMENT_BODY } from "./zhihu.js";
+import {
+  zhihuIdentity,
+  ZHIHU_COMMENTS,
+  ZHIHU_COMMENT_BODY,
+  zhihuCommentOwner,
+} from "./zhihu.js";
 /** DOM adapters deliberately use the user's rendered session, never private APIs. */
 export function platform(host) {
   if (/(^|\.)(x\.com|twitter\.com)$/.test(host)) return "x";
@@ -294,11 +299,13 @@ function extractNote(el, doc) {
 
 /** Scope every field to this answer/article; recommendations are never a root. */
 function extractZhihu(el, doc) {
-  const comment = el.matches(ZHIHU_COMMENTS + "," + ZHIHU_COMMENT_BODY);
+  const comment =
+    el.matches(ZHIHU_COMMENTS + "," + ZHIHU_COMMENT_BODY) ||
+    (el.hasAttribute("data-id") && !!el.querySelector(ZHIHU_COMMENT_BODY));
   const owned = (node) =>
     !comment ||
     node === el ||
-    node.closest(ZHIHU_COMMENTS) === el ||
+    zhihuCommentOwner(node) === el ||
     (el.matches(ZHIHU_COMMENT_BODY) && el.contains(node));
   const find = (selector) =>
     el.matches(selector) ? el : [...el.querySelectorAll(selector)].find(owned);
@@ -343,6 +350,11 @@ function extractZhihu(el, doc) {
   }
   const author =
     read(".AuthorInfo-name,.CommentItem-meta .UserLink-link,.UserLink-link") ||
+    (comment
+      ? [...el.querySelectorAll('a[href*="/people/"],a[href*="/org/"]')]
+          .find((node) => owned(node) && node.textContent.trim())
+          ?.textContent.trim()
+      : "") ||
     data.authorName ||
     "";
   return {
@@ -357,11 +369,16 @@ function extractZhihu(el, doc) {
       : identity?.id || String(data.itemId || url),
     isComment: comment,
     parentId: comment
-      ? el.parentElement
-          ?.closest(ZHIHU_COMMENTS)
-          ?.getAttribute("data-comment-id") ||
-        el.parentElement?.closest(ZHIHU_COMMENTS)?.getAttribute("data-id") ||
-        null
+      ? (() => {
+          const parent =
+            el.parentElement && zhihuCommentOwner(el.parentElement);
+          return (
+            parent?.getAttribute("data-comment-id") ||
+            parent?.getAttribute("data-id") ||
+            parent?.id ||
+            null
+          );
+        })()
       : null,
     depth: comment ? 1 : 0,
     author,
@@ -381,6 +398,21 @@ function extractZhihu(el, doc) {
       el.querySelector("time")?.getAttribute("datetime") ||
       null,
     stats: {
+      ...(comment
+        ? {
+            likes:
+              [...el.querySelectorAll("button")]
+                .find(
+                  (node) =>
+                    owned(node) &&
+                    node.querySelector(
+                      ".ZDI--HeartFill24,.Zi--Like,.Zi--Heart",
+                    ),
+                )
+                ?.textContent.replace(/[\u200b-\u200f\ufeff]/g, "")
+                .trim() || "",
+          }
+        : {}),
       votes: read(
         '.VoteButton--up,button[aria-label*="赞同"],.Post-NormalMain .VoteButton',
       ),

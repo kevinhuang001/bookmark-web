@@ -20,7 +20,9 @@ try {
   await page.route("https://www.zhihu.com/**", (route) =>
     route.fulfill({
       contentType: "text/html",
-      path: "tests/fixtures/zhihu-comments.html",
+      path: route.request().url().includes("/question/125")
+        ? "tests/fixtures/zhihu-inline.html"
+        : "tests/fixtures/zhihu-comments.html",
     }),
   );
   await page.goto("https://www.zhihu.com/question/124");
@@ -67,6 +69,41 @@ try {
     await page.locator("body").getAttribute("data-wrong-clicks"),
     null,
   );
+  await page.goto("https://www.zhihu.com/question/125");
+  await page.evaluate(() => {
+    const element = document.querySelector(".AnswerItem");
+    globalThis.__glassmarkZhihuAnswer = {
+      element,
+      id: "222",
+      pageUrl: location.href,
+    };
+  });
+  await page.addScriptTag({
+    content: await readFile("dist/extension-firefox/content.js", "utf8"),
+  });
+  const inline = await page.evaluate(() =>
+    GlassmarkCapture.collect({
+      mode: "thread",
+      language: "zh-CN",
+      maxPosts: 1,
+      autoLoadSeconds: 8,
+    }),
+  );
+  assert.deepEqual(
+    inline.posts.map((post) => post.id),
+    ["222", "c1", "c2", "reply1", "reply2", "reply3", "c3"],
+  );
+  assert.equal(inline.posts[1].authorName, "读者1");
+  assert.match(inline.posts[1].avatarUrl, /avatar\.svg/);
+  assert.equal(inline.posts[1].stats.likes, "7");
+  assert.equal(
+    await page.locator("body").getAttribute("data-all-comment-clicks"),
+    "1",
+  );
+  assert.equal(
+    await page.locator("body").getAttribute("data-reply-clicks"),
+    "1",
+  );
   const manifest = JSON.parse(
     await readFile("dist/extension-firefox/manifest.json", "utf8"),
   );
@@ -79,6 +116,7 @@ try {
         browser: await browser.version(),
         collector: true,
         zhihuAutomaticComments: true,
+        zhihuInlineCommentStructure: true,
         manifest: true,
         installedAddon: false,
       },
