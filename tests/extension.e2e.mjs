@@ -131,6 +131,8 @@ try {
     "https://www.zhihu.com/question/123/answer/222?utm_source=test#comments",
     "https://www.zhihu.com/question/124",
     "https://www.zhihu.com/question/125",
+    "https://www.zhihu.com/question/125?preview=1",
+    "https://www.zhihu.com/question/125?opened=1",
   ]) {
     await source.goto(url);
     await worker.evaluate(
@@ -208,6 +210,11 @@ try {
         : ["222", "c1", "reply1", "c2", "c3"],
     );
     if (url.includes("/question/125")) {
+      assert.equal(
+        await source.locator("body").getAttribute("data-comment-clicks"),
+        url.includes("opened=1") ? null : "1",
+        "the plugin must open the selected answer comments without a manual click",
+      );
       assert.equal(
         await source.locator("body").getAttribute("data-all-comment-clicks"),
         "1",

@@ -1188,7 +1188,7 @@ dependencies = [
 
 [[package]]
 name = "glassmark"
-version = "0.8.4"
+version = "0.8.5"
 dependencies = [
  "glassmark-core",
  "objc2",
@@ -1199,7 +1199,7 @@ dependencies = [
 
 [[package]]
 name = "glassmark-core"
-version = "0.8.4"
+version = "0.8.5"
 dependencies = [
  "axum",
  "chrono",

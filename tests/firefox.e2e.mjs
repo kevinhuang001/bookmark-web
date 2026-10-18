@@ -69,41 +69,48 @@ try {
     await page.locator("body").getAttribute("data-wrong-clicks"),
     null,
   );
-  await page.goto("https://www.zhihu.com/question/125");
-  await page.evaluate(() => {
-    const element = document.querySelector(".AnswerItem");
-    globalThis.__glassmarkZhihuAnswer = {
-      element,
-      id: "222",
-      pageUrl: location.href,
-    };
-  });
-  await page.addScriptTag({
-    content: await readFile("dist/extension-firefox/content.js", "utf8"),
-  });
-  const inline = await page.evaluate(() =>
-    GlassmarkCapture.collect({
-      mode: "thread",
-      language: "zh-CN",
-      maxPosts: 1,
-      autoLoadSeconds: 8,
-    }),
-  );
-  assert.deepEqual(
-    inline.posts.map((post) => post.id),
-    ["222", "c1", "c2", "reply1", "reply2", "reply3", "c3"],
-  );
-  assert.equal(inline.posts[1].authorName, "读者1");
-  assert.match(inline.posts[1].avatarUrl, /avatar\.svg/);
-  assert.equal(inline.posts[1].stats.likes, "7");
-  assert.equal(
-    await page.locator("body").getAttribute("data-all-comment-clicks"),
-    "1",
-  );
-  assert.equal(
-    await page.locator("body").getAttribute("data-reply-clicks"),
-    "1",
-  );
+  for (const query of ["", "?preview=1", "?opened=1"]) {
+    await page.goto("https://www.zhihu.com/question/125" + query);
+    await page.evaluate(() => {
+      const element = document.querySelector(".AnswerItem");
+      globalThis.__glassmarkZhihuAnswer = {
+        element,
+        id: "222",
+        pageUrl: location.href,
+      };
+    });
+    await page.addScriptTag({
+      content: await readFile("dist/extension-firefox/content.js", "utf8"),
+    });
+    const inline = await page.evaluate(() =>
+      GlassmarkCapture.collect({
+        mode: "thread",
+        language: "zh-CN",
+        maxPosts: 1,
+        autoLoadSeconds: 8,
+      }),
+    );
+    assert.deepEqual(
+      inline.posts.map((post) => post.id),
+      ["222", "c1", "c2", "reply1", "reply2", "reply3", "c3"],
+    );
+    assert.equal(inline.posts[1].authorName, "读者1");
+    assert.match(inline.posts[1].avatarUrl, /avatar\.svg/);
+    assert.equal(inline.posts[1].stats.likes, "7");
+    assert.equal(
+      await page.locator("body").getAttribute("data-all-comment-clicks"),
+      "1",
+    );
+    assert.equal(
+      await page.locator("body").getAttribute("data-reply-clicks"),
+      "1",
+    );
+
+    assert.equal(
+      await page.locator("body").getAttribute("data-comment-clicks"),
+      query.includes("opened=1") ? null : "1",
+    );
+  }
   const manifest = JSON.parse(
     await readFile("dist/extension-firefox/manifest.json", "utf8"),
   );

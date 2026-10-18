@@ -57,6 +57,9 @@ try {
     ],
     ["https://www.zhihu.com/question/124", false],
     ["https://www.zhihu.com/question/125", false],
+    ["https://www.zhihu.com/question/125?preview=1", false],
+    ["https://www.zhihu.com/question/125?opened=1", false],
+    ["https://www.zhihu.com/question/125?preview=1&blocked=1", false],
     ["https://www.zhihu.com/question/124?blocked=1", false],
     ["https://www.zhihu.com/question/124?empty=1&delay=50", false],
     ["https://www.zhihu.com/question/123", true],
@@ -206,6 +209,11 @@ try {
             : ["222", "c1", "reply1", "c2", "c3"],
       );
       if (url.includes("/question/125")) {
+        assert.equal(
+          await source.locator("body").getAttribute("data-comment-clicks"),
+          url.includes("opened=1") ? null : "1",
+          "the plugin must open the selected answer comments without a manual click",
+        );
         assert.equal(
           await source.locator("body").getAttribute("data-all-comment-clicks"),
           "1",

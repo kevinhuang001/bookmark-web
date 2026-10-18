@@ -132,6 +132,10 @@ function commentButton(scope, root) {
         Number(!!a.closest(".ContentItem-actions,.RichContent-actions")),
     )[0];
 }
+const commentsExpanded = (button) =>
+  button?.getAttribute("aria-expanded") === "true" ||
+  (button && /收起评论|hide comments/i.test(label(button)));
+
 const emptyPanel = (panel) =>
   panel.matches(PANELS) &&
   /暂无评论|还没有评论|暂时没有评论|尚无评论|no comments yet|be the first to comment/i.test(
@@ -216,7 +220,7 @@ export async function loadZhihuComments(
       ]),
     );
   const discoverPanels = (before, action) => {
-    const count = panels.size;
+    let changedPanel = false;
     const controls = (
       action?.getAttribute("aria-controls") ||
       action?.getAttribute("aria-owns") ||
@@ -238,9 +242,10 @@ export async function loadZhihuComments(
         (zhihuCommentElements(panel).length || emptyPanel(panel))
       ) {
         panels.add(panel.closest('[role="dialog"],.Modal') || panel);
+        changedPanel ||= changed;
       }
     }
-    return panels.size > count;
+    return changedPanel;
   };
   const expand = [
     ...root.querySelectorAll(
@@ -263,21 +268,22 @@ export async function loadZhihuComments(
     comments = harvest();
     button = commentButton(owner, root);
   }
-  if (!comments.length && !stop()) {
+  // A visible hot-comment preview does not mean the comment action is open.
+  // Decide from the selected answer's action, rather than the preview count.
+  if ((!comments.length || (button && !commentsExpanded(button))) && !stop()) {
     if (!button)
       throw new Error(tr("未找到所选回答的评论按钮，请展开回答后重试"));
     progress(tr("正在打开所选回答的评论…"));
     // Only an explicitly expanded action may be toggled closed and reopened.
     // Opening this answer can close a FOREIGN dialog; that is not a reason to click twice.
-    if (
-      /收起评论|hide comments/i.test(label(button)) ||
-      button.getAttribute("aria-expanded") === "true"
-    ) {
+    if (commentsExpanded(button)) {
       button.click();
       await wait();
       button = commentButton(owner, root) || button;
     }
     const before = snapshot();
+    const previousContent = fingerprint(owner);
+    let opened = false;
     const noComments = /(?:^|\s)0\s*(?:条)?评论|评论\s*0(?:\s|$)|添加评论/.test(
       label(button),
     );
@@ -285,9 +291,13 @@ export async function loadZhihuComments(
     button.click();
     while (!stop() && performance.now() < deadline) {
       await wait();
-      discoverPanels(before, button);
+      opened =
+        discoverPanels(before, button) ||
+        commentsExpanded(button) ||
+        fingerprint(owner) !== previousContent ||
+        opened;
       comments = harvest();
-      if (comments.length) break;
+      if (opened && comments.length) break;
       if ([...panels].some((panel) => visible(panel) && emptyPanel(panel)))
         return;
       if (
@@ -301,7 +311,7 @@ export async function loadZhihuComments(
       )
         return;
     }
-    if (!comments.length && !stop())
+    if ((!opened || !comments.length) && !stop())
       throw new Error(tr("所选回答的评论未能加载，请确认知乎已登录后重试"));
   }
   const clicked = new WeakSet();
