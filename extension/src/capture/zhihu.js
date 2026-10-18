@@ -80,7 +80,35 @@ export function zhihuCommentElements(scope) {
     if (owner && scope.contains(owner)) elements.add(owner);
     else elements.add(content);
   }
-  return [...elements].filter(visible);
+  return [...elements].filter((element) => {
+    if (!visible(element) || element.closest('[aria-busy="true"]'))
+      return false;
+    const body = element.matches(ZHIHU_COMMENT_BODY + ",.RichText")
+      ? element
+      : [...element.querySelectorAll(ZHIHU_COMMENT_BODY + ",.RichText")].find(
+          (node) => zhihuCommentOwner(node) === element,
+        );
+    if (!body || !visible(body) || body.closest('[aria-busy="true"]'))
+      return false;
+    // Comment rows and authors can be mounted before the actual body arrives.
+    if (
+      (body.innerText ?? body.textContent ?? "")
+        .replace(/[\u200b-\u200f\ufeff]/g, "")
+        .trim()
+    )
+      return true;
+    return [...body.querySelectorAll("img,video")].some(
+      (node) =>
+        zhihuCommentOwner(node) === element &&
+        [
+          node.getAttribute("data-original"),
+          node.getAttribute("data-actualsrc"),
+          node.currentSrc,
+          node.src,
+          node.poster,
+        ].some((url) => /^https?:/.test(url || "")),
+    );
+  });
 }
 
 function answerContainer(root) {
@@ -136,11 +164,24 @@ const commentsExpanded = (button) =>
   button?.getAttribute("aria-expanded") === "true" ||
   (button && /收起评论|hide comments/i.test(label(button)));
 
-const emptyPanel = (panel) =>
-  panel.matches(PANELS) &&
-  /暂无评论|还没有评论|暂时没有评论|尚无评论|no comments yet|be the first to comment/i.test(
-    panel.textContent,
+const emptyPanel = (panel) => {
+  if (
+    !panel.matches(PANELS) ||
+    !visible(panel) ||
+    zhihuCommentElements(panel).length
+  )
+    return false;
+  return [panel, ...panel.querySelectorAll("*")].some(
+    (node) =>
+      visible(node) &&
+      !node.closest('[aria-busy="true"]') &&
+      !node.closest(ZHIHU_COMMENT_BODY) &&
+      !node.querySelector(ZHIHU_COMMENT_BODY) &&
+      /^(?:暂无评论|还没有评论|暂时没有评论|尚无评论|no comments yet|be the first to comment)(?:[，,.。！!\s]|$)/i.test(
+        (node.innerText ?? node.textContent ?? "").trim(),
+      ),
   );
+};
 const fingerprint = (panel) =>
   zhihuCommentElements(panel)
     .map(
@@ -272,7 +313,8 @@ export async function loadZhihuComments(
   let comments = harvest();
   let button = commentButton(owner, root);
   const preparedOpen = !!prepared && panels.size > 1;
-  if (preparedOpen && prepared.empty) return result(true);
+  if (preparedOpen && prepared.empty && [...panels].some(emptyPanel))
+    return result(true);
   while (
     !comments.length &&
     !button &&
@@ -293,21 +335,16 @@ export async function loadZhihuComments(
     if (!button)
       throw new Error(tr("未找到所选回答的评论按钮，请展开回答后重试"));
     progress(tr("正在打开所选回答的评论…"));
-    // Only an explicitly expanded action may be toggled closed and reopened.
-    // Opening this answer can close a FOREIGN dialog; that is not a reason to click twice.
-    if (commentsExpanded(button)) {
-      button.click();
-      await wait();
-      button = commentButton(owner, root) || button;
-    }
+    // Expanded/loading is not ready. Wait on the existing panel rather than
+    // toggling it closed, including a panel opened by the picker moments ago.
     const before = snapshot();
     const previousContent = fingerprint(owner);
-    let opened = false;
-    const noComments = /(?:^|\s)0\s*(?:条)?评论|评论\s*0(?:\s|$)|添加评论/.test(
-      label(button),
-    );
-    button.scrollIntoView({ block: "center", inline: "nearest" });
-    button.click();
+    let opened = commentsExpanded(button) || preparedOpen;
+    if (!opened) {
+      button.scrollIntoView({ block: "center", inline: "nearest" });
+      button.click();
+    }
+    progress(tr("正在加载讨论，请勿关闭来源标签页…"));
     while (!stop() && performance.now() < deadline) {
       await wait();
       opened =
@@ -319,24 +356,6 @@ export async function loadZhihuComments(
       if (opened && comments.length) break;
       if ([...panels].some((panel) => visible(panel) && emptyPanel(panel)))
         return result(true);
-      if (
-        noComments &&
-        [...doc.querySelectorAll(PANELS)].some(
-          (panel) =>
-            visible(panel) &&
-            !before.get(panel)?.visible &&
-            panel.querySelector("textarea,[contenteditable],.InputLike"),
-        )
-      ) {
-        for (const panel of doc.querySelectorAll(PANELS))
-          if (
-            visible(panel) &&
-            !before.get(panel)?.visible &&
-            panel.querySelector("textarea,[contenteditable],.InputLike")
-          )
-            panels.add(panel);
-        return result(true);
-      }
     }
     if ((!opened || !comments.length) && !stop())
       throw new Error(tr("所选回答的评论未能加载，请确认知乎已登录后重试"));
@@ -390,8 +409,9 @@ export async function loadZhihuComments(
       const panelChanged = discoverPanels(before, next);
       comments = harvest();
       if (
-        panelChanged ||
-        comments.map((node) => node.textContent).join("\n") !== previous
+        (comments.length || [...panels].some(emptyPanel)) &&
+        (panelChanged ||
+          comments.map((node) => node.textContent).join("\n") !== previous)
       ) {
         changed = true;
         break;

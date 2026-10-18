@@ -223,8 +223,8 @@ export async function collect({
             "未识别到当前主帖，请等待帖子详情加载完成后重试；登录或访问限制也可能导致内容不可见",
           ),
         );
-      if (kind === "zhihu")
-        await loadZhihuComments(selectedZhihu, {
+      if (kind === "zhihu") {
+        const loaded = await loadZhihuComments(selectedZhihu, {
           seconds: autoLoadSeconds,
           progress: (message) => {
             control.querySelector("span").textContent = message;
@@ -242,6 +242,12 @@ export async function collect({
             notify();
           },
         });
+        if (
+          !loaded.empty &&
+          ![...posts.values()].some((post) => post.isComment)
+        )
+          throw new Error(tr("所选回答的评论未能加载，请确认知乎已登录后重试"));
+      }
       let unchanged = 0;
       while (
         kind === "x" &&

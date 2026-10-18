@@ -95,6 +95,7 @@ test("release publishes installable assets and removes old JSON reports with mat
         path.join(root, "release-input", name + "-report.json"),
         JSON.stringify({
           backend: "native-rust",
+          waitsForCommentBodies: true,
           installedAddon: true,
           installedAddonBackend: "native-rust",
           addonVersion: "0.7.0",

@@ -294,10 +294,44 @@
       all.hidden = !opened;
       primary.textContent = opened ? "收起评论" : "162 条评论";
       primary.setAttribute("aria-expanded", String(opened));
+      const preview = inline.querySelector(".preview-list");
+      function finishLoading() {
+        inline.hidden = false;
+        inline.removeAttribute("aria-busy");
+        inline.querySelector("[data-pending-comment]")?.remove();
+        preview.hidden = false;
+        all.hidden = false;
+        primary.textContent = "收起评论";
+        primary.setAttribute("aria-expanded", "true");
+        document.body.dataset.commentsLoaded = "1";
+      }
+      function beginLoading() {
+        inline.hidden = false;
+        inline.setAttribute("aria-busy", "true");
+        preview.hidden = true;
+        all.hidden = true;
+        primary.textContent = "收起评论";
+        primary.setAttribute("aria-expanded", "true");
+        const pending = document.createElement("div");
+        pending.setAttribute("data-pending-comment", "");
+        pending.innerHTML =
+          '<span role="status">正在加载评论</span><div hidden>暂无评论</div>' +
+          (params.has("skeleton")
+            ? '<div class="CommentItemV2" data-comment-id="pending"><span>作者占位</span><div class="CommentContent" style="min-height:20px"></div></div>'
+            : "");
+        inline.prepend(pending);
+        if (!params.has("blocked"))
+          setTimeout(finishLoading, Number(params.get("delay") || 1200));
+      }
+      if (opened && params.has("skeleton")) beginLoading();
       primary.onclick = () => {
         document.body.dataset.commentClicks = String(
           Number(document.body.dataset.commentClicks || 0) + 1,
         );
+        if (params.has("skeleton") || params.has("staleempty")) {
+          beginLoading();
+          return;
+        }
         if (params.has("blocked")) return;
         setTimeout(
           () => {
@@ -310,6 +344,9 @@
         );
       };
 
+      if (params.has("adsonly"))
+        for (const row of preview.querySelectorAll("[data-id]"))
+          row.setAttribute("data-ad", "true");
       const rowTemplate = document.querySelector("[data-id=c1]").outerHTML;
       function row(id, text) {
         const holder = document.createElement("div");
@@ -343,9 +380,19 @@
           replies.remove();
         };
         modal.querySelector("#next").onclick = (event) => {
-          modal
-            .querySelector("#full-list")
-            .append(row("c3", "完整评论区下一页"));
+          const list = modal.querySelector("#full-list");
+          if (params.has("pageDelay")) {
+            list.setAttribute("aria-busy", "true");
+            list.innerHTML =
+              '<div class="CommentItemV2" data-comment-id="pending-page"><div class="CommentContent" style="min-height:20px"></div></div>';
+            setTimeout(
+              () => {
+                list.removeAttribute("aria-busy");
+                list.replaceChildren(row("c3", "完整评论区下一页"));
+              },
+              Number(params.get("pageDelay")),
+            );
+          } else list.append(row("c3", "完整评论区下一页"));
           event.target.disabled = true;
         };
       };

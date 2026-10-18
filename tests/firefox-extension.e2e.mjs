@@ -172,6 +172,10 @@ try {
     "",
     "?preview=1",
     "?opened=1",
+    "?skeleton=1&delay=1200&pageDelay=800",
+    "?opened=1&skeleton=1&delay=1200",
+    "?staleempty=1&delay=1200",
+    "?skeleton=1&blocked=1",
     "?preview=1&blocked=1",
     "?delay=2000&cancel=1",
   ]) {
@@ -288,6 +292,7 @@ try {
     addonVersion: version,
     installedBrowser: session.capabilities.browserVersion,
     commentsOpenBeforeCapture: true,
+    waitsForCommentBodies: true,
     blockedOpeningPreventsCapture: true,
     cancelOpeningPreventsCapture: true,
     installedAddonBackend: native ? "native-rust" : "fixture",

@@ -1,7 +1,7 @@
 /** Exercise the same bundled collector under Firefox's DOM engine. */
 import { firefox } from "@playwright/test";
 import assert from "node:assert/strict";
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { staticServer } from "../scripts/dev.mjs";
 const server = await staticServer();
 const browser = await firefox.launch();
@@ -70,7 +70,14 @@ try {
     await page.locator("body").getAttribute("data-wrong-clicks"),
     null,
   );
-  for (const query of ["", "?preview=1", "?opened=1"]) {
+  for (const query of [
+    "",
+    "?preview=1",
+    "?opened=1",
+    "?skeleton=1&delay=1200&pageDelay=800",
+    "?opened=1&skeleton=1&delay=1200",
+    "?staleempty=1&delay=1200",
+  ]) {
     await page.goto("https://www.zhihu.com/question/125" + query);
     await page.evaluate(() => {
       const element = document.querySelector(".AnswerItem");
@@ -117,6 +124,7 @@ try {
   );
   assert.deepEqual(manifest.background, { scripts: ["background.js"] });
   assert.ok(manifest.browser_specific_settings.gecko.id);
+  await mkdir("artifacts", { recursive: true });
   await writeFile(
     "artifacts/firefox-report.json",
     JSON.stringify(

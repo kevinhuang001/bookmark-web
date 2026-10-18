@@ -59,6 +59,17 @@ try {
     ["https://www.zhihu.com/question/125", false],
     ["https://www.zhihu.com/question/125?preview=1", false],
     ["https://www.zhihu.com/question/125?opened=1", false],
+    ["https://www.zhihu.com/question/125?adsonly=1", false],
+    [
+      "https://www.zhihu.com/question/125?skeleton=1&delay=1200&pageDelay=800",
+      false,
+    ],
+    [
+      "https://www.zhihu.com/question/125?opened=1&skeleton=1&delay=1200",
+      false,
+    ],
+    ["https://www.zhihu.com/question/125?staleempty=1&delay=1200", false],
+    ["https://www.zhihu.com/question/125?skeleton=1&blocked=1", false],
     ["https://www.zhihu.com/question/125?preview=1&blocked=1", false],
     ["https://www.zhihu.com/question/124?blocked=1", false],
     ["https://www.zhihu.com/question/124?empty=1&delay=50", false],
@@ -74,6 +85,7 @@ try {
         runtime: {
           sendMessage: async () => {
             globalThis.__pickerAtReady = {
+              loaded: document.body.dataset.commentsLoaded,
               clicks: document.body.dataset.commentClicks,
               panels: globalThis.__glassmarkZhihuAnswer.comments?.panels.length,
             };
@@ -112,6 +124,14 @@ try {
       continue;
     }
     await source.waitForFunction(() => globalThis.__pickerReady === true);
+    if (/skeleton=1|staleempty=1/.test(url)) {
+      assert.equal(
+        await source.evaluate(() => globalThis.__pickerAtReady.loaded),
+        "1",
+        "capture must wait for the actual comment bodies, not an expanded button or empty skeletons",
+      );
+    }
+
     if (
       url.includes("/question/124") ||
       (url.includes("/question/125") && !url.includes("opened=1"))
@@ -221,7 +241,7 @@ try {
         null,
       );
     }
-    if (url.includes("blocked=1")) {
+    if (url.includes("adsonly=1")) {
       assert.equal(title, "收藏未完成");
       assert.match(detail, /评论未能加载/);
       assert.equal(items.length, before);

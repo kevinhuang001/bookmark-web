@@ -133,6 +133,9 @@ try {
     "https://www.zhihu.com/question/125",
     "https://www.zhihu.com/question/125?preview=1",
     "https://www.zhihu.com/question/125?opened=1",
+    "https://www.zhihu.com/question/125?skeleton=1&delay=1200&pageDelay=800",
+    "https://www.zhihu.com/question/125?opened=1&skeleton=1&delay=1200",
+    "https://www.zhihu.com/question/125?staleempty=1&delay=1200",
   ]) {
     await source.goto(url);
     await worker.evaluate(
