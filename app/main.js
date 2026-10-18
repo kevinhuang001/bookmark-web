@@ -608,6 +608,7 @@ async function socialAction(action, data = {}) {
     return;
   }
   if (action === "tag-filter") {
+    state.feedScroll[state.view] = 0;
     state.tag = data.tag || null;
     state.selected = null;
     state.viewKey = "";

@@ -59,11 +59,19 @@ function savedSearch(kind, query) {
   }[kind];
   return `<form class="saved-search" role="search">${icon("search")}<input type="search" name="q" aria-label="${tr("搜索 {1} 收藏", { 1: label })}" placeholder="${tr("搜索收藏")}" value="${esc(query)}"><button type="submit" aria-label="${tr("搜索收藏")}">${icon("arrowRight")}</button></form>`;
 }
-function savedTags(options) {
-  return `<div class="saved-tags"><div><h2>${tr("标签")}</h2><button data-social-action="new-tag" aria-label="${tr("新建标签")}">${icon("plus")}</button></div><button class="${!options.tag ? "active" : ""}" data-social-action="tag-filter" data-tag="">${tr("全部收藏")}</button>${(options.tags || []).map((t) => `<button class="${options.tag === t ? "active" : ""}" data-social-action="tag-filter" data-tag="${esc(t)}">${icon("tag")}<span>${esc(t)}</span></button>`).join("")}</div>`;
+function collectionTabs(options) {
+  const tags = ["", ...(options.tags || [])];
+  return `<nav class="collection-navigation" aria-label="${tr("标签")}"><div class="collection-tabs" role="tablist" aria-label="${tr("标签")}">${tags.map((tag, index) => `<button id="collection-tab-${index}" role="tab" aria-controls="saved-posts" aria-selected="${(options.tag || "") === tag}" tabindex="${(options.tag || "") === tag ? 0 : -1}" data-social-action="tag-filter" data-tag="${esc(tag)}">${esc(tag || tr("全部收藏"))}</button>`).join("")}</div><button class="collection-add-tag" data-social-action="new-tag" aria-label="${tr("新建标签")}">${icon("plus")}</button></nav>`;
+}
+function collectionPanel(options) {
+  const index = ["", ...(options.tags || [])].indexOf(options.tag || "");
+  return `id="saved-posts" role="tabpanel" aria-labelledby="collection-tab-${Math.max(0, index)}"`;
+}
+function detailBack() {
+  return `<div class="discussion-back"><button data-social-action="back" aria-label="${tr("{0}返回收藏", { 0: "" })}">${icon("back")}<span>${tr("{0}返回收藏", { 0: "" })}</span></button></div>`;
 }
 function xSidebar(options) {
-  return `<aside class="saved-site-sidebar x-saved-sidebar" aria-label="${tr("X 书签导航")}"><div class="saved-site-brand">${icon("x")}</div><button class="saved-nav-entry active" data-social-action="bookmarks">${icon("bookmark")}<span>${tr("书签")}</span><small>${options.items.length}</small></button>${savedSearch("x", options.query)}${savedTags(options)}<p class="saved-local-note">${tr("{5}本地收藏", { 5: icon("archive") })}</p></aside>`;
+  return `<aside class="saved-site-sidebar x-saved-sidebar" aria-label="${tr("X 书签导航")}"><div class="saved-site-brand">${icon("x")}</div><button class="saved-nav-entry active" data-social-action="bookmarks">${icon("bookmark")}<span>${tr("书签")}</span><small>${options.items.length}</small></button>${savedSearch("x", options.query)}<p class="saved-local-note">${tr("{5}本地收藏", { 5: icon("archive") })}</p></aside>`;
 }
 function redditSidebar(items, options) {
   const communities = [
@@ -71,7 +79,7 @@ function redditSidebar(items, options) {
       items.map((i) => rootPost(i).community || communityFromUrl(i.url)),
     ),
   ];
-  return `<aside class="reddit-saved-sidebar" aria-label="${tr("Reddit 已保存导航")}"><button class="saved-nav-entry active" data-social-action="bookmarks">${icon("bookmark")}<span>${tr("已保存")}</span><small>${items.length}</small></button>${communities.length ? `<div class="saved-communities"><h2>${tr("已收藏的社区")}</h2><button class="${!options.filters.community ? "active" : ""}" data-social-action="community" data-community="">${tr("全部社区")}</button>${communities.map((c) => `<button class="${options.filters.community === c ? "active" : ""}" data-social-action="community" data-community="${esc(c)}"><span class="reddit-community-mark">r/</span>${esc(c)}</button>`).join("")}</div>` : ""}${savedTags(options)}</aside>`;
+  return `<aside class="reddit-saved-sidebar" aria-label="${tr("Reddit 已保存导航")}"><button class="saved-nav-entry active" data-social-action="bookmarks">${icon("bookmark")}<span>${tr("已保存")}</span><small>${items.length}</small></button>${communities.length ? `<div class="saved-communities"><h2>${tr("已收藏的社区")}</h2><button class="${!options.filters.community ? "active" : ""}" data-social-action="community" data-community="">${tr("全部社区")}</button>${communities.map((c) => `<button class="${options.filters.community === c ? "active" : ""}" data-social-action="community" data-community="${esc(c)}"><span class="reddit-community-mark">r/</span>${esc(c)}</button>`).join("")}</div>` : ""}</aside>`;
 }
 function discussionScope(item) {
   const count = Math.max(0, (item.posts?.length || 1) - 1);
@@ -80,7 +88,7 @@ function discussionScope(item) {
 function xShell(items, options) {
   const selected = items.find((i) => i.id === options.selected);
   const rows = feedItems(items, options.filters);
-  return `<div class="x-shell">${xSidebar({ ...options, items })}<section class="x-timeline"><header class="x-feed-header">${selected ? `<div class="x-detail-title"><button data-social-action="back" aria-label="${tr("返回信息流")}">${icon("back")}</button><strong>${tr("帖子")}</strong></div>` : `<div class="x-bookmarks-title"><div><strong>${tr("书签")}</strong><span>${tr("X · {0} 份收藏", { 0: items.length })}</span></div>${icon("bookmark")}</div>`}</header>
+  return `<div class="x-shell">${xSidebar({ ...options, items })}<section class="x-timeline"><header class="x-feed-header">${selected ? detailBack() : collectionTabs(options)}</header>
  ${
    selected
      ? xPost(rootPost(selected), selected, { detail: true }) +
@@ -89,7 +97,7 @@ function xShell(items, options) {
          .slice(1)
          .map((p) => xPost(p, selected, { reply: true }))
          .join("")
-     : `${options.filters.author ? `<div class="feed-filter-bar">${esc(options.filters.author)}<button data-social-action="clear-filter">${tr("{1} 清除筛选", { 1: icon("close") })}</button></div>` : ""}${rows.map((item) => xPost(rootPost(item), item)).join("") || `<div class="social-empty">${tr("这里还没有收藏的帖子。")}<p>${tr("通过浏览器插件保存帖子和讨论串。")}</p></div>`}<div class="feed-end">${rows.length ? tr("已显示全部书签") : ""}</div>`
+     : `<div ${collectionPanel(options)}>${options.filters.author ? `<div class="feed-filter-bar">${esc(options.filters.author)}<button data-social-action="clear-filter">${tr("{1} 清除筛选", { 1: icon("close") })}</button></div>` : ""}${rows.map((item) => xPost(rootPost(item), item)).join("") || `<div class="social-empty">${tr("这里还没有收藏的帖子。")}<p>${tr("通过浏览器插件保存帖子和讨论串。")}</p></div>`}<div class="feed-end">${rows.length ? tr("已显示全部书签") : ""}</div></div>`
  }</section></div>`;
 }
 function redditActions(post, item) {
@@ -107,21 +115,16 @@ function redditComment(post, item) {
 function redditShell(items, options) {
   const selected = items.find((i) => i.id === options.selected);
   const rows = feedItems(items, options.filters);
-  const communities = [
-    ...new Set(
-      items.map((i) => rootPost(i).community || communityFromUrl(i.url)),
-    ),
-  ];
-  return `<div class="reddit-shell"><header class="reddit-archive-header"><div class="reddit-wordmark">${icon("reddit")}<strong>reddit</strong></div>${savedSearch("reddit", options.query)}</header>${redditSidebar(items, options)}<div class="reddit-main"><header class="reddit-saved-heading"><h1>${tr("已保存")}</h1><span>${tr("{3} 份收藏", { 3: items.length })}</span></header><div class="reddit-layout"><section class="reddit-timeline">${
+  return `<div class="reddit-shell"><header class="reddit-archive-header"><div class="reddit-wordmark">${icon("reddit")}<strong>reddit</strong></div>${savedSearch("reddit", options.query)}</header>${redditSidebar(items, options)}<div class="reddit-main">${selected ? "" : collectionTabs(options)}<div class="reddit-layout"><section class="reddit-timeline">${
     selected
-      ? `<div class="reddit-detail-nav"><button data-social-action="back" aria-label="${tr("返回信息流")}">${icon("back")}</button><span>r/${esc(rootPost(selected).community || communityFromUrl(selected.url))}</span></div>${redditPost(selected, true)}<div class="reddit-comments-title"><h2>${tr("评论")} <span>${Math.max(0, (selected.posts?.length || 1) - 1)}</span></h2></div>${
+      ? `${detailBack()}${redditPost(selected, true)}<div class="reddit-comments-title"><h2>${tr("评论")} <span>${Math.max(0, (selected.posts?.length || 1) - 1)}</span></h2></div>${
           (selected.posts || [])
             .slice(1)
             .map((p) => redditComment(p, selected))
             .join("") ||
           `<div class="social-empty">${tr("这份收藏中没有已加载的评论。")}</div>`
         }`
-      : `<div class="reddit-sort-bar"><select class="saved-community" aria-label="${tr("筛选已收藏的社区")}"><option value="">${tr("全部收藏")}</option>${communities.map((c) => `<option value="${esc(c)}" ${options.filters.community === c ? "selected" : ""}>r/${esc(c)}</option>`).join("")}</select><div><button data-social-action="sort-recent" class="${options.filters.sort !== "best" ? "active" : ""}">${tr("最新")}</button><button data-social-action="sort-best" class="${options.filters.sort === "best" ? "active" : ""}">${tr("最佳")}</button></div></div>${rows.map((item) => redditPost(item)).join("") || `<div class="social-empty">${tr("还没有收藏的讨论。")}</div>`}`
+      : `<div ${collectionPanel(options)}><div class="reddit-sort-bar"><div><button data-social-action="sort-recent" class="${options.filters.sort !== "best" ? "active" : ""}">${tr("最新")}</button><button data-social-action="sort-best" class="${options.filters.sort === "best" ? "active" : ""}">${tr("最佳")}</button></div></div>${rows.map((item) => redditPost(item)).join("") || `<div class="social-empty">${tr("还没有收藏的讨论。")}</div>`}</div>`
   }</section></div></div></div>`;
 }
 function noteCover(post, item) {
@@ -151,7 +154,7 @@ function noteDetail(item) {
 function noteShell(items, options) {
   const selected = items.find((i) => i.id === options.selected);
   const rows = feedItems(items, options.filters);
-  return `<div class="note-shell"><header class="note-archive-header"><div class="note-wordmark">${icon("xiaohongshu").replace('viewBox="0 0 24 24"', 'viewBox="0 6 24 12"')}</div>${savedSearch("xiaohongshu", options.query)}</header><div class="note-collection-heading"><div><button class="note-saved-tab" data-social-action="bookmarks">${tr("收藏")}</button><span>${tr("{2} 篇笔记", { 2: items.length })}</span></div>${selected ? `<button class="note-back" data-social-action="back">${tr("{0}返回收藏", { 0: icon("back") })}</button>` : ""}</div>${selected ? noteDetail(selected) : `${savedTags(options)}<div class="note-grid">${rows.map(notePost).join("") || `<div class="social-empty">${tr("还没有收藏的笔记。")}</div>`}</div>`}</div>`;
+  return `<div class="note-shell"><header class="note-archive-header"><div class="note-wordmark">${icon("xiaohongshu").replace('viewBox="0 0 24 24"', 'viewBox="0 6 24 12"')}</div>${savedSearch("xiaohongshu", options.query)}</header>${selected ? detailBack() + noteDetail(selected) : `${collectionTabs(options)}<div ${collectionPanel(options)} class="note-grid">${rows.map(notePost).join("") || `<div class="social-empty">${tr("还没有收藏的笔记。")}</div>`}</div>`}</div>`;
 }
 
 function zhihuPost(item, detail = false) {
@@ -165,16 +168,16 @@ function zhihuPost(item, detail = false) {
 function zhihuShell(items, options) {
   const selected = items.find((i) => i.id === options.selected);
   const rows = feedItems(items, options.filters);
-  return `<div class="zhihu-shell"><header class="zhihu-header"><div class="zhihu-wordmark">${icon("zhihu")}<strong>${tr("知乎")}</strong></div>${savedSearch("zhihu", options.query)}</header><div class="zhihu-layout"><aside class="zhihu-sidebar"><button class="saved-nav-entry active" data-social-action="bookmarks">${icon("bookmark")}<span>${tr("收藏")}</span><small>${items.length}</small></button>${savedTags(options)}</aside><section class="zhihu-main"><header class="zhihu-heading">${selected ? `<button data-social-action="back" aria-label="${tr("返回信息流")}">${icon("back")}</button>` : ""}<h2>${tr("我的收藏")}</h2><span>${tr("{3} 份收藏", { 3: items.length })}</span></header>${
+  return `<div class="zhihu-shell"><header class="zhihu-header"><div class="zhihu-wordmark">${icon("zhihu")}<strong>${tr("知乎")}</strong></div>${savedSearch("zhihu", options.query)}</header><div class="zhihu-layout"><section class="zhihu-main">${
     selected
-      ? `${zhihuPost(selected, true)}<div class="zhihu-comments"><h2>${tr("评论")} · ${Math.max(0, (selected.posts?.length || 1) - 1)}</h2>${
+      ? `${detailBack()}${zhihuPost(selected, true)}<div class="zhihu-comments"><h2>${tr("评论")} · ${Math.max(0, (selected.posts?.length || 1) - 1)}</h2>${
           (selected.posts || [])
             .filter((p) => p.isComment)
             .map((p) => noteComment(p, selected))
             .join("") ||
           `<p class="social-empty">${tr("这份收藏中没有已加载的评论。")}</p>`
         }</div>`
-      : `<div class="zhihu-list"><div class="zhihu-list-header"><strong>${tr("{3} 份收藏", { 3: rows.length })}</strong><div class="zhihu-sort"><button data-social-action="sort-recent" class="${options.filters.sort !== "best" ? "active" : ""}">${tr("最新")}</button><button data-social-action="sort-best" class="${options.filters.sort === "best" ? "active" : ""}">${tr("最佳")}</button></div></div>${rows.map((i) => zhihuPost(i)).join("") || `<div class="social-empty">${tr("还没有收藏的回答或文章。")}<p>${tr("通过浏览器插件保存知乎回答和文章。")}</p></div>`}</div>`
+      : `<div class="zhihu-list">${collectionTabs(options)}<div ${collectionPanel(options)}><div class="zhihu-sort"><button data-social-action="sort-recent" class="${options.filters.sort !== "best" ? "active" : ""}">${tr("最新")}</button><button data-social-action="sort-best" class="${options.filters.sort === "best" ? "active" : ""}">${tr("最佳")}</button></div>${rows.map((i) => zhihuPost(i)).join("") || `<div class="social-empty">${tr("还没有收藏的回答或文章。")}<p>${tr("通过浏览器插件保存知乎回答和文章。")}</p></div>`}</div></div>`
   }</section></div></div>`;
 }
 
@@ -192,6 +195,9 @@ export async function renderSocial(
         : kind === "x"
           ? xShell(items, { selected, query, filters, tags, tag })
           : redditShell(items, { selected, query, filters, tags, tag });
+  root
+    .querySelector('[role="tab"][aria-selected="true"]')
+    ?.scrollIntoView({ block: "nearest", inline: "nearest" });
   if (
     !selected &&
     ((items.length && !feedItems(items, filters).length) ||
@@ -253,6 +259,27 @@ export async function renderSocial(
     if (card) callbacks.action("open", { id: card.dataset.openArchive });
   };
   root.onkeydown = (e) => {
+    const tab = e.target.closest('[role="tab"]');
+    if (tab && ["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) {
+      e.preventDefault();
+      const tabs = [...root.querySelectorAll('[role="tab"]')];
+      const current = tabs.indexOf(tab);
+      const next =
+        e.key === "Home"
+          ? 0
+          : e.key === "End"
+            ? tabs.length - 1
+            : (current + (e.key === "ArrowRight" ? 1 : -1) + tabs.length) %
+              tabs.length;
+      const tag = tabs[next].dataset.tag;
+      callbacks.action("tag-filter", { tag });
+      queueMicrotask(() =>
+        [...root.querySelectorAll('[role="tab"]')]
+          .find((node) => node.dataset.tag === tag)
+          ?.focus(),
+      );
+      return;
+    }
     if (e.key === "Enter" && e.target.matches("[data-open-archive]"))
       callbacks.action("open", { id: e.target.dataset.openArchive });
   };
@@ -264,9 +291,5 @@ export async function renderSocial(
         query: new FormData(search).get("q") || "",
       });
     };
-  const community = root.querySelector(".saved-community");
-  if (community)
-    community.onchange = () =>
-      callbacks.action("community", { community: community.value });
   await media.hydrate(root, items);
 }

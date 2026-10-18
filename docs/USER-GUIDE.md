@@ -6,7 +6,7 @@ Use the extension on an HTTP or HTTPS page. Normal pages offer whole-page and mu
 
 X automatically loads replies within the configured time and post limits. You can save loaded content immediately or cancel from the source-page control. Reddit and Xiaohongshu capture comments already loaded in the page; expand the comments you want before saving. Zhihu opens the selected answer's comments automatically and waits on the source page before starting capture.
 
-Webpages live in nested folders. Social sources have independent tag collections and search. Global search covers all sources, including sources hidden from the sidebar. Repeated captures create independent saves. Delete a save from its toolbar or detail menu.
+Webpages live in nested folders. Social sources have independent tag collections and search. Use the tabs above each collection to switch between all saves and a platform tag; the plus button creates a tag. Long tab lists scroll horizontally, and arrow keys, Home and End switch tabs. Detail pages show a compact back action and preserve the selected tag and sort when returning. Global search covers all sources, including sources hidden from the sidebar. Repeated captures create independent saves. Delete a save from its toolbar or detail menu.
 
 ## Media and reports
 

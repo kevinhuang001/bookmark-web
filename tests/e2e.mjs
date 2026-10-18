@@ -372,8 +372,10 @@ try {
     0,
   );
   assert.equal(
-    await page.locator(".x-bookmarks-title strong").textContent(),
-    "书签",
+    await page
+      .getByRole("tab", { name: "全部收藏", exact: true })
+      .textContent(),
+    "全部收藏",
   );
   assert.equal(
     await page.locator(".x-saved-sidebar .saved-nav-entry").count(),
@@ -890,10 +892,6 @@ try {
       .count(),
     0,
   );
-  await page.locator(".saved-community").selectOption("webdev");
-  assert.equal(await page.locator(".reddit-post").count(), 1);
-  await page.locator(".saved-community").selectOption("");
-  await expect(page.locator(".reddit-post")).toHaveCount(3);
   await page.locator('.saved-communities [data-community="webdev"]').click();
   assert.equal(await page.locator(".reddit-post").count(), 1);
   await page.locator(".reddit-saved-sidebar .saved-nav-entry").click();
@@ -953,7 +951,7 @@ try {
   await page.locator('[data-social-action="new-tag"]').click();
   await page.locator("#catalog-tag-name").fill("Video lab");
   await page.getByRole("button", { name: "创建标签", exact: true }).click();
-  await page.locator('.saved-tags [data-tag="Video lab"]').waitFor();
+  await page.locator('.collection-tabs [data-tag="Video lab"]').waitFor();
   const catalog = await get("/api/capture-options");
   assert.equal(
     catalog.tags.some((t) => t.platform === "x" && t.name === "Video lab"),
@@ -1033,7 +1031,7 @@ try {
   );
   const videoItem = await save({ ...videoCapture, tags: ["Video lab"] });
   await page.waitForTimeout(3300);
-  await page.locator('.saved-tags [data-tag="Video lab"]').click();
+  await page.locator('.collection-tabs [data-tag="Video lab"]').click();
   await page
     .locator(`.x-post[data-open-archive="${videoItem.id}"] video`)
     .waitFor();
@@ -1103,7 +1101,7 @@ try {
   );
   await call("/api/items/" + videoItem.id, { method: "DELETE" });
   await call("/api/items/" + hlsItem.id, { method: "DELETE" });
-  await page.locator('.saved-tags [data-tag=""]').click();
+  await page.locator('.collection-tabs [data-tag=""]').click();
   await page.locator("#window-close").hover();
   assert.equal(
     await page
@@ -1358,7 +1356,7 @@ try {
     /^blob:/,
   );
   await page.screenshot({ path: "artifacts/glassmark-zhihu.png" });
-  await page.locator(".zhihu-heading button").focus();
+  await page.locator(".discussion-back button").focus();
   await page.keyboard.press("Escape");
   await expect(page.locator(".zhihu-detail")).toHaveCount(0);
   await page

@@ -170,47 +170,6 @@
   border-bottom: 1px solid #eff3f4;
   z-index: 6;
 }
-.x-bookmarks-title {
-  min-height: 88px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 15px 22px;
-}
-.x-bookmarks-title strong {
-  display: block;
-  font-size: 21px;
-}
-.x-bookmarks-title span {
-  display: block;
-  font-size: 12px;
-  color: #536471;
-  margin-top: 4px;
-}
-.x-bookmarks-title > .icon {
-  color: #536471;
-  width: 22px;
-  height: 22px;
-}
-.x-detail-title {
-  height: 56px;
-  display: flex;
-  align-items: center;
-  gap: 22px;
-  padding: 0 10px;
-}
-.x-detail-title > button:first-child {
-  display: grid;
-  place-items: center;
-  border: 0;
-  background: none;
-  width: 35px;
-  height: 35px;
-  border-radius: 50%;
-}
-.x-detail-title > strong {
-  font-size: 19px;
-}
 
 .x-post {
   display: flex;
@@ -443,37 +402,12 @@
   color: #53656d;
   flex-shrink: 0;
 }
-.reddit-saved-sidebar .saved-tags {
-  margin-top: 20px;
-  padding: 20px 0 0;
-  border-top: 1px solid #e6e9eb;
-}
-.reddit-saved-sidebar .saved-tags h2,
 .reddit-saved-sidebar .saved-communities h2 {
   text-transform: uppercase;
   font-size: 10px;
   letter-spacing: 1px;
   color: #71818a;
   margin-left: 6px;
-}
-.reddit-saved-sidebar .saved-tags > button {
-  border-radius: 6px;
-  padding: 9px 8px;
-}
-.reddit-saved-heading {
-  display: flex;
-  align-items: baseline;
-  gap: 13px;
-  padding: 26px 4px 0;
-}
-.reddit-saved-heading h1 {
-  font-size: 26px;
-  margin: 0;
-  letter-spacing: -0.6px;
-}
-.reddit-saved-heading span {
-  color: #7a8991;
-  font-size: 12px;
 }
 .reddit-layout {
   padding: 0;
@@ -485,19 +419,10 @@
 .reddit-sort-bar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   border-bottom: 1px solid #e4e8ea;
   padding: 18px 4px;
   gap: 8px;
-}
-.saved-community {
-  max-width: 65%;
-  background: #f0f3f4;
-  color: #3c525e;
-  border: 0;
-  padding: 8px 13px;
-  border-radius: 22px;
-  font-size: 12px;
 }
 .reddit-sort-bar > div {
   display: flex;
@@ -631,23 +556,6 @@
   margin-left: auto;
   color: #d93a00;
   background: #fff0e9;
-}
-.reddit-detail-nav {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 20px 12px 0;
-  font-size: 12px;
-  color: #72838b;
-}
-.reddit-detail-nav button {
-  display: grid;
-  place-items: center;
-  padding: 8px;
-  border: 0;
-  border-radius: 50%;
-  background: #edf1f2;
-  color: #405761;
 }
 .reddit-post-detail {
   cursor: default;
@@ -949,44 +857,6 @@
     flex-wrap: wrap;
   }
 }
-
-.saved-tags {
-  margin-top: 25px;
-  padding: 0 7px;
-}
-.saved-tags > div {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.saved-tags h2 {
-  font-size: 11px;
-  color: #657581;
-  font-weight: 500;
-}
-.saved-tags button {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  border: 0;
-  background: none;
-  text-align: left;
-  padding: 9px;
-  border-radius: 9px;
-  font-size: 12px;
-  color: #425968;
-}
-.saved-tags > button {
-  width: 100%;
-}
-.saved-tags button.active,
-.saved-tags button:hover {
-  background: #eff3f4;
-}
-.saved-tags .icon {
-  width: 15px;
-  height: 15px;
-}
 /* Xiaohongshu: image-first collection and a split note reader. */
 .note-shell {
   container-type: inline-size;
@@ -1020,89 +890,6 @@
 }
 .note-archive-header .saved-search:focus-within {
   border-color: #ffb4bd;
-}
-.note-collection-heading {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid #eee;
-  margin-bottom: 18px;
-}
-.note-collection-heading > div {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-}
-.note-saved-tab {
-  position: relative;
-  border: 0;
-  background: none;
-  color: #333;
-  font-size: 20px;
-  font-weight: 650;
-  padding: 10px 4px 17px;
-}
-.note-saved-tab::after {
-  content: "";
-  height: 3px;
-  width: 26px;
-  background: #ff2442;
-  border-radius: 3px;
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-}
-.note-collection-heading > div > span {
-  font-size: 11px;
-  color: #999;
-}
-.note-back {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 7px 11px;
-  border: 0;
-  background: #f5f5f5;
-  color: #777;
-  border-radius: 20px;
-  font-size: 11px;
-}
-.note-back .icon {
-  width: 15px;
-  height: 15px;
-}
-.note-shell > .saved-tags {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin: 0 0 22px;
-  padding: 0;
-}
-.note-shell > .saved-tags > div {
-  margin: 0;
-  gap: 8px;
-}
-.note-shell > .saved-tags h2 {
-  display: none;
-}
-.note-shell > .saved-tags > button {
-  width: auto;
-  margin: 0;
-  padding: 7px 13px;
-  border-radius: 18px;
-  background: #f5f5f5;
-  color: #888;
-  font-size: 11px;
-}
-.note-shell > .saved-tags > button.active {
-  background: #fff0f2;
-  color: #e83b53;
-}
-.note-shell > .saved-tags .icon {
-  width: 13px;
-  height: 13px;
 }
 .note-grid {
   columns: 3;
@@ -1540,61 +1327,23 @@
 }
 .zhihu-layout {
   display: grid;
-  grid-template-columns: minmax(0, 900px) 210px;
+  grid-template-columns: minmax(0, 1000px);
   justify-content: center;
   align-items: start;
   gap: 20px;
   padding: 20px 28px 40px;
-}
-.zhihu-sidebar {
-  grid-column: 2;
-  grid-row: 1;
-  position: sticky;
-  top: 20px;
-  background: #fff;
-  border-radius: 3px;
-  padding: 16px 12px;
-  box-shadow: 0 1px 4px #1a1a1a14;
-}
-.zhihu-sidebar .saved-tags {
-  margin-top: 24px;
 }
 .zhihu-main {
   grid-column: 1;
   grid-row: 1;
   min-width: 0;
 }
-.zhihu-heading {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  padding: 30px 24px;
-  margin-bottom: 12px;
-  background: #fff;
-  border-radius: 3px;
-  box-shadow: 0 1px 4px #1a1a1a14;
-}
-.zhihu-heading h2 {
-  font-size: 24px;
-  margin: 0;
-}
-.zhihu-heading > span {
-  color: #8590a6;
-  font-size: 12px;
-  margin-left: auto;
-}
-.zhihu-heading button {
-  border: 0;
-  background: transparent;
-  display: flex;
-  padding: 6px;
-  border-radius: 8px;
-}
 .zhihu-sort {
   display: flex;
+  justify-content: flex-end;
   gap: 20px;
-  padding: 0;
+  padding: 12px 24px;
+  border-bottom: 1px solid #f0f2f7;
 }
 .zhihu-sort button {
   border: 0;
@@ -1612,14 +1361,6 @@
   border-radius: 3px;
   box-shadow: 0 1px 4px #1a1a1a14;
   overflow: hidden;
-}
-.zhihu-list-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 18px 24px;
-  border-bottom: 1px solid #f0f2f7;
 }
 .zhihu-post {
   background: #fff;
@@ -1749,7 +1490,7 @@
 }
 @media (max-width: 1150px) {
   .zhihu-layout {
-    grid-template-columns: minmax(0, 1fr) 170px;
+    grid-template-columns: minmax(0, 1fr);
     gap: 16px;
     padding: 24px 18px;
   }
@@ -1762,16 +1503,8 @@
     display: flex;
     flex-direction: column;
   }
-  .zhihu-main,
-  .zhihu-sidebar {
+  .zhihu-main {
     width: 100%;
-  }
-  .zhihu-sidebar {
-    position: static;
-    order: 1;
-  }
-  .zhihu-sidebar .saved-tags {
-    margin-top: 12px;
   }
   .zhihu-header {
     gap: 20px;
@@ -1789,4 +1522,113 @@
   height: auto;
   max-height: none;
   object-fit: contain;
+}
+
+/* Collection labels are navigation; detail pages have only a compact back action. */
+.x-shell {
+  --collection-accent: #0f1419;
+}
+.reddit-shell {
+  --collection-accent: #d93a00;
+}
+.note-shell {
+  --collection-accent: #ff2442;
+}
+.zhihu-shell {
+  --collection-accent: #1772f6;
+}
+.collection-navigation {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  border-bottom: 1px solid #e9edf2;
+  background: #fff;
+}
+.collection-tabs {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  gap: 8px;
+  padding: 0 12px;
+}
+.collection-tabs [role="tab"] {
+  position: relative;
+  flex-shrink: 0;
+  border: 0;
+  padding: 17px 12px;
+  min-height: 52px;
+  background: transparent;
+  color: #8590a6;
+  font-size: 14px;
+  white-space: nowrap;
+}
+.collection-tabs [role="tab"][aria-selected="true"] {
+  color: var(--collection-accent);
+  font-weight: 650;
+}
+.collection-tabs [role="tab"][aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 12px;
+  right: 12px;
+  height: 3px;
+  border-radius: 3px;
+  background: var(--collection-accent);
+}
+.collection-tabs [role="tab"]:hover {
+  background: #f6f8fa;
+}
+.collection-tabs [role="tab"]:focus-visible,
+.collection-add-tag:focus-visible {
+  outline: 2px solid var(--collection-accent);
+  outline-offset: -3px;
+}
+.collection-add-tag {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  margin-right: 8px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #657581;
+}
+.collection-add-tag:hover {
+  background: #f0f3f6;
+}
+.note-shell > .collection-navigation {
+  margin-bottom: 22px;
+}
+.discussion-back {
+  padding: 8px 12px;
+  background: #fff;
+}
+.discussion-back button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 36px;
+  border: 0;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: transparent;
+  color: #657581;
+  font-size: 12px;
+}
+.discussion-back button:hover {
+  background: #f0f3f6;
+}
+.discussion-back .icon {
+  width: 17px;
+  height: 17px;
+}
+.note-shell > .discussion-back,
+.zhihu-main > .discussion-back {
+  margin-bottom: 12px;
 }

@@ -1,6 +1,6 @@
 {
   "name": "glassmark",
-  "version": "0.8.8",
+  "version": "0.8.9",
   "private": true,
   "type": "module",
   "description": "A local-first library for webpages, conversations and media.",
@@ -8,7 +8,7 @@
     "dev": "node scripts/dev.mjs",
     "build": "node scripts/build.mjs",
     "test": "node --test tests/*.test.mjs",
-    "test:e2e": "node tests/e2e.mjs && node tests/zhihu-flow.e2e.mjs",
+    "test:e2e": "node tests/e2e.mjs && node tests/social-navigation.e2e.mjs && node tests/zhihu-flow.e2e.mjs",
     "test:zhihu": "node tests/zhihu-flow.e2e.mjs",
     "check": "node scripts/check.mjs",
     "tauri": "tauri",
