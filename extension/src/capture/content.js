@@ -58,7 +58,7 @@ export async function collect({
     ? maxPosts + 1
     : maxPosts;
   let rootId = null;
-  let candidatesRoot = null;
+  let fallbackRoot = null;
   const candidates = () => {
     if (kind === "x" && pageContext(location.href).postId !== context.postId) {
       finish = true;
@@ -105,7 +105,7 @@ export async function collect({
       if (!primary && !rootId) return [];
       if (primary) {
         rootId = context.postId;
-        candidatesRoot = primary;
+        if (!posts.size && ![...primary.querySelectorAll('a[href*="/status/"]')].some((link) => link.getAttribute('href')?.match(/\/status\/(\d+)/)?.[1] === context.postId)) fallbackRoot = primary;
         elements = [
           primary,
           ...elements.filter(
@@ -171,7 +171,12 @@ export async function collect({
     for (const element of elements) {
       const captured = extractPost(element, kind);
       if (kind === "x") {
-        if (element === candidatesRoot) { captured.id = rootId; captured.url = location.origin + location.pathname; }
+        // Only normalize the first root snapshot. X recycles tweet DOM nodes
+        // while scrolling: node identity is not post identity.
+        if (element === fallbackRoot && !posts.has(rootId)) {
+          captured.id = rootId;
+          captured.url = location.origin + location.pathname;
+        }
         captured.isComment = captured.id !== rootId;
         captured.parentId = captured.isComment ? rootId : null;
       }
