@@ -1254,6 +1254,23 @@ try {
   pass(
     "capture controls use the requested language without changing the source document language or post text",
   );
+  // Nested comments must not contaminate their parent author, text or time.
+  const nestedNote = await source.evaluate(async () => {
+    document.querySelector(".comment-item").insertAdjacentHTML(
+      "beforeend",
+      '<div class="comment-item" data-comment-id="reply-nested" data-parent-id="comment-1"><div class="author"><span class="name">小李</span></div><div class="content">回复小林</div><time datetime="2026-10-17T09:30:00Z"></time></div>',
+    );
+    return (await GlassmarkCapture.collect({ mode: "thread", language: "zh-CN", maxPosts: 4 })).posts;
+  });
+  assert.equal(nestedNote.length, 3);
+  const parentComment = nestedNote.find((p) => p.id === "comment-1");
+  const childComment = nestedNote.find((p) => p.id === "reply-nested");
+  assert.equal(parentComment.text, "好美的风景");
+  assert.equal(parentComment.authorName, "小林");
+  assert.equal(childComment.parentId, "comment-1");
+  assert.equal(childComment.authorName, "小李");
+  assert.equal(childComment.depth, 2);
+  assert.equal(childComment.postedAt, "2026-10-17T09:30:00Z");
   const noteItem = await save(note);
   const noteExtras = [];
   for (const [index, title] of [
