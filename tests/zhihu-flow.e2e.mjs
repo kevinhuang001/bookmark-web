@@ -236,7 +236,7 @@ try {
     );
     await progress.waitForFunction(
       () =>
-        ["已收藏，留待慢慢读", "收藏未完成"].includes(
+        ["收藏完成", "收藏未完成"].includes(
           document.getElementById("title")?.textContent,
         ),
       { timeout: 20000 },
@@ -274,7 +274,7 @@ try {
         "PASS actual document navigation after collection blocks persistence",
       );
     } else {
-      assert.equal(title, "已收藏，留待慢慢读", detail);
+      assert.equal(title, "收藏完成", detail);
       assert.equal(items.length, before + 1);
       const saved = items.find((item) => item.sourceUrl === url);
       assert.ok(saved);
