@@ -136,7 +136,7 @@ export async function openSettings({ modal, folders, onSaved, toast }) {
       body =
         section(
           tr("帖子与讨论"),
-          control(tr("X 回复数量上限"), "maxPosts", "number", 1, 1000) +
+          control(tr("单次评论与回复数量上限"), "maxPosts", "number", 1, 1000) +
             control(
               tr("自动加载时长（秒）"),
               "autoLoadSeconds",
@@ -223,16 +223,55 @@ export async function openSettings({ modal, folders, onSaved, toast }) {
             `<p class="settings-note">${tr("尚无已配对浏览器")}</p>`,
         );
     if (active === "about")
-      body = section(
-        "Glassmark",
-        '<div class="about-app">' +
-          icon("logo") +
-          `<h3>Glassmark 0.8.0</h3><p>${tr("把值得回看的内容留在本机。")}</p></div>`,
-        tr(
-          "网页保存一份内容文件；帖子保存正文、评论和媒体。Chromium、Firefox 与 Windows / macOS / Linux。",
-        ),
-      );
+      body =
+        `<section class="about-overview"><div class="about-brand-mark">${icon("logo")}</div><h3>GlassMark</h3><p class="about-version">${tr("当前版本")} <strong id="about-current-version">0.8.9</strong></p></section>` +
+        section(
+          tr("软件更新"),
+          `<div class="about-update-row"><div><strong>${tr("检查最新版本")}</strong><p id="about-update-status" aria-live="polite">${tr("尚未检查更新")}</p></div><button type="button" id="about-check-update" class="secondary">${tr("检查更新")}</button></div><a id="about-release-link" href="https://github.com/kevinhuang001/bookmark-web/releases" target="_blank" rel="noopener noreferrer">${tr("查看所有版本")}</a>`,
+        ) +
+        section(
+          tr("项目"),
+          `<div class="about-links"><a href="https://github.com/kevinhuang001/bookmark-web" target="_blank" rel="noopener noreferrer">GitHub ${icon("arrowRight")}</a><a href="https://github.com/kevinhuang001/bookmark-web/issues" target="_blank" rel="noopener noreferrer">${tr("反馈问题")} ${icon("arrowRight")}</a></div>`,
+        );
     panel.innerHTML = `<h2>${heading}</h2>${body}`;
+    const checkUpdate = panel.querySelector("#about-check-update");
+    if (checkUpdate) {
+      const label = panel.querySelector("#about-update-status");
+      const versionLabel = panel.querySelector("#about-current-version");
+      const releaseLink = panel.querySelector("#about-release-link");
+      // The desktop app version is reported by the running backend, not a hard-coded UI value.
+      json("/api/status").then((info) => {
+        const version = info.version || info.appVersion;
+        if (version && versionLabel?.isConnected) versionLabel.textContent = version;
+      }).catch(() => {});
+      checkUpdate.onclick = async () => {
+        checkUpdate.disabled = true;
+        label.textContent = tr("正在检查更新…");
+        try {
+          const response = await fetch("https://api.github.com/repos/kevinhuang001/bookmark-web/releases/latest", {
+            headers: { Accept: "application/vnd.github+json" },
+            cache: "no-store",
+          });
+          if (!response.ok) throw new Error(String(response.status));
+          const release = await response.json();
+          const latest = String(release.tag_name || "").replace(/^v/i, "");
+          if (!/^\\d+\\.\\d+\\.\\d+/.test(latest)) throw new Error("Invalid release version");
+          const current = versionLabel.textContent.trim();
+          const numbers = (v) => v.split(/[.-]/).slice(0, 3).map((x) => Number(x) || 0);
+          const l = numbers(latest), c = numbers(current);
+          const newer = l.some((n, i) => n > c[i] && l.slice(0, i).every((x, j) => x === c[j]));
+          label.textContent = newer ? tr("发现新版本：{0}", { 0: latest }) : tr("已是最新版本");
+          if (newer && /^https:\\/\\/github\\.com\\/kevinhuang001\\/bookmark-web\\/releases\\//.test(release.html_url || "")) {
+            releaseLink.href = release.html_url;
+            releaseLink.textContent = tr("查看新版本并下载");
+          }
+        } catch {
+          label.textContent = tr("检查失败，请稍后重试");
+        } finally {
+          checkUpdate.disabled = false;
+        }
+      };
+    }
     const copyCode = panel.querySelector("#copy-pairing-code");
     if (copyCode)
       copyCode.onclick = async () => {
