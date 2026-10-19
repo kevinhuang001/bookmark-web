@@ -65,11 +65,31 @@ export function readPageData() {
     for (const article of document.querySelectorAll(
       'article[data-testid="tweet"]',
     )) {
-      const link = [...article.querySelectorAll('a[href*="/status/"]')].find(
-        (node) =>
-          node.querySelector("time") &&
-          !node.closest('[data-testid="quoteTweet"]'),
+      const links = [...article.querySelectorAll('a[href*="/status/"]')].filter(
+        (node) => {
+          if (
+            node.closest('article[data-testid="tweet"]') !== article ||
+            node.closest('[data-testid="quoteTweet"]')
+          )
+            return false;
+          const quote = node.parentElement?.closest(
+            'div[role="link"][tabindex]',
+          );
+          return !quote || !article.contains(quote);
+        },
       );
+      // Hydration can omit <time>; an exact own permalink is still valid identity.
+      const link =
+        links.find((node) => node.querySelector("time")) ||
+        links.find((node) => {
+          try {
+            return /^\/(?:i\/web|[^/]+)\/status\/\d+\/?$/.test(
+              new URL(node.href, location.href).pathname,
+            );
+          } catch {
+            return false;
+          }
+        });
       const id = link?.getAttribute("href")?.match(/\/status\/(\d+)/)?.[1];
       if (!id) continue;
       const queue = [];

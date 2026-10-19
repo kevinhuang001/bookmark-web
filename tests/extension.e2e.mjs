@@ -361,6 +361,7 @@ try {
           "real pairing",
           "content injection",
           "resource upload",
+          "all four images and both independent videos reach native archive files through MAIN-world metadata",
           "native persistence",
           "Zhihu question and tracked-answer selection through background, capture UI and native persistence",
           "actual source navigation is rejected",

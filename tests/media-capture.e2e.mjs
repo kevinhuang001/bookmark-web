@@ -126,7 +126,7 @@ try {
   await page.route("https://x.com/**", (route) =>
     route.fulfill({
       contentType: "text/html",
-      body: '<main><article data-testid="tweet"><a href="/a/status/101"><time></time></a><div data-testid="tweetText">Root</div><div data-testid="tweetPhoto"><img src="https://pbs.twimg.com/media/photo1?format=jpg&name=small"></div></article><article data-testid="tweet"><a href="/b/status/102"><time></time></a><div data-testid="tweetText">Reply</div></article></main>',
+      body: '<main><article data-testid="tweet"><div role="link" tabindex="0"><a href="/quoted/status/999"><time></time></a></div><a href="/a/status/101">Post link</a><div data-testid="tweetText">Root</div><div data-testid="tweetPhoto"><img src="https://pbs.twimg.com/media/photo1?format=jpg&name=small"></div></article><article data-testid="tweet"><a href="/b/status/102"><time></time></a><div data-testid="tweetText">Reply</div></article></main>',
     }),
   );
   await page.goto("https://x.com/a/status/101");
@@ -179,6 +179,7 @@ try {
   });
   const data = await page.evaluate(readPageData);
   assert.equal(data["101"].media.length, 4);
+  assert.equal(data["999"], undefined);
   assert.equal(data["102"].parentId, "101");
   assert.equal(data["102"].media.length, 2);
   assert.ok(data["102"].media.every((m) => m.url.endsWith("/high.mp4")));
