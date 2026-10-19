@@ -36,9 +36,9 @@ function bodyText(text) {
 
 // Resolve relationships only from saved identifiers or explicit source metadata.
 function replyTarget(post, item) {
-  const parentId = String(post.parentId || "").replace(/^t[13]_/, "");
+  const parentId = String(post.parentId || "");
   const parent = parentId && (item.posts || []).find((candidate) =>
-    String(candidate.id || "").replace(/^t[13]_/, "") === parentId && candidate !== post);
+    String(candidate.id || "") === parentId && candidate !== post);
   const name = parent ? authorName(parent) : (post.replyToName || post.replyToHandle || "");
   return { name, parent: !!parent };
 }
@@ -50,11 +50,11 @@ function replyIndicator(post, item, kind) {
 }
 function threadComments(item, kind, render) {
   const posts = (item.posts || []).slice(1);
-  const known = new Map(posts.map((p) => [String(p.id || "").replace(/^t[13]_/, ""), p]));
+  const known = new Map(posts.map((p) => [String(p.id || ""), p]));
   const children = new Map();
   const roots = [];
   for (const post of posts) {
-    const parent = String(post.parentId || "").replace(/^t[13]_/, "");
+    const parent = String(post.parentId || "");
     if (parent && known.has(parent) && known.get(parent) !== post) {
       if (!children.has(parent)) children.set(parent, []);
       children.get(parent).push(post);
@@ -64,7 +64,7 @@ function threadComments(item, kind, render) {
   const walk = (post, depth = 0) => {
     if (rendered.has(post)) return "";
     rendered.add(post);
-    const key = String(post.id || "").replace(/^t[13]_/, "");
+    const key = String(post.id || "");
     const content = render(post, depth);
     return content + (children.get(key) || []).map((child) => walk(child, depth + 1)).join("");
   };
