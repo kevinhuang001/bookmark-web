@@ -190,7 +190,7 @@ async function run() {
       signal: controller.signal,
     });
     const item = await response.json();
-    $("title").textContent = tr("已收藏，留待慢慢读");
+    $("title").textContent = tr("收藏完成");
     $("detail").textContent =
       item.title +
       (item.tags?.length ? tr(" · 标签：") + item.tags.join("、") : "");
