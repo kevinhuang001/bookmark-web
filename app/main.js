@@ -708,7 +708,10 @@ function modal(title, body, actions = []) {
     button.onclick = guarded(action.run);
     $("dialog-actions").append(button);
   }
-  if (!$("dialog").open) $("dialog").showModal();
+  if (!$("dialog").open) {
+    $("dialog").showModal();
+    $("dialog-title").focus({ preventScroll: true });
+  }
 }
 function folderOptions(current = null) {
   return (
@@ -1092,6 +1095,15 @@ if (globalThis.__TAURI__) {
 }
 
 if (globalThis.__TAURI__) document.body.classList.add("native-glass");
+
+// Some WebViews initially focus the first window control. Keep the red close
+// control available to keyboard users without selecting it on launch.
+const clearInitialWindowControlFocus = () => {
+  const closeButton = $("window-close");
+  if (document.activeElement === closeButton) closeButton.blur();
+};
+clearInitialWindowControlFocus();
+requestAnimationFrame(clearInitialWindowControlFocus);
 
 $("dialog").addEventListener("close", () => {
   state.editing = null;
