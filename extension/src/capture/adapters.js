@@ -287,6 +287,8 @@ function extractNote(el, doc) {
       comment ? ".content,.note-text" : "#detail-desc,.note-text,.desc",
     ),
     url: comment ? null : doc.URL,
+    postedAt: el.querySelector("time")?.getAttribute("datetime") || el.querySelector("[datetime]")?.getAttribute("datetime") || null,
+    postedAtText: comment ? text(".date,.time,.comment-time,.date-time,.create-time") : "",
     stats: {
       likes: text(".like-wrapper .count,.like .count"),
       comments: text(".chat-wrapper .count"),
@@ -397,6 +399,7 @@ function extractZhihu(el, doc) {
         ?.getAttribute("content") ||
       el.querySelector("time")?.getAttribute("datetime") ||
       null,
+    postedAtText: comment ? read(".CommentItem-time,.CommentItemV2-time,.ContentItem-time,.comment-time,.time") : "",
     stats: {
       ...(comment
         ? {
