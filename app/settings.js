@@ -52,6 +52,7 @@ export async function openSettings({ modal, folders, onSaved, toast }) {
       dav.url = document.getElementById("dav-url").value.trim();
       dav.username = document.getElementById("dav-username").value;
       dav.password = document.getElementById("dav-password").value;
+      dav.intervalSeconds = Number(document.getElementById("dav-interval").value);
     }
   }
   async function save() {
@@ -197,12 +198,12 @@ export async function openSettings({ modal, folders, onSaved, toast }) {
       body =
         section(
           tr("自动同步"),
-          `<label class="settings-row"><span>${tr("启用 WebDAV")}</span><input id="dav-enabled" type="checkbox" ${dav.enabled ? "checked" : ""}></label>`,
-          tr("启动时、收藏变更后和每分钟自动同步。远端直接保存内容文件。"),
+          `<label class="settings-row"><span>${tr("启用 WebDAV")}</span><input id="dav-enabled" type="checkbox" ${dav.enabled ? "checked" : ""}></label><label class="settings-row"><span>${tr("自动同步周期（秒）")}</span><input id="dav-interval" aria-label="${tr("自动同步周期（秒）")}" type="number" min="30" max="86400" step="1" required value="${esc(dav.intervalSeconds ?? 60)}"></label>`,
+          tr("收藏变更后立即同步；自动同步周期可在下方配置。远端直接保存内容文件。"),
         ) +
         section(
           tr("服务器"),
-          `<label>${tr("目录地址")}<input id="dav-url" type="url" placeholder="https://dav.example.com/archive/" value="${esc(dav.url)}"></label><label>${tr("用户名")}<input id="dav-username" value="${esc(dav.username)}" autocomplete="username"></label><label>${tr("应用密码")}<input id="dav-password" type="password" value="${esc(dav.password || "")}" placeholder="${dav.hasPassword ? tr("已保存，留空保留") : tr("输入密码")}" autocomplete="new-password"></label>`,
+          `<p class="settings-note">${tr("支持 HTTP 与 HTTPS。HTTP 连接不加密，请仅在可信网络使用。")}</p><label>${tr("目录地址")}<input id="dav-url" type="url" placeholder="http://192.168.1.10:8080/dav/" value="${esc(dav.url)}"></label><label>${tr("用户名")}<input id="dav-username" value="${esc(dav.username)}" autocomplete="username"></label><label>${tr("应用密码")}<input id="dav-password" type="password" value="${esc(dav.password || "")}" placeholder="${dav.hasPassword ? tr("已保存，留空保留") : tr("输入密码")}" autocomplete="new-password"></label>`,
         ) +
         `<button type="button" id="settings-sync-now" class="secondary">${tr("立即同步")}</button><p id="sync-feedback" class="settings-note">${esc(localizeError(status.sync?.error) || status.sync?.lastSync || "")}</p><section id="sync-conflicts" class="settings-section"></section>`;
     if (active === "connection")
