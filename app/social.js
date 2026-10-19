@@ -211,7 +211,7 @@ export async function renderSocial(
     if (empty)
       empty.innerHTML = `${tr("没有符合筛选条件的收藏。")}<p><button data-social-action="bookmarks">${tr("清除筛选")}</button></p>`;
   }
-  if (!selected && query && !items.length) {
+  if (!selected && query && !items.length && !tag) {
     const empty = root.querySelector(".social-empty");
     if (empty)
       empty.innerHTML = `${tr("没有找到相关收藏。")}<p><button data-social-action="search" data-query="">${tr("清除搜索")}</button></p>`;
