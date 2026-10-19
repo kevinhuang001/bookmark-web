@@ -103,7 +103,11 @@ try {
       await page.locator('[data-social-action="sort-best"]').click();
     await cards.first().click();
     await expect(page.locator(".discussion-back")).toBeVisible();
-    await expect(page.getByRole("tablist")).toHaveCount(0);
+    // X and Reddit keep their tag navigation in the sidebar on detail pages;
+    // Xiaohongshu and Zhihu hide their top tabs while a detail is open.
+    await expect(page.getByRole("tablist")).toHaveCount(
+      kind === "x" || kind === "reddit" ? 1 : 0,
+    );
     await expect(page.locator(".discussion-back")).not.toContainText(
       /份收藏|篇笔记|我的收藏/,
     );
