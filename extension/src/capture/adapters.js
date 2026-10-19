@@ -201,7 +201,8 @@ export function extractPost(el, kind, doc = document) {
     doc.URL.match(/\/r\/([^/]+)/)?.[1] ||
     "";
   return {
-    id,
+    // Reddit DOM ids use t1_/t3_ prefixes while parentid refers to the same ids.
+    id: kind === "reddit" ? String(id).replace(/^t[13]_/, "") : id,
     author,
     authorName: kind === "x" ? firstName : author,
     authorHandle: handle,
@@ -226,9 +227,17 @@ export function extractPost(el, kind, doc = document) {
         : "",
     community,
     isComment: el.matches("shreddit-comment,.thing.comment"),
-    replyToHandle: kind === "x" ? (el.querySelector('[data-testid="reply"]')?.textContent.match(/@[\\w_]+/)?.[0] || el.querySelector('[data-testid="socialContext"]')?.textContent.match(/@[\\w_]+/)?.[0] || "") : "",
-    parentId:
-      (el.getAttribute("parentid") || el.getAttribute("parent-id") || "").replace(/^t[13]_/, "") || null,
+    replyToHandle: kind === "x" ? (
+      [...el.querySelectorAll('div,span')].map((node) => {
+        const value = node.textContent?.trim() || "";
+        return value.length <= 120 && /(?:replying to|正在回复|回复给)\\s+@[A-Za-z0-9_]+/i.test(value)
+          ? value.match(/@[A-Za-z0-9_]+/)?.[0] : null;
+      }).find(Boolean) || ""
+    ) : "",
+    parentId: (
+      el.getAttribute("parentid") || el.getAttribute("parent-id") ||
+      el.getAttribute("data-parent-id") || ""
+    ).replace(/^t[13]_/, "") || null,
     url:
       permalink ||
       (el.getAttribute("permalink")
@@ -274,12 +283,20 @@ function extractNote(el, doc) {
   }
   return {
     id: comment
-      ? el.id || text(".content,.note-text")
+      ? el.getAttribute("data-comment-id") || el.getAttribute("data-id") || el.id || text(".content,.note-text")
       : new URL(doc.URL).pathname,
     isComment: comment,
     depth: comment ? 1 : 0,
-    parentId: comment ? el.getAttribute("data-parent-id") || el.getAttribute("parent-id") || el.getAttribute("data-reply-to-id") || null : null,
-    replyToName: comment ? text(".reply-to,.reply-user,.reply-name,.reply-target") : "",
+    parentId: comment ? (
+      el.getAttribute("data-parent-id") ||
+      el.getAttribute("parent-id") ||
+      el.getAttribute("data-reply-to-id") ||
+      el.parentElement?.closest(".comment-item")?.getAttribute("data-comment-id") ||
+      el.parentElement?.closest(".comment-item")?.getAttribute("data-id") ||
+      el.parentElement?.closest(".comment-item")?.id ||
+      null
+    ) : null,
+    replyToName: comment ? text(".reply-to,.reply-user,.reply-name,.reply-target,.reply-info .username") : "",
     author: text(".author-container .username,.author .username,.author .name"),
     authorName: text(
       ".author-container .username,.author .username,.author .name",
@@ -291,7 +308,7 @@ function extractNote(el, doc) {
     ),
     url: comment ? null : doc.URL,
     postedAt: el.querySelector("time")?.getAttribute("datetime") || el.querySelector("[datetime]")?.getAttribute("datetime") || null,
-    postedAtText: comment ? text(".date,.time,.comment-time,.date-time,.create-time") : "",
+    postedAtText: comment ? text(".date,.time,.comment-time,.date-time,.create-time,.comment-info .date") : "",
     stats: {
       likes: text(".like-wrapper .count,.like .count"),
       comments: text(".chat-wrapper .count"),
@@ -375,14 +392,13 @@ function extractZhihu(el, doc) {
     isComment: comment,
     parentId: comment
       ? (() => {
-          const parent =
-            el.parentElement && zhihuCommentOwner(el.parentElement);
-          return (
-            parent?.getAttribute("data-comment-id") ||
-            parent?.getAttribute("data-id") ||
-            parent?.id ||
-            null
-          );
+          const explicit = el.getAttribute("data-parent-id") ||
+            el.getAttribute("parent-id") || el.getAttribute("data-reply-to-id");
+          const parent = el.parentElement && zhihuCommentOwner(el.parentElement);
+          return explicit || (parent && parent !== el ? (
+            parent.getAttribute("data-comment-id") ||
+            parent.getAttribute("data-id") || parent.id || null
+          ) : null);
         })()
       : null,
     depth: comment ? 1 : 0,
