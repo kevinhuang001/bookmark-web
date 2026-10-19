@@ -527,6 +527,16 @@ try {
   await page.getByText("# 灵感", { exact: true }).first().waitFor();
   pass("tag editing updates the library and filters");
   await page.locator("#settings").click();
+  await expect(page.locator("#dialog-title")).toBeFocused();
+  await page.locator('[data-settings-category="sync"]').click();
+  await page.locator('[data-sync-mode="local"]').click();
+  await page.locator("#sync-local-path").fill("/tmp/glassmark-sync");
+  await page.locator('[data-sync-mode="webdav"]').click();
+  await expect(page.locator("#dav-url")).toBeVisible();
+  await page.locator('[data-sync-mode="local"]').click();
+  assert.equal(await page.locator("#sync-local-path").inputValue(), "/tmp/glassmark-sync");
+  await page.locator('[data-settings-category="general"]').click();
+  pass("settings focus the title and retain the local sync path when switching providers");
   await page.getByLabel("显示保存时间", { exact: true }).uncheck();
   await page.locator('[data-settings-category="media"]').click();
   await page.getByLabel("单次下载上限（MB）", { exact: true }).fill("750");
