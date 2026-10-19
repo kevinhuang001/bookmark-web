@@ -1650,3 +1650,8 @@
 .archive-viewer-prev { left: 20px; top: 50%; }
 .archive-viewer-next { right: 20px; top: 50%; }
 .archive-viewer-counter { position: absolute; bottom: 20px; font-size: 13px; color: #ccc; }
+
+.x-inline-comments { padding: 12px 18px; border-top: 1px solid var(--border, #ccc3); }
+.x-inline-reply { padding: 10px 0; border-bottom: 1px solid var(--border, #ccc3); }
+.x-inline-reply:last-child { border-bottom: 0; }
+.x-inline-reply strong { display: block; font-size: 13px; margin-bottom: 5px; }
