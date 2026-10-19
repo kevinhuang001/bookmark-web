@@ -398,7 +398,7 @@ try {
     true,
   );
   await page.screenshot({ path: "artifacts/glassmark-x.png" });
-  await page.locator(`.x-post[data-open-archive="${xItem.id}"]`).click();
+  await page.locator(`.x-post[data-open-archive="${xItem.id}"] .x-post-text`).click();
   assert.equal(await page.locator(".x-reply").count(), 2);
   assert.match(
     await page.locator(".discussion-scope").textContent(),
@@ -1523,7 +1523,7 @@ try {
     );
   await page.reload();
   await page.locator('[data-view="x"]').click();
-  await page.locator(`.x-post[data-open-archive="${multiItem.id}"]`).click();
+  await page.locator(`.x-post[data-open-archive="${multiItem.id}"] .x-post-text`).click();
   await expect(page.locator(".x-post-detail .social-media img")).toHaveCount(4);
   await expect(page.locator(".x-post-detail video")).toHaveCount(2);
   for (const video of await page.locator(".x-post-detail video").all())
