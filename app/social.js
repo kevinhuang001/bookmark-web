@@ -39,7 +39,8 @@ function replyTarget(post, item) {
   const parentId = String(post.parentId || "");
   const parent = parentId && (item.posts || []).find((candidate) =>
     String(candidate.id || "") === parentId && candidate !== post);
-  const name = parent ? authorName(parent) : (post.replyToName || post.replyToHandle || "");
+  const explicit = String(post.replyToName || post.replyToHandle || "").replace(/^(?:回复|Replying to)\s*/i, "").trim();
+  const name = parent ? authorName(parent) : explicit;
   return { name, parent: !!parent };
 }
 function replyIndicator(post, item, kind) {
@@ -50,7 +51,7 @@ function replyIndicator(post, item, kind) {
 }
 function threadComments(item, kind, render) {
   const posts = (item.posts || []).slice(1);
-  const known = new Map(posts.map((p) => [String(p.id || ""), p]));
+  const known = new Map(posts.filter((p) => p.id).map((p) => [String(p.id), p]));
   const children = new Map();
   const roots = [];
   for (const post of posts) {
@@ -78,16 +79,16 @@ function mediaMarkup(post, item) {
 function menu(item) {
   return `<details class="post-menu"><summary aria-label="${tr("更多收藏操作")}">${icon("more")}</summary><div><button data-social-action="tags" data-id="${item.id}">${tr("编辑标签")}</button><button data-social-action="info" data-id="${item.id}">${tr("保存详情")}</button><button class="danger" data-social-action="delete" data-id="${item.id}">${tr("删除收藏")}</button></div></details>`;
 }
-function xActions(post, item) {
+function xActions(post, item, reply = false) {
   const stats = post.stats || {};
   const liked = item.tags?.includes("喜欢");
-  return `<div class="x-post-actions"><button data-social-action="x-comments" data-id="${item.id}" title="${tr("查看已收藏的回复")}">${icon("comment")}<span>${esc(stats.replies || (item.posts?.length > 1 ? item.posts.length - 1 : ""))}</span></button><span>${icon("repeat")}<span>${esc(stats.reposts || "")}</span></span><button class="${liked ? "locally-liked" : ""}" data-social-action="like" data-id="${item.id}" title="${tr("标记喜欢（本地）")}">${icon("heart")}<span>${esc(stats.likes || "")}</span></button><span>${icon("chart")}<span>${esc(stats.views || "")}</span></span><button data-social-action="info" data-id="${item.id}" title="${tr("已保存的收藏")}">${icon("bookmark")}</button><button data-social-action="copy" data-id="${item.id}" title="${tr("复制来源链接")}">${icon("share")}</button></div>`;
+  return `<div class="x-post-actions">${reply ? `<span>${icon("comment")}<span>${esc(stats.replies || "")}</span></span>` : `<button data-social-action="x-comments" data-id="${item.id}" title="${tr("查看已收藏的回复")}">${icon("comment")}<span>${esc(stats.replies || (item.posts?.length > 1 ? item.posts.length - 1 : ""))}</span></button>`}<span>${icon("repeat")}<span>${esc(stats.reposts || "")}</span></span><button class="${liked ? "locally-liked" : ""}" data-social-action="like" data-id="${item.id}" title="${tr("标记喜欢（本地）")}">${icon("heart")}<span>${esc(stats.likes || "")}</span></button><span>${icon("chart")}<span>${esc(stats.views || "")}</span></span><button data-social-action="info" data-id="${item.id}" title="${tr("已保存的收藏")}">${icon("bookmark")}</button><button data-social-action="copy" data-id="${item.id}" title="${tr("复制来源链接")}">${icon("share")}</button></div>`;
 }
 function xPost(post, item, { detail = false, reply = false } = {}) {
   const name = authorName(post);
   return `<article class="x-post ${detail ? "x-post-detail" : ""} ${reply ? "x-reply" : ""}" data-open-archive="${item.id}" tabindex="0" role="link" aria-label="${tr("打开 {3} 的帖子", { 3: esc(name) })}">
- ${avatar(post, item)}<div class="x-post-content"><div class="x-author-line"><button class="author-name" data-social-action="author" data-author="${esc(name)}">${esc(name)}</button>${post.verified ? icon("verified") : ""}<span>${esc(post.authorHandle || "")}</span><span>· ${stamp(item)}</span>${menu(item)}</div>
- ${reply ? replyIndicator(post, item, "x") : ""}<div class="x-post-text">${bodyText(post.text)}</div>${mediaMarkup(post, item)}${detail ? `<div class="x-capture-time">${tr("{0} · 已收藏", { 0: new Date(item.capturedAt).toLocaleString(locale()) })}</div>` : ""}${xActions(post, item)}</div></article>`;
+ ${avatar(post, item)}<div class="x-post-content"><div class="x-author-line"><button class="author-name" data-social-action="author" data-author="${esc(name)}">${esc(name)}</button>${post.verified ? icon("verified") : ""}<span>${esc(post.authorHandle || "")}</span><span>· ${commentTime(post) || stamp(item)}</span>${menu(item)}</div>
+ ${reply ? replyIndicator(post, item, "x") : ""}<div class="x-post-text">${bodyText(post.text)}</div>${mediaMarkup(post, item)}${detail ? `<div class="x-capture-time">${tr("{0} · 已收藏", { 0: new Date(item.capturedAt).toLocaleString(locale()) })}</div>` : ""}${xActions(post, item, reply)}</div></article>`;
 }
 function savedSearch(kind, query) {
   const label = {
@@ -143,10 +144,8 @@ function xShell(items, options) {
    selected
      ? xPost(rootPost(selected), selected, { detail: true }) +
        discussionScope(selected) +
-       (selected.posts || [])
-         .slice(1)
-         .map((p) => xPost(p, selected, { reply: true }))
-         .join("")
+       threadComments(selected, "x", (p, depth) =>
+         `<div class="x-thread-entry" style="--depth:${Math.min(depth, 7)}">${xPost(p, selected, { reply: true })}</div>`)
      : `<div ${collectionPanel(options)}>${options.filters.author ? `<div class="feed-filter-bar">${esc(options.filters.author)}<button data-social-action="clear-filter">${tr("{1} 清除筛选", { 1: icon("close") })}</button></div>` : ""}${rows.map((item) => xPost(rootPost(item), item)).join("") || emptyCollection(options)}<div class="feed-end">${rows.length ? tr("已显示全部书签") : ""}</div></div>`
  }</section></div>`;
 }
@@ -387,7 +386,7 @@ export async function renderSocial(
       panel.className = "x-inline-comments";
       const replies = (item?.posts || []).filter((post) => post !== item.posts?.[0] && post.id !== item.posts?.[0]?.id);
       panel.innerHTML = replies.length
-        ? replies.map((post) => `<div class="x-inline-reply"><strong>${esc(authorName(post))}</strong>${replyIndicator(post, item, "x")}<div>${bodyText(post.text)}</div></div>`).join("")
+        ? threadComments(item, "x", (post, depth) => `<div class="x-inline-reply" style="--depth:${Math.min(depth, 7)}"><strong>${esc(authorName(post))}</strong>${replyIndicator(post, item, "x")}<div>${bodyText(post.text)}</div><span class="x-inline-date">${commentTime(post) || stamp(item)}</span></div>`)
         : `<p>${tr("暂无已收藏评论")}</p>`;
       card.appendChild(panel);
       return;
