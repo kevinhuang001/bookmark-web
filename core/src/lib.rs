@@ -58,12 +58,19 @@ pub fn router(state:AppState)->Router{
         .route("/api/blobs/{name}",put(blob)).route("/api/folders",get(folders).post(create_folder)).route("/api/folders/{id}",put(update_folder))
         .route("/api/preferences",get(preferences).put(save_preferences)).route("/api/capture-options",get(capture_options)).route("/api/tags",get(tags).post(create_tag))
         .route("/api/conflicts",get(conflicts)).route("/api/conflicts/{id}/resolve",post(resolve_conflict))
-        .route("/api/settings",get(settings).put(save_settings)).route("/api/sync",post(synchronize)).layer(middleware::from_fn_with_state(state.clone(),authorize));
+        .route("/api/settings",get(settings).put(save_settings)).route("/api/sync",post(synchronize)).route("/api/latest-release",get(latest_release)).layer(middleware::from_fn_with_state(state.clone(),authorize));
     let cors=CorsLayer::new().allow_origin(AllowOrigin::predicate(|origin:&HeaderValue,_|origin.to_str().is_ok_and(trusted_origin))).allow_headers([axum::http::header::AUTHORIZATION,axum::http::header::CONTENT_TYPE,axum::http::header::IF_MATCH]).allow_methods([Method::GET,Method::POST,Method::PUT,Method::DELETE,Method::OPTIONS]);
     Router::new().route("/health",get(||async{Json(json!({"app":"glassmark","version":env!("CARGO_PKG_VERSION")}))})).route("/pair",post(pair)).merge(api)
         .layer(DefaultBodyLimit::max(2*1024*1024*1024)).layer(cors).layer(middleware::from_fn(boundary)).with_state(state)
 }
 async fn status(State(state):State<AppState>)->Json<Value>{Json(json!({"connected":true,"version":env!("CARGO_PKG_VERSION"),"conflicts":state.store.conflict_count().unwrap_or(0),"sync":state.sync_status.lock().unwrap().clone(),"running":state.syncing.load(Ordering::SeqCst)}))}
+async fn latest_release()->Result<Json<Value>>{
+    let client=reqwest::Client::builder().timeout(Duration::from_secs(15)).build().map_err(|e|e.to_string())?;
+    let response=client.get("https://api.github.com/repos/kevinhuang001/bookmark-web/releases/latest").header(reqwest::header::USER_AGENT,"Glassmark-update-check").header(reqwest::header::ACCEPT,"application/vnd.github+json").send().await.map_err(|e|format!("GitHub connection failed: {e}"))?;
+    let response=response.error_for_status().map_err(|e|format!("GitHub update check failed: {e}"))?;
+    let data:Value=response.json().await.map_err(|e|e.to_string())?;
+    Ok(Json(json!({"tag_name":data["tag_name"],"html_url":data["html_url"]})))
+}
 async fn pairing(State(state):State<AppState>)->Json<Value>{let mut pairing=state.pairing.lock().unwrap();*pairing=new_pairing();Json(json!({"code":pairing.code,"expiresIn":300}))}
 async fn pair(State(state):State<AppState>,Json(input):Json<Value>)->Result<Json<Value>>{
     let mut p=state.pairing.lock().unwrap();p.attempts=p.attempts.saturating_add(1);
