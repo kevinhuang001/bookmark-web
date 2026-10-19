@@ -1529,6 +1529,15 @@ try {
   for (const video of await page.locator(".x-post-detail video").all())
     await expect(video).toHaveAttribute("src", /^blob:/);
 
+  await page.locator(".x-post-detail .social-media img").first().click();
+  await expect(page.getByRole("dialog", { name: "Archived media" })).toBeVisible();
+  await expect(page.locator(".archive-viewer-counter")).toHaveText("1 / 6");
+  await page.locator('[data-viewer-step="1"]').click();
+  await expect(page.locator(".archive-viewer-counter")).toHaveText("2 / 6");
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".archive-media-viewer")).toHaveCount(0);
+  await expect(page.locator(".x-post-detail")).toBeVisible();
+
   const enriched = await source.evaluate(async () => {
     const article = document.querySelector("article");
     const late = [
