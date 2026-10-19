@@ -1,4 +1,5 @@
 export default {
+  "收藏变更后立即同步；自动同步周期可在下方配置。": "Sync when saves change. Configure the automatic sync interval below.",
   "同步": "Sync",
   "同步设置": "Sync settings",
   "启用同步": "Enable sync",
