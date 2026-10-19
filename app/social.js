@@ -105,7 +105,7 @@ function xShell(items, options) {
          .slice(1)
          .map((p) => xPost(p, selected, { reply: true }))
          .join("")
-     : `<div ${collectionPanel(options)}>${<div class="social-sort-bar"><button data-social-action="sort-recent" class="${options.filters.sort !== "best" ? "active" : ""}">${tr("最新")}</button><button data-social-action="sort-best" class="${options.filters.sort === "best" ? "active" : ""}">${tr("最佳")}</button></div>}${options.filters.author ? `<div class="feed-filter-bar">${esc(options.filters.author)}<button data-social-action="clear-filter">${tr("{1} 清除筛选", { 1: icon("close") })}</button></div>` : ""}${rows.map((item) => xPost(rootPost(item), item)).join("") || emptyCollection(options)}<div class="feed-end">${rows.length ? tr("已显示全部书签") : ""}</div></div>`
+     : `<div ${collectionPanel(options)}><div class="social-sort-bar"><button data-social-action="sort-recent" class="${options.filters.sort !== "best" ? "active" : ""}">${tr("最新")}</button><button data-social-action="sort-best" class="${options.filters.sort === "best" ? "active" : ""}">${tr("最佳")}</button></div>${options.filters.author ? `<div class="feed-filter-bar">${esc(options.filters.author)}<button data-social-action="clear-filter">${tr("{1} 清除筛选", { 1: icon("close") })}</button></div>` : ""}${rows.map((item) => xPost(rootPost(item), item)).join("") || emptyCollection(options)}<div class="feed-end">${rows.length ? tr("已显示全部书签") : ""}</div></div>`
  }</section></div>`;
 }
 function redditActions(post, item) {
