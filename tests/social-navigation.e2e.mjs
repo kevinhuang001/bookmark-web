@@ -142,12 +142,22 @@ try {
     ).toBeVisible();
     await page.screenshot({ path: `artifacts/${kind}-collection-tabs.png` });
     await page.setViewportSize({ width: 900, height: 900 });
-    assert.ok(
-      await page
-        .locator(".collection-tabs")
-        .evaluate((el) => el.scrollWidth > el.clientWidth),
-      "long tag lists must scroll inside the tab strip",
-    );
+    if (kind === "x" || kind === "reddit") {
+      // These platforms use a vertical sidebar, not a horizontal tab strip.
+      assert.ok(
+        await page.locator(".sidebar-tag-section .collection-tabs").evaluate(
+          (el) => el.scrollWidth <= el.clientWidth + 2,
+        ),
+        "sidebar tags must not overflow horizontally",
+      );
+    } else {
+      assert.ok(
+        await page.locator(".collection-tabs").evaluate(
+          (el) => el.scrollWidth > el.clientWidth,
+        ),
+        "long top tag lists must scroll inside the tab strip",
+      );
+    }
     assert.ok(
       await page
         .locator("#reader")
