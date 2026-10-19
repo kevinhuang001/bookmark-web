@@ -196,7 +196,7 @@ function renderFolders() {
       })
       .join("");
   }
-  const treeMarkup = `${walk()}${files(null, 0)}${matches.length ? "" : `<div class="tree-empty">${tr("从浏览器收藏网页")}</div>`}`;
+  const treeMarkup = `${walk()}${files(null, 0)}${matches.length ? "" : `<div class="tree-empty">${tr("暂无内容")}</div>`}`;
   if (state.folderTreeMarkup !== treeMarkup) {
     $("folders").innerHTML = treeMarkup;
     state.folderTreeMarkup = treeMarkup;
