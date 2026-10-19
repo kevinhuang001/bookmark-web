@@ -1655,3 +1655,8 @@
 .x-inline-reply { padding: 10px 0; border-bottom: 1px solid var(--border, #ccc3); }
 .x-inline-reply:last-child { border-bottom: 0; }
 .x-inline-reply strong { display: block; font-size: 13px; margin-bottom: 5px; }
+
+.reply-target { display: block; margin: 3px 0 6px; font-size: 12px; color: var(--muted, #8d97a1); }
+.reply-target strong { font-weight: 500; color: var(--accent, #4c98c9); }
+.reply-target-reddit { padding-left: 8px; border-left: 2px solid var(--accent, #4c98c9); }
+.reply-target-xiaohongshu strong, .reply-target-zhihu strong { color: inherit; font-weight: 600; }
