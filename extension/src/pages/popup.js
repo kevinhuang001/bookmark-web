@@ -11,6 +11,19 @@ hydrateIcons();
 translateDOM();
 const $ = (id) => document.getElementById(id);
 $("extension-version").textContent = api.runtime.getManifest?.().version || "";
+function browserName() {
+  const ua = navigator.userAgent;
+  if (/Firefox\//i.test(ua)) return "Firefox";
+  if (/EdgA?\//i.test(ua)) return "Microsoft Edge";
+  if (/OPR\//i.test(ua)) return "Opera";
+  if (/Vivaldi\//i.test(ua)) return "Vivaldi";
+  if (/Brave\//i.test(ua) || navigator.brave) return "Brave";
+  if (/SamsungBrowser\//i.test(ua)) return "Samsung Internet";
+  if (/Chrome\//i.test(ua) || /CriOS\//i.test(ua)) return "Google Chrome";
+  if (/Safari\//i.test(ua)) return "Safari";
+  return "Browser";
+}
+
 let currentTab,
   context,
   threadPage,
@@ -154,7 +167,7 @@ $("pairButton").onclick = async () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         code: $("code").value.trim(),
-        name: navigator.userAgent.includes("Firefox") ? "Firefox" : "Chromium",
+        name: browserName(),
       }),
       signal: AbortSignal.timeout(5000),
     });
