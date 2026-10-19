@@ -256,23 +256,22 @@ export function extractPost(el, kind, doc = document) {
 
 function extractNote(el, doc) {
   const comment = el.matches(".comment-item");
-  const text = (selector) =>
-    el.querySelector(selector)?.textContent.trim() || "";
-  const avatar = el.querySelector(
-    ".author-container img,.author img,.avatar img,img.avatar",
-  );
+  const owned = (node) => !comment || node.closest(".comment-item") === el;
+  const find = (selector) => [...el.querySelectorAll(selector)].find(owned);
+  const text = (selector) => find(selector)?.textContent.trim() || "";
+  const avatar = find(".author-container img,.author img,.avatar img,img.avatar");
   const media = [
     ...el.querySelectorAll(
       comment ? ".comment-content img" : ".swiper-slide img,.note-slider img",
     ),
-  ]
+  ].filter(owned)
     .map((i) => ({
       type: "image",
       url: i.currentSrc || i.src || i.dataset.src,
       alt: i.alt || "",
     }))
     .filter((m) => /^https?:/.test(m.url));
-  for (const v of el.querySelectorAll("video")) {
+  for (const v of [...el.querySelectorAll("video")].filter(owned)) {
     const sources = videoSources(el, doc);
     media.push({
       type: "video",
@@ -286,7 +285,12 @@ function extractNote(el, doc) {
       ? el.getAttribute("data-comment-id") || el.getAttribute("data-id") || el.id || text(".content,.note-text")
       : new URL(doc.URL).pathname,
     isComment: comment,
-    depth: comment ? 1 : 0,
+    depth: comment ? 1 + (() => {
+      let count = 0;
+      for (let parent = el.parentElement; parent; parent = parent.parentElement)
+        if (parent.matches(".comment-item")) count++;
+      return count;
+    })() : 0,
     parentId: comment ? (
       el.getAttribute("data-parent-id") ||
       el.getAttribute("parent-id") ||
@@ -307,7 +311,7 @@ function extractNote(el, doc) {
       comment ? ".content,.note-text" : "#detail-desc,.note-text,.desc",
     ),
     url: comment ? null : doc.URL,
-    postedAt: el.querySelector("time")?.getAttribute("datetime") || el.querySelector("[datetime]")?.getAttribute("datetime") || null,
+    postedAt: find("time")?.getAttribute("datetime") || find("[datetime]")?.getAttribute("datetime") || null,
     postedAtText: comment ? text(".date,.time,.comment-time,.date-time,.create-time,.comment-info .date") : "",
     stats: {
       likes: text(".like-wrapper .count,.like .count"),
