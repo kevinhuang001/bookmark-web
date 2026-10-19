@@ -1,4 +1,5 @@
 export default {
+  "正在回复": "Replying to",
   "查看已保存的媒体": "View saved media",
   "插件设置": "Extension settings",
   "收藏完成": "Saved",
