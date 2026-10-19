@@ -302,15 +302,17 @@ export async function renderSocial(
     }
     viewer.remove();
     viewer = null;
-    document.removeEventListener("keydown", viewerKeys);
+    document.removeEventListener("keydown", viewerKeys, true);
   };
   closeMediaViewer = closeViewer;
   const viewerKeys = (event) => {
-    if (!viewer) return;
-    if (event.key === "Escape") { event.preventDefault(); closeViewer(); }
-    else if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
-      event.preventDefault(); moveViewer(event.key === "ArrowRight" ? 1 : -1);
-    }
+    if (!viewer || !["Escape", "ArrowRight", "ArrowLeft"].includes(event.key)) return;
+    // Handle the viewer before the app's global Escape/back shortcut.
+    // Closing media must not also navigate away from the archived thread.
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if (event.key === "Escape") closeViewer();
+    else moveViewer(event.key === "ArrowRight" ? 1 : -1);
   };
   let viewerMedia = [];
   let viewerIndex = 0;
@@ -362,7 +364,7 @@ export async function renderSocial(
     viewer.querySelector(".archive-viewer-close").onclick = closeViewer;
     viewer.querySelectorAll("[data-viewer-step]").forEach((b) => b.onclick = () => moveViewer(Number(b.dataset.viewerStep)));
     viewer.onclick = (event) => { if (event.target === viewer) closeViewer(); };
-    document.addEventListener("keydown", viewerKeys);
+    document.addEventListener("keydown", viewerKeys, true);
     showViewerMedia();
     viewer.querySelector(".archive-viewer-close").focus();
   };
