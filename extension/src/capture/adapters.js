@@ -230,7 +230,7 @@ export function extractPost(el, kind, doc = document) {
     replyToHandle: kind === "x" ? (
       [...el.querySelectorAll('div,span')].map((node) => {
         const value = node.textContent?.trim() || "";
-        return value.length <= 120 && /(?:replying to|正在回复|回复给)\\s+@[A-Za-z0-9_]+/i.test(value)
+        return value.length <= 120 && /(?:replying to|正在回复|回复给)\s+@[A-Za-z0-9_]+/i.test(value)
           ? value.match(/@[A-Za-z0-9_]+/)?.[0] : null;
       }).find(Boolean) || ""
     ) : "",
