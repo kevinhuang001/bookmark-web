@@ -1,4 +1,5 @@
 export default {
+  "收藏完成": "Saved",
   "单次评论与回复数量上限": "Maximum comments and replies per capture",
   "适用于 X、Reddit、小红书和知乎。每次仅保存当前链接对应的内容，数量上限用于评论和回复。": "Applies to X, Reddit, Xiaohongshu and Zhihu. Each capture saves the current URL; the limit applies to comments and replies.",
   "当前版本": "Current version",
