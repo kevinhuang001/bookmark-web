@@ -156,8 +156,9 @@ async fn run_local(store:&Store,config:&SyncConfig)->Result<usize>{
     let synced:HashSet<String>={
         let db=store.db.lock().map_err(|e|e.to_string())?;
         let mut stmt=db.prepare("SELECT event FROM synced").map_err(|e|e.to_string())?;
-        stmt.query_map([],|r|r.get(0)).map_err(|e|e.to_string())?
-            .collect::<std::result::Result<_,_>>().map_err(|e|e.to_string())?
+        let entries=stmt.query_map([],|r|r.get(0)).map_err(|e|e.to_string())?
+            .collect::<std::result::Result<_,_>>().map_err(|e|e.to_string())?;
+        entries
     };
     let mut count=0;
     for entry in fs::read_dir(source_root.join("events")).map_err(|e|e.to_string())?{
