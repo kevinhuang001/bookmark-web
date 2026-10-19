@@ -1,7 +1,5 @@
 <p align="center"><img src="assets/app-icon.svg" width="88" alt="Glassmark"></p>
 <h1 align="center">Glassmark</h1>
-<p align="center"><strong>A home for the web you want to keep.</strong></p>
-<p align="center">Save webpages, conversations and ideas. Read them in a calm, familiar space.<br>Keep the content and its media on your own computer.</p>
 <p align="center"><a href="https://github.com/kevinhuang001/bookmark-web/releases/latest">Download Glassmark</a> · <a href="#get-started">Get started</a> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ja.md">日本語</a></p>
 <p align="center"><a href="https://github.com/kevinhuang001/bookmark-web/actions/workflows/ci.yml"><img src="https://github.com/kevinhuang001/bookmark-web/actions/workflows/ci.yml/badge.svg" alt="CI"></a> <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a></p>
 
