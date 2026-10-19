@@ -1616,7 +1616,10 @@
 .x-thread-group { border-bottom:1px solid #eff3f4; }
 .x-thread-entry { position:relative; margin:0; border:0; }
 .x-thread-entry .x-post { border-bottom:0; position:relative; }
-.x-thread-entry:not(:last-child)::after { content:""; position:absolute; top:57px; bottom:-9px; left:35px; width:2px; background:#cfd9de; pointer-events:none; }
+.x-thread-scope { position:relative; }
+.x-thread-lines { position:absolute; left:0; top:0; pointer-events:none; z-index:1; overflow:visible; }
+.x-thread-lines path { fill:none; stroke:#b8c5cd; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+.x-thread-scope .social-avatar { z-index:2; }
 .x-thread-entry .social-avatar { z-index:1; }
 .reply-target-x { color:#536471; font-size:13px; }
 .reply-target-x strong { color:#1d9bf0; }
@@ -1657,3 +1660,10 @@
 .social-media:hover .media-expand,.social-media:focus-within .media-expand,.media-expand:focus-visible { opacity:1; }
 .media-unavailable .media-expand { display:none; }
 @media (hover:none) { .media-expand { opacity:1; } }
+
+/* Comment attachments stay small; the viewer owns full-size images and playback. */
+.comment-media.social-media-grid { display:flex; flex-wrap:wrap; gap:7px; width:fit-content; max-width:100%; margin:8px 0; border:0; border-radius:0; background:none; }
+.comment-media.social-media-grid > .social-media { flex:0 0 96px; width:96px; height:96px; min-height:96px; border-radius:9px; cursor:zoom-in; }
+.comment-media.social-media-grid .social-media img,.comment-media.social-media-grid .social-media video { width:96px; height:96px; max-height:96px; object-fit:cover; }
+.comment-media .media-expand { width:25px; height:25px; right:5px; bottom:5px; }
+.comment-media .video-media::after { content:"▶"; position:absolute; inset:0; display:grid; place-items:center; color:white; background:#0002; text-shadow:0 1px 5px #000; pointer-events:none; }

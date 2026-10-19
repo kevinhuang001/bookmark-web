@@ -1,5 +1,6 @@
 import { videoSources } from "../video.js";
 import { commentIdentity, commentText } from "./comments.js";
+import { imageSource } from "../gallery.js";
 export function extractNote(el, doc) {
   const comment = el.matches(".comment-item");
   const owned = (node) =>
@@ -19,12 +20,12 @@ export function extractNote(el, doc) {
     .filter(owned)
     .map((i) => ({
       type: "image",
-      url: i.currentSrc || i.src || i.dataset.src,
+      url: imageSource(i),
       alt: i.alt || "",
     }))
     .filter((m) => /^https?:/.test(m.url));
   for (const v of [...el.querySelectorAll("video")].filter(owned)) {
-    const sources = videoSources(el, doc);
+    const sources = videoSources(v, doc);
     media.push({
       type: "video",
       url: sources[0] || v.currentSrc || v.src,

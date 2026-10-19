@@ -36,9 +36,9 @@ export async function openSettings({ modal, folders, onSaved, toast }) {
   let active = "general";
   prefs.visiblePlatforms ||= ["web", "x", "reddit", "xiaohongshu", "zhihu"];
   const control = (name, key, type = "number", min, max) =>
-    `<label class="settings-row"><span>${name}</span><input aria-label="${name}" data-pref="${key}" type="${type}" ${type === "checkbox" ? (prefs[key] ? "checked" : "") : `value="${esc(prefs[key])}" min="${min}" max="${max}" step="1" required`}></label>`;
+    `<label class="settings-row sync-config-row"><span class="sync-row-copy"><strong>${name}</strong></span><input aria-label="${name}" data-pref="${key}" type="${type}" ${type === "checkbox" ? 'class="sync-toggle" role="switch"' : ""} ${type === "checkbox" ? (prefs[key] ? "checked" : "") : `value="${esc(prefs[key])}" min="${min}" max="${max}" step="1" required`}></label>`;
   const section = (title, body, note = "") =>
-    `<section class="settings-section"><h3>${title}</h3><div class="settings-card">${body}</div>${note ? `<p class="settings-note">${note}</p>` : ""}</section>`;
+    `<section class="settings-section sync-config-card"><header><span class="sync-config-icon">${icon(categories.find((c) => c[0] === active)?.[1] || "settings")}</span><div><h3>${title}</h3>${note ? `<p>${note}</p>` : ""}</div></header><div class="settings-card sync-config-fields">${body}</div></section>`;
   function collect() {
     const platforms = document.querySelectorAll("[data-platform-pref]");
     if (platforms.length)
@@ -105,7 +105,7 @@ export async function openSettings({ modal, folders, onSaved, toast }) {
       body =
         section(
           tr("界面语言"),
-          `<label class="settings-row"><span>${tr("语言")}</span><select data-pref="language" aria-label="${tr("语言")}">${languages.map((l) => `<option value="${l.id}" ${prefs.language === l.id ? "selected" : ""}>${l.id === "system" ? tr("跟随系统") : l.name}</option>`).join("")}</select></label>`,
+          `<label class="settings-row sync-config-row"><span class="sync-row-copy"><strong>${tr("语言")}</strong></span><select data-pref="language" aria-label="${tr("语言")}">${languages.map((l) => `<option value="${l.id}" ${prefs.language === l.id ? "selected" : ""}>${l.id === "system" ? tr("跟随系统") : l.name}</option>`).join("")}</select></label>`,
           tr("保存后应用于客户端和浏览器扩展。"),
         ) +
         section(
@@ -125,14 +125,14 @@ export async function openSettings({ modal, folders, onSaved, toast }) {
           ]
             .map(
               ([id, name]) =>
-                `<label class="settings-row"><span>${name}</span><input type="checkbox" data-platform-pref="${id}" ${prefs.visiblePlatforms.includes(id) ? "checked" : ""}></label>`,
+                `<label class="settings-row sync-config-row"><span class="sync-row-copy"><strong>${name}</strong></span><input class="sync-toggle" role="switch" aria-label="${name}" type="checkbox" data-platform-pref="${id}" ${prefs.visiblePlatforms.includes(id) ? "checked" : ""}></label>`,
             )
             .join(""),
           tr("选择侧边栏显示的来源。隐藏后仍可通过全局搜索查看收藏。"),
         ) +
         section(
           tr("网页默认保存位置"),
-          `<label class="settings-row"><span>${tr("默认文件夹")}</span><select data-pref="defaultFolderId" aria-label="${tr("默认文件夹")}"><option value="">${tr("网页 · 根文件夹")}</option>${folders.map((f) => `<option value="${f.id}" ${prefs.defaultFolderId === f.id ? "selected" : ""}>${esc(f.name)}</option>`).join("")}</select></label>`,
+          `<label class="settings-row sync-config-row"><span class="sync-row-copy"><strong>${tr("默认文件夹")}</strong></span><select data-pref="defaultFolderId" aria-label="${tr("默认文件夹")}"><option value="">${tr("网页 · 根文件夹")}</option>${folders.map((f) => `<option value="${f.id}" ${prefs.defaultFolderId === f.id ? "selected" : ""}>${esc(f.name)}</option>`).join("")}</select></label>`,
           tr("扩展优先保留你上次选择的位置；首次收藏使用这里的默认值。"),
         );
     if (active === "capture")
@@ -211,14 +211,14 @@ export async function openSettings({ modal, folders, onSaved, toast }) {
           devices
             .map(
               (d) =>
-                `<div class="settings-row"><span>${esc(d.name)}</span><button type="button" class="text-button revoke" data-token="${d.token}">${tr("撤销配对")}</button></div>`,
+                `<div class="settings-row sync-config-row"><span class="sync-row-copy"><strong>${esc(d.name)}</strong></span><button type="button" class="text-button revoke" data-token="${d.token}">${tr("撤销配对")}</button></div>`,
             )
             .join("") ||
             `<p class="settings-note">${tr("尚无已配对浏览器")}</p>`,
         );
     if (active === "about")
       body =
-        `<section class="about-overview"><div class="about-brand-mark">${icon("logo")}</div><h3>GlassMark</h3><p class="about-version">${tr("当前版本")} <strong id="about-current-version">0.8.15</strong></p></section>` +
+        `<section class="about-overview"><div class="about-brand-mark">${icon("logo")}</div><h3>GlassMark</h3><p class="about-version">${tr("当前版本")} <strong id="about-current-version">0.8.16</strong></p></section>` +
         section(
           tr("软件更新"),
           `<div class="about-update-row"><div><strong>${tr("检查最新版本")}</strong><p id="about-update-status" aria-live="polite">${tr("尚未检查更新")}</p></div><button type="button" id="about-check-update" class="secondary">${tr("检查更新")}</button></div><a id="about-release-link" href="https://github.com/kevinhuang001/bookmark-web/releases" target="_blank" rel="noopener noreferrer">${tr("查看所有版本")}</a>`,
@@ -341,7 +341,7 @@ export async function openSettings({ modal, folders, onSaved, toast }) {
           await mutate("/api/settings", dav, "PUT");
           const result = await mutate("/api/sync", {});
           document.getElementById("sync-feedback").textContent =
-            localizeError(result.error) || tr("同步完成");
+            localizeError(result.error) || tr(result.running ? "正在同步…" : "同步完成");
           if (conflictRoot?.isConnected)
             await renderConflicts(conflictRoot, {
               folders,

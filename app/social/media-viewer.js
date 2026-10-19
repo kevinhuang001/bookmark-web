@@ -9,8 +9,9 @@ export function attachMediaViewer(root) {
     trigger;
   const restoreVideo = () => {
     if (!restoredVideo) return;
-    const { video, placeholder } = restoredVideo;
+    const { video, placeholder, controls } = restoredVideo;
     video.pause();
+    video.controls = controls;
     placeholder.replaceWith(video);
     restoredVideo = null;
   };
@@ -32,7 +33,11 @@ export function attachMediaViewer(root) {
       const placeholder = document.createElement("span");
       placeholder.hidden = true;
       original.replaceWith(placeholder);
-      restoredVideo = { video: original, placeholder };
+      restoredVideo = {
+        video: original,
+        placeholder,
+        controls: original.controls,
+      };
       original.controls = true;
       stage.append(original);
     } else if (original) {
@@ -113,7 +118,7 @@ export function attachMediaViewer(root) {
     if (!tile) return;
     // Native playback controls keep working without bubbling into a post link.
     if (
-      event.target.closest("video") &&
+      event.target.closest("video")?.controls &&
       !event.target.closest("[data-media-expand]")
     ) {
       event.stopImmediatePropagation();

@@ -7,7 +7,10 @@
 - `cargo test --locked --manifest-path core/Cargo.toml`：权限、持久化、搜索、标签、偏好范围、单份内容存储与 WebDAV 同步。
 - `npm run test:e2e`：网页与选区、结构化帖子、头像、评论、全局与站内搜索、目录、标签选择、删除、分组设置、空文件夹取消、沉浸阅读和媒体播放。
 - `node tests/extension.e2e.mjs`：安装真实 Chromium MV3 扩展，配对并向生产 Rust 后端保存网页及 X 讨论，验证客户端关闭后停用。
-- `node tests/firefox.e2e.mjs`：Firefox 捕获引擎与清单；不代表已安装附加组件测试。
+- `node tests/firefox.e2e.mjs`：Firefox 捕获引擎与清单。
+- `node tests/firefox-extension.e2e.mjs`：真实安装 Firefox 附加组件，验证配对、捕获和原生持久化；需要 geckodriver。
+- `node tests/media-capture.e2e.mjs`：仅挂载一张图片的虚拟轮播、起始位置恢复、页面媒体清单、视频独立来源和 X 父帖元数据。
+- `node tests/social-interactions.e2e.mjs`：四个平台原地展开评论、96 像素缩略图、放大后图片切换及实际视频播放，检查 X 父子回复连线。
 - 三平台构建：macOS 通用 DMG、Windows EXE / MSI、Linux AppImage / DEB / RPM / Arch `.pkg.tar.zst`。
 
 CI 在浏览器测试中设置 `GLASSMARK_BRIDGE_BIN`，使用生产 Rust 服务。没有该参数的本地前端测试使用开发服务，报告明确标记 `fixture-bridge`。
@@ -35,4 +38,6 @@ Linux CI 使用 makepkg 生成 Arch 包并在 Arch 容器安装、核验动态�
 
 网页缩放回归覆盖工具栏调整、50% / 200% 边界、重载后的比例恢复及焦点在沙盒页面内的快捷键还原。
 
-WebDAV 回归覆盖三设备离线分支、标签合并、删除/编辑冲突、重启恢复、过期处理请求、时间逆序、远端事件同名异内容及 HTTP 409 写入保护。X 回归覆盖四图双视频、各播放器独立 HLS 源、延迟媒体补全、一个 URL 一个主帖、前置帖子/广告排除和信息流拒绝。冲突 UI 回归采用响应夹具，真实因果合并和 WebDAV 传输由 Rust 集成测试验证。
+WebDAV 回归覆盖三设备离线分支、标签合并、删除/编辑冲突、重启恢复、过期处理请求、时间逆序、远端事件同名异内容及 HTTP 409 写入保护。X 回归覆盖四图双视频、各播放器独立 HLS 源、延迟媒体补全、一个 URL 一个主帖、前置帖子/广告排除和信息流拒绝。冲突 UI 回归采用响应夹具，验证冲突只出现在 WebDAV 卡片内；真实因果合并和 WebDAV 传输由 Rust 集成测试验证。真实安装的 Chromium 扩展还会保存四张页面未完整挂载的图片和两个独立视频，并逐个核验原生归档文件存在。
+
+设置回归覆盖：取消独立 enabled 开关，所选同步方式决定运行目标；本地仅显示路径，WebDAV 包含周期、立即同步和冲突。Rust 验证未配置目的地不执行同步、本地轮询与 WebDAV 周期互不混用；桌面和小窗口核对各设置分类的横向溢出及页脚可达性。

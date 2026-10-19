@@ -12,7 +12,7 @@ An article you want to return to. A thread that explains something well. A note 
 - **Read without the surrounding noise.** Saved webpages fill the reading pane, with their layout and typography preserved.
 - **Keep the conversation.** Save X threads, Reddit discussions, Xiaohongshu notes and Zhihu answers with their loaded replies, comments and media.
 - **Make it yours.** Organize pages into nested folders, add tags, search across your library, and choose which sources appear in the sidebar.
-- **Own your library.** Store content locally and optionally sync it between devices with your own WebDAV server. No Glassmark account is required.
+- **Own your library.** Store content locally and sync through a chosen local folder or your own WebDAV server. No Glassmark account is required.
 - **Feel at home.** A softly frosted desktop interface for macOS, Windows and Linux, with English, 简体中文 and 日本語 UI.
 
 ## A familiar place for every save
@@ -29,6 +29,10 @@ A familiar timeline for your saved posts and threads. Open a conversation, filte
 
 ![X bookmarks and saved threads](docs/images/x.jpg)
 
+Saved replies connect to known parents with avatar-gutter lines. Comment buttons expand saved replies in place. Comment media starts as small thumbnails; click to open an image or video, then use the arrows or arrow keys to browse that gallery.
+
+![X reply connections and compact comment media](docs/images/x-thread.jpg)
+
 ### Reddit, focused on saved discussions
 
 Browse your saved posts by community, sort the collection, and read archived comments in their original hierarchy.
@@ -37,7 +41,7 @@ Browse your saved posts by community, sort the collection, and read archived com
 
 ### Xiaohongshu, focused on the notes you love
 
-Browse a cover-first collection. Open a note to view its images and videos on the left, with the text and saved comments on the right.
+Browse a cover-first collection. Open a note to view its images and videos on the left, with text and saved comments on the right. Capture reads the current note's exposed media list and visits virtual gallery slides, including images beyond the one visible when you start.
 
 ![Xiaohongshu saved notes](docs/images/xiaohongshu.jpg)
 
@@ -45,7 +49,7 @@ Browse a cover-first collection. Open a note to view its images and videos on th
 
 ### Zhihu, focused on answers worth revisiting
 
-Keep individual answers and column articles in a clean, blue-accented collection. Read the full saved text, archived media and loaded comments without recommendations. Open an answer's own URL or a `zhuanlan.zhihu.com/p/…` article before saving.
+Keep individual answers and column articles in a clean, blue-accented collection. Read the full saved text, archived media and loaded comments without recommendations. On question or answer pages, select one answer in the extension; Glassmark opens its comments and waits for them to load. Column articles at `zhuanlan.zhihu.com/p/…` save directly.
 
 ![Zhihu saved answers and articles](docs/images/zhihu.jpg)
 
@@ -100,9 +104,13 @@ Keep the desktop client running while saving. Pairing codes are valid for five m
 
 **Local media.** Images, avatars, GIFs and supported videos are stored alongside your saves. Download limits, concurrency and timeouts are configurable in Settings.
 
-**Your sync server.** Choose a local folder or add an HTTP/HTTPS WebDAV directory in **Settings → Sync** to sync saved content, folders, tags and deletions. Files are stored under `glassmark/` on your server. See the [user guide](docs/USER-GUIDE.md) for storage and sync details.
+**Choose your sync method.** In **Settings → Sync**, select Local folder or WebDAV, configure its destination and save. There is no extra enable switch. Local folder has only a path and syncs automatically. WebDAV keeps its automatic interval, Sync now and Sync conflicts inside its configuration card. Both methods use one `glassmark/` directory under the destination. All settings categories share the same grouped-card layout. See the [user guide](docs/USER-GUIDE.md) for details.
 
-**Clear capture boundaries.** X can load replies within configurable time and post limits. Reddit and Xiaohongshu save the comments already loaded on the page. Direct MP4/WebM and unencrypted, finite HLS video are supported; live streams, DRM and unavailable media cannot be preserved. Each capture includes a resource report.
+![WebDAV settings](docs/images/sync-webdav.jpg)
+
+![Local folder settings](docs/images/sync-local.jpg)
+
+**Clear capture boundaries.** X can load replies within configurable time and post limits. Reddit and Xiaohongshu save the comments already loaded on the page. Direct MP4/WebM and unencrypted, finite HLS video are supported; live streams, DRM and unavailable media cannot be preserved. Each capture includes a resource report. The reply-count limit applies across structured social captures. Media availability depends on what the page exposes to your session. Previously missed attachments require a new capture; an update cannot recover files that were never saved.
 
 ## Open source
 
@@ -114,4 +122,4 @@ Desktop installers and extension ZIPs are distributed through GitHub Releases. T
 
 ## Resolve sync conflicts
 
-Concurrent WebDAV edits retain their causal branches instead of being silently overwritten by a newer device clock. Open **Settings → Sync → Sync conflicts** to compare the title, folder, tags and deletion state, then choose a version. If versions differ only in tags, merge all tags. Deletion versus editing stays visible until you decide. Resolutions sync to other devices and remain effective after restarting. Stale resolution choices are rejected and refreshed.
+Concurrent WebDAV edits retain their causal branches instead of being silently overwritten by a newer device clock. Open **Settings → Sync → WebDAV → Sync conflicts** to compare the title, folder, tags and deletion state, then choose a version. If versions differ only in tags, merge all tags. Deletion versus editing stays visible until you decide. Resolutions sync to other devices and remain effective after restarting. Stale resolution choices are rejected and refreshed.

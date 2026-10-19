@@ -29,7 +29,7 @@ export async function fixtureBridge(root) {
     },
     folders: [],
     tags: [],
-    settings: { enabled: false, url: "", username: "", password: "" },
+    settings: { mode: "webdav", localPath: "", intervalSeconds: 60, url: "", username: "", password: "" },
     devices: [],
   };
   try {
@@ -116,7 +116,7 @@ export async function fixtureBridge(root) {
           fixture: true,
           running: false,
           sync: {
-            error: db.settings.enabled
+            error: (db.settings.mode === "local" ? db.settings.localPath : db.settings.url)
               ? "开发替代服务不执行 WebDAV，请使用 Tauri 客户端验证"
               : null,
           },

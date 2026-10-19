@@ -27,7 +27,19 @@ npm run build
 npm run test:e2e
 ```
 
-Set `GLASSMARK_BRIDGE_BIN=core/target/debug/glassmark-bridge` to run browser integration tests against the production service. CI also validates an installed Chromium extension, the Firefox capture engine, and all three desktop builds.
+Build the bridge before using the production backend:
+
+```sh
+cargo build --locked --manifest-path core/Cargo.toml --bin glassmark-bridge
+npx playwright install --with-deps chromium firefox
+GLASSMARK_BRIDGE_BIN=core/target/debug/glassmark-bridge npm run test:e2e
+```
+
+Without `GLASSMARK_BRIDGE_BIN`, browser tests use the fixture service and do not validate native storage. CI also runs `tests/extension.e2e.mjs` with an installed Chromium extension, `tests/firefox.e2e.mjs`, and `tests/firefox-extension.e2e.mjs` with an installed Firefox add-on and native persistence. The Firefox add-on test requires geckodriver; CI pins and verifies its download. All three desktop installer builds must pass before release.
+
+`npm run test:e2e` includes navigation, Zhihu loading, reply extraction, target identity, media interactions and virtual-gallery/page-metadata tests. Keep a multiple-attachment regression whenever media ownership or source selection changes.
+
+During development, event format changes may require a fresh local data directory. Version 2 events require explicit causal parents; there is no legacy history conversion. Back up data before resetting the internal library. The destination's `glassmark/` folder is separate from the app's internal `content-v2/` folder.
 
 Keep capture logic, library UI and storage changes in their respective modules. Use the shared localization layer for user-facing strings, and preserve archived text and user-defined names. See [localization](docs/I18N.md) and [architecture](docs/ARCHITECTURE.md).
 

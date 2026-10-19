@@ -2118,6 +2118,18 @@ body,
 .sync-password button .icon { width:17px; height:17px; }
 .sync-footer { display:flex; align-items:center; gap:12px; margin-top:16px; }
 .sync-footer .settings-note { margin:0; }
+.settings-section.sync-config-card { margin-bottom:16px; }
+.settings-section.sync-config-card .settings-card { padding:0; }
+#dialog-body .settings-row.sync-config-row { border-bottom:0; }
+#dialog-body .settings-row.sync-config-row select { max-width:48%; padding:10px 12px; border:1px solid #d8dfe9; border-radius:8px; background:#fff; color:#34465e; }
+#dialog-body .settings-row .sync-toggle::after { width:18px; height:18px; top:3px; left:3px; }
+#dialog-body .settings-row .sync-toggle:checked::after { transform:translateX(16px); }
+#dialog-body .settings-row input.sync-toggle[type=checkbox] { width:40px; height:24px; margin:0; padding:0; border:0; background:#ccd3dc; }
+#dialog-body .settings-row input.sync-toggle[type=checkbox]:checked { background:#3478f6; }
+.sync-config-fields > .pairing-card,.sync-config-fields > .about-update-row { margin:0; padding:16px; }
+.sync-config-fields > .settings-note { padding:13px 16px; margin:0; }
+.sync-config-fields > .about-links { padding:4px 16px; }
+.sync-config-fields > #about-release-link { display:block; margin:0 16px 14px; }
 @media (max-width:800px) {
   .sync-method-card { align-items:stretch; flex-direction:column; }
   .sync-provider-switch button { flex:1; }

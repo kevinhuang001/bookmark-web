@@ -1,5 +1,6 @@
 /** Full capture-page regression: a saved answer permalink is not a document redirect. */
 import assert from "node:assert/strict";
+import { readPageData } from "../extension/src/capture/page-data.js";
 import { readFile, rm } from "node:fs/promises";
 import { launchBrowser } from "../scripts/browser.mjs";
 import { fixtureBridge } from "../scripts/fixture-bridge.mjs";
@@ -189,6 +190,10 @@ try {
         return;
       }
       if (method === "script") {
+        if (value.world === "MAIN")
+          return [
+            { result: await source.evaluate(readPageData, value.args?.[0]) },
+          ];
         if (value.files) {
           await source.addScriptTag({ content: captureScript });
           return [];
@@ -227,6 +232,7 @@ try {
             extensionCall("script", {
               files: options.files,
               args: options.args,
+              world: options.world,
             }),
         },
       };

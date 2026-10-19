@@ -36,7 +36,7 @@ export function threadComments(item, kind, render) {
   return commentThreads(item.posts)
     .map((entries) => {
       const content = entries
-        .map(({ post, depth }) => render(post, depth))
+        .map(({ post, depth, parent }) => render(post, depth, parent))
         .join("");
       return kind === "reddit"
         ? content
@@ -47,7 +47,7 @@ export function threadComments(item, kind, render) {
 
 function redditComment(post, item) {
   const op = authorName(post) === authorName(rootPost(item));
-  return `<article class="reddit-comment"><div class="reddit-comment-author">${avatar(post, item)}<strong>${esc(authorName(post))}</strong>${op ? '<span class="reddit-op">OP</span>' : ""}<span class="reddit-comment-time">· ${commentTime(post) || stamp(item)}</span>${menu(item)}</div><div class="reddit-comment-body"><p>${bodyText(post.text)}</p>${mediaMarkup(post, item)}<div class="reddit-comment-actions"><span class="reddit-comment-votes">${icon("arrowUp")}<b>${esc(post.stats?.votes || "")}</b>${icon("arrowDown")}</span><span>${icon("comment")}${tr("回复")}</span><button data-social-action="copy" data-id="${item.id}">${icon("share")}${tr("分享")}</button></div></div></article>`;
+  return `<article class="reddit-comment"><div class="reddit-comment-author">${avatar(post, item)}<strong>${esc(authorName(post))}</strong>${op ? '<span class="reddit-op">OP</span>' : ""}<span class="reddit-comment-time">· ${commentTime(post) || stamp(item)}</span>${menu(item)}</div><div class="reddit-comment-body"><p>${bodyText(post.text)}</p>${mediaMarkup(post, item, { comment: true })}<div class="reddit-comment-actions"><span class="reddit-comment-votes">${icon("arrowUp")}<b>${esc(post.stats?.votes || "")}</b>${icon("arrowDown")}</span><span>${icon("comment")}${tr("回复")}</span><button data-social-action="copy" data-id="${item.id}">${icon("share")}${tr("分享")}</button></div></div></article>`;
 }
 export function redditThreads(item) {
   let index = 0;
@@ -91,5 +91,5 @@ export function nativeComment(
     : "";
   const actions = `<div class="native-comment-actions"><span>${icon("heart")}${esc(post.stats?.likes || "")}</span><span>${icon("comment")}${esc(post.stats?.comments || tr("回复"))}</span></div>`;
   const date = `<span class="native-comment-date">${commentTime(post)}</span>`;
-  return `<article class="note-comment native-comment ${kind}-comment ${threadDepth > 0 ? "comment-child" : ""}">${avatar(post, item)}<div class="native-comment-content"><header><strong>${esc(authorName(post))}</strong>${badge}${menu(item)}</header><p>${prefix}${bodyText(post.text)}</p>${mediaMarkup(post, item)}${kind === "zhihu" ? `<footer>${date}${actions}</footer>` : `${date}${actions}`}</div></article>`;
+  return `<article class="note-comment native-comment ${kind}-comment ${threadDepth > 0 ? "comment-child" : ""}">${avatar(post, item)}<div class="native-comment-content"><header><strong>${esc(authorName(post))}</strong>${badge}${menu(item)}</header><p>${prefix}${bodyText(post.text)}</p>${mediaMarkup(post, item, { comment: true })}${kind === "zhihu" ? `<footer>${date}${actions}</footer>` : `${date}${actions}`}</div></article>`;
 }

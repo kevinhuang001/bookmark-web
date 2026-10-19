@@ -9,6 +9,7 @@ hydrateIcons();
 translateDOM();
 import { api, request } from "../api.js";
 import { validateCapture } from "../capture/validate.js";
+import { readPageData, enrichCapture } from "../capture/page-data.js";
 import { archiveResources, rewrite } from "../archive.js";
 const params = new URLSearchParams(location.search);
 const tabId = Number(params.get("tab"));
@@ -110,6 +111,17 @@ async function run() {
       await api.tabs.update(tabId, { active: true });
     }
     if (controller.signal.aborted) throw new Error(tr("已取消收藏"));
+    const pageData =
+      (
+        await api.scripting
+          .executeScript({
+            target: { tabId },
+            world: "MAIN",
+            func: readPageData,
+            args: ["start"],
+          })
+          .catch(() => [])
+      )[0]?.result || {};
     await api.scripting.executeScript({
       target: { tabId },
       files: ["content.js"],
@@ -133,6 +145,7 @@ async function run() {
             preferences.resolvedLanguage || preferences.language || "system",
           mode,
           maxPosts: maximum,
+          pageData,
         },
       ],
     });
@@ -142,6 +155,18 @@ async function run() {
     if (!capture) throw new Error(tr("页面捕获未返回内容"));
     if (capture.cancelled) controller.abort();
     if (capture.captureError) throw new Error(capture.captureError);
+    const latestPageData =
+      (
+        await api.scripting
+          .executeScript({
+            target: { tabId },
+            world: "MAIN",
+            func: readPageData,
+            args: ["stop"],
+          })
+          .catch(() => [])
+      )[0]?.result || {};
+    enrichCapture(capture, { ...pageData, ...latestPageData }, preferences);
     const sourceAfterCapture = await api.tabs.get(tabId);
     validateCapture(capture, current.url, sourceAfterCapture.url, mode);
     if (controller.signal.aborted) throw new Error(tr("已取消收藏"));
@@ -214,6 +239,14 @@ async function run() {
     $("cancel").hidden = true;
     $("retry").hidden = controller.signal.aborted;
   } finally {
+    await api.scripting
+      .executeScript({
+        target: { tabId },
+        world: "MAIN",
+        func: readPageData,
+        args: ["stop"],
+      })
+      .catch(() => {});
     const lockKey = "runningCapture_" + tabId;
     const current = (await api.storage.local.get(lockKey))[lockKey];
     if (current === progressTab?.id) await api.storage.local.remove(lockKey);
