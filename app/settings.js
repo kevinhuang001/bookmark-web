@@ -255,13 +255,13 @@ export async function openSettings({ modal, folders, onSaved, toast }) {
           if (!response.ok) throw new Error(String(response.status));
           const release = await response.json();
           const latest = String(release.tag_name || "").replace(/^v/i, "");
-          if (!/^\\d+\\.\\d+\\.\\d+/.test(latest)) throw new Error("Invalid release version");
+          if (!/^\d+\.\d+\.\d+/.test(latest)) throw new Error("Invalid release version");
           const current = versionLabel.textContent.trim();
           const numbers = (v) => v.split(/[.-]/).slice(0, 3).map((x) => Number(x) || 0);
           const l = numbers(latest), c = numbers(current);
           const newer = l.some((n, i) => n > c[i] && l.slice(0, i).every((x, j) => x === c[j]));
           label.textContent = newer ? tr("发现新版本：{0}", { 0: latest }) : tr("已是最新版本");
-          if (newer && /^https:\\/\\/github\\.com\\/kevinhuang001\\/bookmark-web\\/releases\\//.test(release.html_url || "")) {
+          if (newer && String(release.html_url || "").startsWith("https://github.com/kevinhuang001/bookmark-web/releases/")) {
             releaseLink.href = release.html_url;
             releaseLink.textContent = tr("查看新版本并下载");
           }
