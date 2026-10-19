@@ -226,6 +226,7 @@ export function extractPost(el, kind, doc = document) {
         : "",
     community,
     isComment: el.matches("shreddit-comment,.thing.comment"),
+    replyToHandle: kind === "x" ? (el.querySelector('[data-testid="reply"]')?.textContent.match(/@[\\w_]+/)?.[0] || el.querySelector('[data-testid="socialContext"]')?.textContent.match(/@[\\w_]+/)?.[0] || "") : "",
     parentId:
       el.getAttribute("parentid") || el.getAttribute("parent-id") || null,
     url:
@@ -277,6 +278,8 @@ function extractNote(el, doc) {
       : new URL(doc.URL).pathname,
     isComment: comment,
     depth: comment ? 1 : 0,
+    parentId: comment ? el.getAttribute("data-parent-id") || el.getAttribute("parent-id") || el.getAttribute("data-reply-to-id") || null : null,
+    replyToName: comment ? text(".reply-to,.reply-user,.reply-name,.reply-target") : "",
     author: text(".author-container .username,.author .username,.author .name"),
     authorName: text(
       ".author-container .username,.author .username,.author .name",
@@ -383,6 +386,7 @@ function extractZhihu(el, doc) {
         })()
       : null,
     depth: comment ? 1 : 0,
+    replyToName: comment ? read(".CommentItem-replyTo,.CommentItemV2-replyTo,.reply-to,.reply-user") : "",
     author,
     authorName: author,
     avatarUrl: avatar?.currentSrc || avatar?.src || "",
