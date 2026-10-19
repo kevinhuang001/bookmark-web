@@ -538,3 +538,16 @@ body.popup {
 .popup-footer > span {
   display: block;
 }
+
+/* The popup contains actions, not a marketing footer. */
+body.popup { min-height: 0; }
+.popup-footer { margin-top: 15px; padding-top: 10px; display: block; }
+#extension-settings { width:100%; }
+#extension-settings > summary { display:flex; gap:8px; align-items:center; cursor:pointer; list-style:none; padding:9px 4px; color:#526b7b; font-size:12px; }
+#extension-settings > summary::-webkit-details-marker { display:none; }
+#extension-settings .icon { width:16px; height:16px; }
+.extension-settings-panel { padding:6px 0; }
+#connection-settings { margin:0; }
+#connection-settings > summary { font-size:12px; }
+.connection-actions { display:grid; gap:5px; padding-bottom:10px; }
+.connection-actions button { margin:0; padding:9px 11px; font-size:12px; }
