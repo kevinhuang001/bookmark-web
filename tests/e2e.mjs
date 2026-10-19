@@ -335,6 +335,10 @@ try {
   assert.equal(x.posts[0].authorName, "Lin");
   assert.equal(x.posts[0].stats.likes, "128");
   assert.equal(x.posts[0].media.length, 1);
+  assert.equal(x.posts.find((p) => p.id === "1002")?.parentId, "1001");
+  assert.equal(x.posts.find((p) => p.id === "1003")?.parentId, "1002");
+  assert.equal(x.posts.find((p) => p.id === "1003")?.replyToHandle, "@chenbuilds");
+
   const wholeSocial = await source.evaluate(() =>
     GlassmarkCapture.collect({ mode: "page" }),
   );
@@ -396,7 +400,7 @@ try {
     true,
   );
   await page.screenshot({ path: "artifacts/glassmark-x.png" });
-  await page.locator(`.x-post[data-open-archive="${xItem.id}"]`).click();
+  await page.locator(`.x-post[data-open-archive="${xItem.id}"] .x-post-text`).click();
   assert.equal(await page.locator(".x-reply").count(), 2);
   assert.match(
     await page.locator(".discussion-scope").textContent(),
@@ -435,6 +439,9 @@ try {
     "thread",
   );
   assert.equal(reddit.posts.length, 4);
+  assert.equal(reddit.posts.find((p) => p.id === "two")?.parentId, "one");
+  assert.equal(reddit.posts.find((p) => p.id === "one")?.authorName, "quietreader");
+
   const redditItem = await save(reddit);
   pass(
     "Reddit captures loaded post and comments without requesting hidden comments",
@@ -1250,6 +1257,23 @@ try {
   pass(
     "capture controls use the requested language without changing the source document language or post text",
   );
+  // Nested comments must not contaminate their parent author, text or time.
+  const nestedNote = await source.evaluate(async () => {
+    document.querySelector(".comment-item").insertAdjacentHTML(
+      "beforeend",
+      '<div class="comment-item" data-comment-id="reply-nested" data-parent-id="comment-1"><div class="author"><span class="name">小李</span></div><div class="content">回复小林</div><time datetime="2026-10-17T09:30:00Z"></time></div>',
+    );
+    return (await GlassmarkCapture.collect({ mode: "thread", language: "zh-CN", maxPosts: 4 })).posts;
+  });
+  assert.equal(nestedNote.length, 3);
+  const parentComment = nestedNote.find((p) => p.id === "comment-1");
+  const childComment = nestedNote.find((p) => p.id === "reply-nested");
+  assert.equal(parentComment.text, "好美的风景");
+  assert.equal(parentComment.authorName, "小林");
+  assert.equal(childComment.parentId, "comment-1");
+  assert.equal(childComment.authorName, "小李");
+  assert.equal(childComment.depth, 2);
+  assert.equal(childComment.postedAt, "2026-10-17T09:30:00Z");
   const noteItem = await save(note);
   const noteExtras = [];
   for (const [index, title] of [
@@ -1461,7 +1485,8 @@ try {
     chosenAnswer.posts.map((p) => p.id),
     ["222", "c1", "reply1", "c2", "c3"],
   );
-  assert.equal(chosenAnswer.posts[1].parentId, "222");
+  // No asserted parent without explicit source metadata for a top-level comment.
+  assert.equal(chosenAnswer.posts[1].parentId, null);
   assert.equal(chosenAnswer.posts[2].parentId, "c1");
   assert.ok(!chosenAnswer.text.includes("其他回答"));
   assert.ok(!chosenAnswer.text.includes("广告"));
@@ -1519,11 +1544,22 @@ try {
     );
   await page.reload();
   await page.locator('[data-view="x"]').click();
-  await page.locator(`.x-post[data-open-archive="${multiItem.id}"]`).click();
+  await page.locator(`.x-post[data-open-archive="${multiItem.id}"] .x-post-text`).click();
   await expect(page.locator(".x-post-detail .social-media img")).toHaveCount(4);
   await expect(page.locator(".x-post-detail video")).toHaveCount(2);
   for (const video of await page.locator(".x-post-detail video").all())
     await expect(video).toHaveAttribute("src", /^blob:/);
+
+  await page.locator(".x-post-detail .social-media img").first().click();
+  await expect(page.getByRole("dialog", { name: "Archived media" })).toBeVisible();
+  await expect(page.locator(".archive-viewer-counter")).toHaveText("1 / 6");
+  await page.locator('[data-viewer-step="1"]').click();
+  await expect(page.locator(".archive-viewer-counter")).toHaveText("2 / 6");
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".archive-media-viewer")).toHaveCount(0);
+  await expect(page.locator(".x-post-detail")).toBeVisible();
+
+
 
   const enriched = await source.evaluate(async () => {
     const article = document.querySelector("article");

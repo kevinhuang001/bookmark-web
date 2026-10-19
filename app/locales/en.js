@@ -1,4 +1,6 @@
 export default {
+  "查看已保存的媒体": "View saved media",
+  "正在回复": "Replying to",
   "暂无内容": "Nothing here",
   "自动同步周期（秒）": "Automatic sync interval (seconds)",
   "收藏变更后立即同步；自动同步周期可在下方配置。远端直接保存内容文件。": "Sync immediately after changes; set the automatic sync interval below. Content files are stored directly on the remote server.",

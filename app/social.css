@@ -1639,3 +1639,33 @@
 
 .tag-empty { text-align: center; padding: 60px 24px; font-size: 14px; font-weight: 400; color: #71808d; }
 
+
+/* Archived X media viewer */
+.x-post .social-media:not(.media-unavailable) { cursor: zoom-in; }
+.archive-media-viewer { position: fixed; inset: 0; z-index: 99999; display: flex; align-items: center; justify-content: center; background: rgba(7, 12, 19, .94); color: white; }
+.archive-viewer-stage { width: min(86vw, 1400px); height: 88vh; display: flex; justify-content: center; align-items: center; }
+.archive-viewer-stage img, .archive-viewer-stage video { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; }
+.archive-media-viewer button { position: absolute; z-index: 1; border: 0; color: white; background: rgba(255,255,255,.12); border-radius: 50%; width: 42px; height: 42px; cursor: pointer; font-size: 28px; }
+.archive-viewer-close { right: 25px; top: 20px; }
+.archive-viewer-prev { left: 20px; top: 50%; }
+.archive-viewer-next { right: 20px; top: 50%; }
+.archive-viewer-counter { position: absolute; bottom: 20px; font-size: 13px; color: #ccc; }
+
+.x-inline-comments { padding: 12px 18px; border-top: 1px solid var(--border, #ccc3); }
+.x-inline-reply { padding: 10px 0; border-bottom: 1px solid var(--border, #ccc3); }
+.x-inline-reply:last-child { border-bottom: 0; }
+.x-inline-reply strong { display: block; font-size: 13px; margin-bottom: 5px; }
+
+.reply-target { display: block; margin: 3px 0 6px; font-size: 12px; color: var(--muted, #8d97a1); }
+.reply-target strong { font-weight: 500; color: var(--accent, #4c98c9); }
+.reply-target-reddit { padding-left: 8px; border-left: 2px solid var(--accent, #4c98c9); }
+.reply-target-xiaohongshu strong, .reply-target-zhihu strong { color: inherit; font-weight: 600; }
+
+/* Conversation hierarchy uses the same indentation rhythm as each source. */
+.x-thread-entry { margin-left: calc(var(--depth, 0) * 12px); border-left: calc(var(--depth, 0) * 1px) solid #e3e8eb; }
+.x-inline-reply { margin-left: calc(var(--depth, 0) * 12px); padding-left: 9px; border-left: 1px solid #e3e8eb; }
+.x-inline-date { display: block; margin-top: 6px; font-size: 11px; color: #88949d; }
+.x-inline-reply .reply-target { margin-top: 4px; }
+.reply-target-x { color: #536471; font-size: 13px; }
+.reply-target-x strong { color: #1d9bf0; }
+.archive-media-viewer button:focus-visible { outline: 2px solid #1d9bf0; outline-offset: 3px; }

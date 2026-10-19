@@ -57,9 +57,20 @@ try {
           },
           {
             id: "comment",
+            parentId: "root",
             isComment: true,
             text: "归档的讨论。",
             authorName: "读者",
+            postedAt: "2026-10-17T11:22:00Z",
+            media: [],
+          },
+          {
+            id: "reply",
+            parentId: "comment",
+            isComment: true,
+            text: "对讨论的再次回复。",
+            authorName: "第二位读者",
+            postedAt: "2026-10-18T14:25:00Z",
             media: [],
           },
         ],
@@ -143,11 +154,25 @@ try {
     await expect(page.getByRole("tablist")).toHaveCount(
       kind === "x" || kind === "reddit" ? 1 : 0,
     );
+    // No flattening: each official-style comment shows the actual parent.
+    await expect(page.locator(".reply-target strong")).toHaveCount(2);
+    assert.deepEqual(await page.locator(".reply-target strong").allTextContents(), ["阅读者", "读者"]);
+    await expect(page.getByText("对讨论的再次回复。", { exact: true })).toBeVisible();
     await expect(page.locator(".discussion-back")).not.toContainText(
       /份收藏|篇笔记|我的收藏/,
     );
     await page.screenshot({ path: `artifacts/${kind}-detail-navigation.png` });
     await page.getByRole("button", { name: "返回收藏", exact: true }).click();
+    if (kind === "x") {
+      // Clicking replies in the collection must expand locally, never navigate.
+      const action = cards.first().locator('[data-social-action="x-comments"]');
+      await action.click();
+      await expect(cards).toHaveCount(1);
+      await expect(cards.first().locator(".x-inline-reply")).toHaveCount(2);
+      await action.click();
+      await expect(cards.first().locator(".x-inline-reply")).toHaveCount(0);
+    }
+
     await expect(cards).toHaveCount(1);
     const selected = page.getByRole("tab", {
       name: "研读 & <摘录>",

@@ -184,11 +184,15 @@ export async function collect({
           captured.url = location.origin + location.pathname;
         }
         captured.isComment = captured.id !== rootId;
-        captured.parentId = captured.isComment ? rootId : null;
+        // X's DOM does not expose a trustworthy parent tweet ID for every
+        // reply. Never present an unknown parent as a verified root reply.
+        captured.parentId = captured.isComment ? captured.parentId : null;
       }
       if (kind === "zhihu" && captured.isComment) {
         if (!captured.text && !captured.media.length) continue;
-        captured.parentId ||= rootId;
+        // Do not infer a reply to the article author: Zhihu top-level comments
+        // and nested replies are distinct, and the DOM may omit parent IDs.
+        // Only persist a parent relation when the adapter found one explicitly.
       }
       if (!posts.has(captured.id) && posts.size >= limit) continue;
       const post = mergePost(posts.get(captured.id), captured);

@@ -25,5 +25,11 @@ export function mergePost(previous, current) {
       sources,
     });
   }
-  return { ...previous, ...current, media: [...media.values()] };
+  // Virtualized social UIs may briefly drop author/relationship/time fields.
+  // A later incomplete DOM pass must not destroy provenance already captured.
+  const merged = { ...previous, ...current, media: [...media.values()] };
+  for (const field of ["parentId", "replyToName", "replyToHandle", "postedAt", "postedAtText", "author", "authorName", "authorHandle", "avatarUrl"]) {
+    if (!current[field] && previous[field]) merged[field] = previous[field];
+  }
+  return merged;
 }
