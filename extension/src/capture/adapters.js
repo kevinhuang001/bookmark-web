@@ -228,7 +228,7 @@ export function extractPost(el, kind, doc = document) {
     isComment: el.matches("shreddit-comment,.thing.comment"),
     replyToHandle: kind === "x" ? (el.querySelector('[data-testid="reply"]')?.textContent.match(/@[\\w_]+/)?.[0] || el.querySelector('[data-testid="socialContext"]')?.textContent.match(/@[\\w_]+/)?.[0] || "") : "",
     parentId:
-      el.getAttribute("parentid") || el.getAttribute("parent-id") || null,
+      (el.getAttribute("parentid") || el.getAttribute("parent-id") || "").replace(/^t[13]_/, "") || null,
     url:
       permalink ||
       (el.getAttribute("permalink")
