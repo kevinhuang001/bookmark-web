@@ -120,6 +120,12 @@ try {
     }
     await render(item.id);
     await expect(page.locator(".discussion-scope")).toHaveCount(0);
+    if (kind === "xiaohongshu") {
+      await page.locator('[data-note-slide="1"]').click();
+      await expect(page.locator(".note-gallery-count")).toHaveText("2 / 3");
+      await page.locator('[data-note-slide="-1"]').click();
+      await expect(page.locator(".note-gallery-count")).toHaveText("1 / 3");
+    }
     const rootGallery = page.locator(".social-media-grid").first();
     await rootGallery.locator("img").first().click();
     await expect(page.locator(".archive-viewer-counter")).toHaveText("1 / 3");

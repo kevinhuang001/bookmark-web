@@ -27,7 +27,7 @@ const state = {
   editing: null,
   draggingItem: false,
   folderTreeMarkup: null,
-  filters: { threads: false, sort: "recent", author: "", community: "" },
+  filters: { sort: "recent", author: "", community: "" },
   collapsed: new Set(),
   feedScroll: { x: 0, reddit: 0, xiaohongshu: 0, zhihu: 0 },
   folders: [],
@@ -101,7 +101,6 @@ async function switchView(view) {
   if (state.view === view && view !== "web") {
     state.selected = null;
     state.filters = {
-      threads: false,
       sort: "recent",
       author: "",
       community: "",
@@ -112,7 +111,6 @@ async function switchView(view) {
     state.folder = null;
     state.tag = null;
     state.filters = {
-      threads: false,
       sort: "recent",
       author: "",
       community: "",
@@ -595,7 +593,6 @@ async function socialAction(action, data = {}) {
   if (action === "bookmarks") {
     state.selected = null;
     state.filters = {
-      threads: false,
       sort: "recent",
       author: "",
       community: "",
