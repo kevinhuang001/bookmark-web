@@ -1660,3 +1660,12 @@
 .reply-target strong { font-weight: 500; color: var(--accent, #4c98c9); }
 .reply-target-reddit { padding-left: 8px; border-left: 2px solid var(--accent, #4c98c9); }
 .reply-target-xiaohongshu strong, .reply-target-zhihu strong { color: inherit; font-weight: 600; }
+
+/* Conversation hierarchy uses the same indentation rhythm as each source. */
+.x-thread-entry { margin-left: calc(var(--depth, 0) * 12px); border-left: calc(var(--depth, 0) * 1px) solid #e3e8eb; }
+.x-inline-reply { margin-left: calc(var(--depth, 0) * 12px); padding-left: 9px; border-left: 1px solid #e3e8eb; }
+.x-inline-date { display: block; margin-top: 6px; font-size: 11px; color: #88949d; }
+.x-inline-reply .reply-target { margin-top: 4px; }
+.reply-target-x { color: #536471; font-size: 13px; }
+.reply-target-x strong { color: #1d9bf0; }
+.archive-media-viewer button:focus-visible { outline: 2px solid #1d9bf0; outline-offset: 3px; }
