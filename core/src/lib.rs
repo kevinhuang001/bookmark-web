@@ -63,7 +63,7 @@ pub fn router(state:AppState)->Router{
     Router::new().route("/health",get(||async{Json(json!({"app":"glassmark","version":env!("CARGO_PKG_VERSION")}))})).route("/pair",post(pair)).merge(api)
         .layer(DefaultBodyLimit::max(2*1024*1024*1024)).layer(cors).layer(middleware::from_fn(boundary)).with_state(state)
 }
-async fn status(State(state):State<AppState>)->Json<Value>{Json(json!({"connected":true,"conflicts":state.store.conflict_count().unwrap_or(0),"sync":state.sync_status.lock().unwrap().clone(),"running":state.syncing.load(Ordering::SeqCst)}))}
+async fn status(State(state):State<AppState>)->Json<Value>{Json(json!({"connected":true,"version":env!("CARGO_PKG_VERSION"),"conflicts":state.store.conflict_count().unwrap_or(0),"sync":state.sync_status.lock().unwrap().clone(),"running":state.syncing.load(Ordering::SeqCst)}))}
 async fn pairing(State(state):State<AppState>)->Json<Value>{let mut pairing=state.pairing.lock().unwrap();*pairing=new_pairing();Json(json!({"code":pairing.code,"expiresIn":300}))}
 async fn pair(State(state):State<AppState>,Json(input):Json<Value>)->Result<Json<Value>>{
     let mut p=state.pairing.lock().unwrap();p.attempts=p.attempts.saturating_add(1);
