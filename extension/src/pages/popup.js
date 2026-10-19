@@ -39,6 +39,7 @@ const esc = (s) =>
       ],
   );
 function error(message) {
+  $("status").hidden = false;
   $("status").textContent = localizeError(message);
   $("status").classList.add("error");
 }
@@ -63,9 +64,8 @@ async function init() {
   await api.storage.local.set({ uiLanguage: captureLanguage });
   $("connection-badge").textContent = live ? tr("已连接") : tr("未连接");
   $("connection-badge").classList.toggle("online", live);
-  $("status").textContent = live
-    ? tr("已就绪 · 收藏将发送到 Glassmark")
-    : tr("客户端未连接，请打开客户端后收藏");
+  $("status").textContent = live ? "" : tr("客户端未连接，请打开客户端后收藏");
+  $("status").hidden = live;
   [currentTab] = await api.tabs.query({ active: true, currentWindow: true });
   context = pageContext(currentTab?.url);
   threadPage = context.isPost || context.isQuestion;
