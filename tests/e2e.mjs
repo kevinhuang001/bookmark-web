@@ -1690,7 +1690,9 @@ try {
       /锁定当前主帖|500 MB|路并发|图片与视频|本地归档/,
     );
   }
-  await popup.locator("#connection-settings summary").click();
+  await popup.locator("#extension-settings > summary").click();
+  await expect(popup.locator("#connection-settings > summary")).toBeVisible();
+  await popup.locator("#connection-settings > summary").click();
   await expect(popup.locator("#retry-connection")).toBeVisible();
   await popup.setViewportSize({ width: 380, height: 740 });
   await popup.addStyleTag({ url: "/test-fonts/400.css" });
