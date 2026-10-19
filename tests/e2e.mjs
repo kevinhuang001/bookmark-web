@@ -211,7 +211,8 @@ try {
       "body,button,input,select{font-family:'Noto Sans SC',sans-serif!important}",
   });
   await page.evaluate(() => document.fonts.ready);
-  await page.getByText("让好内容，留下来。").waitFor();
+  await page.locator("html[data-app-ready=\"true\"]").waitFor();
+  await page.locator("#reader .empty-reader p").getByText("暂无内容", { exact: true }).waitFor();
   if (recording) {
     await page.evaluate(() => {
       const note = document.createElement("div");
@@ -337,6 +338,7 @@ try {
   assert.equal(x.posts.find((p) => p.id === "1002")?.parentId, "1001");
   assert.equal(x.posts.find((p) => p.id === "1003")?.parentId, "1002");
   assert.equal(x.posts.find((p) => p.id === "1003")?.replyToHandle, "@chenbuilds");
+
   const wholeSocial = await source.evaluate(() =>
     GlassmarkCapture.collect({ mode: "page" }),
   );
@@ -439,6 +441,7 @@ try {
   assert.equal(reddit.posts.length, 4);
   assert.equal(reddit.posts.find((p) => p.id === "two")?.parentId, "one");
   assert.equal(reddit.posts.find((p) => p.id === "one")?.authorName, "quietreader");
+
   const redditItem = await save(reddit);
   pass(
     "Reddit captures loaded post and comments without requesting hidden comments",
@@ -1554,6 +1557,8 @@ try {
   await page.keyboard.press("Escape");
   await expect(page.locator(".archive-media-viewer")).toHaveCount(0);
   await expect(page.locator(".x-post-detail")).toBeVisible();
+
+
 
   const enriched = await source.evaluate(async () => {
     const article = document.querySelector("article");

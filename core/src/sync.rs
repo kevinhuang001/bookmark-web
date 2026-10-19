@@ -6,14 +6,17 @@ use serde_json::Value;
 use std::{collections::HashSet,fs,path::Path};
 use sha2::{Digest,Sha256};
 
-#[derive(Clone,Debug,Default,Serialize,Deserialize)]
+fn default_sync_interval()->u64{60}
+#[derive(Clone,Debug,Serialize,Deserialize)]
 #[serde(rename_all="camelCase")]
-pub struct SyncConfig { pub enabled:bool,pub url:String,pub username:String,#[serde(default)]pub password:String }
+pub struct SyncConfig { pub enabled:bool,pub url:String,pub username:String,#[serde(default)]pub password:String,#[serde(default="default_sync_interval")]pub interval_seconds:u64 }
+impl Default for SyncConfig {fn default()->Self{Self{enabled:false,url:String::new(),username:String::new(),password:String::new(),interval_seconds:default_sync_interval()}}}
 impl SyncConfig {
     pub fn validate(&self)->Result<()> {
+        if !(30..=86400).contains(&self.interval_seconds){return Err("同步周期应在 30 到 86400 秒之间".into());}
         if !self.enabled{return Ok(());}
         let url=url::Url::parse(&self.url).map_err(|e|e.to_string())?;
-        if url.scheme()!="https" && !(url.scheme()=="http"&&[Some("127.0.0.1"),Some("localhost"),Some("[::1]")].contains(&url.host_str())){return Err("WebDAV 需要 HTTPS（本机测试地址除外）".into());}
+        if !["http","https"].contains(&url.scheme())||url.host_str().is_none(){return Err("WebDAV 地址必须是 HTTP 或 HTTPS".into());}
         if !url.username().is_empty()||url.password().is_some()||url.query().is_some()||url.fragment().is_some(){return Err("请使用不含账号、查询参数或锚点的 WebDAV 地址".into());}Ok(())
     }
     pub fn read(store:&Store)->Self{fs::read(store.root.join("webdav.json")).ok().and_then(|b|serde_json::from_slice(&b).ok()).unwrap_or_default()}
@@ -116,4 +119,4 @@ pub async fn run(store:&Store,config:SyncConfig)->Result<usize> {
     Ok(count)
 }
 
-#[cfg(test)]mod tests{use super::*;#[test]fn rejects_unsafe_endpoints(){assert!(SyncConfig{enabled:true,url:"http://example.com".into(),..Default::default()}.validate().is_err());assert!(SyncConfig{enabled:true,url:"https://user:pass@example.com".into(),..Default::default()}.validate().is_err());assert!(!event_name("../secret.json"));}}
+#[cfg(test)]mod tests{use super::*;#[test]fn rejects_unsafe_endpoints(){assert!(SyncConfig{enabled:true,url:"http://example.com".into(),..Default::default()}.validate().is_ok());assert!(SyncConfig{enabled:true,url:"ftp://example.com".into(),..Default::default()}.validate().is_err());assert!(SyncConfig{interval_seconds:29,..Default::default()}.validate().is_err());assert!(SyncConfig{enabled:true,url:"https://user:pass@example.com".into(),..Default::default()}.validate().is_err());assert!(!event_name("../secret.json"));}}
