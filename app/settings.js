@@ -249,12 +249,7 @@ export async function openSettings({ modal, folders, onSaved, toast }) {
         checkUpdate.disabled = true;
         label.textContent = tr("正在检查更新…");
         try {
-          const response = await fetch("https://api.github.com/repos/kevinhuang001/bookmark-web/releases/latest", {
-            headers: { Accept: "application/vnd.github+json" },
-            cache: "no-store",
-          });
-          if (!response.ok) throw new Error(String(response.status));
-          const release = await response.json();
+          const release = await json("/api/latest-release");
           const latest = String(release.tag_name || "").replace(/^v/i, "");
           if (!/^\d+\.\d+\.\d+/.test(latest)) throw new Error("Invalid release version");
           const current = versionLabel.textContent.trim();
