@@ -3,7 +3,9 @@ import { icon, escapeHtml as esc } from "./icons.js";
 import { rootPost, communityFromUrl, feedItems } from "./library.js";
 import { ArchiveMedia } from "./media.js";
 let media;
+let closeMediaViewer = () => {};
 export function releaseSocial() {
+  closeMediaViewer();
   media?.release();
   media = null;
 }
@@ -34,7 +36,7 @@ function bodyText(text) {
 function mediaMarkup(post, item) {
   const records = post.media || [];
   if (!records.length) return "";
-  return `<div class="social-media-grid media-count-${records.length}">${records.map((m) => `<div class="social-media media-loading ${m.type === "video" ? "video-media" : ""}">${m.type === "video" ? `<video controls preload="metadata" data-archive-id="${item.id}" data-archive-media="${esc(m.url)}"></video>` : `<img loading="lazy" alt="${esc(m.alt || tr("收藏的图片"))}" data-archive-id="${item.id}" data-archive-media="${esc(m.url)}">`}<span class="media-fallback">${tr("媒体未归档")}</span></div>`).join("")}</div>`;
+  return `<div class="social-media-grid media-count-${records.length}">${records.map((m) => `<div class="social-media media-loading ${m.type === "video" ? "video-media" : ""}" tabindex="0" role="button" aria-label="${tr("查看已保存的媒体")}">${m.type === "video" ? `<video controls preload="metadata" data-archive-id="${item.id}" data-archive-media="${esc(m.url)}"></video>` : `<img loading="lazy" alt="${esc(m.alt || tr("收藏的图片"))}" data-archive-id="${item.id}" data-archive-media="${esc(m.url)}">`}<span class="media-fallback">${tr("媒体未归档")}</span></div>`).join("")}</div>`;
 }
 function menu(item) {
   return `<details class="post-menu"><summary aria-label="${tr("更多收藏操作")}">${icon("more")}</summary><div><button data-social-action="tags" data-id="${item.id}">${tr("编辑标签")}</button><button data-social-action="info" data-id="${item.id}">${tr("保存详情")}</button><button class="danger" data-social-action="delete" data-id="${item.id}">${tr("删除收藏")}</button></div></details>`;
@@ -252,7 +254,90 @@ export async function renderSocial(
       root
         .querySelector(".note-comments")
         ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  // Preview archived X media without navigating away from the saved post.
+  let viewer = null;
+  let restoreVideo = null;
+  const closeViewer = () => {
+    if (!viewer) return;
+    if (restoreVideo) {
+      const { video, placeholder } = restoreVideo;
+      video.pause();
+      placeholder.replaceWith(video);
+      restoreVideo = null;
+    }
+    viewer.remove();
+    viewer = null;
+    document.removeEventListener("keydown", viewerKeys);
+  };
+  closeMediaViewer = closeViewer;
+  const viewerKeys = (event) => {
+    if (!viewer) return;
+    if (event.key === "Escape") { event.preventDefault(); closeViewer(); }
+    else if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
+      event.preventDefault(); moveViewer(event.key === "ArrowRight" ? 1 : -1);
+    }
+  };
+  let viewerMedia = [];
+  let viewerIndex = 0;
+  const showViewerMedia = () => {
+    if (!viewer) return;
+    if (restoreVideo) {
+      restoreVideo.video.pause();
+      restoreVideo.placeholder.replaceWith(restoreVideo.video);
+      restoreVideo = null;
+    }
+    const source = viewerMedia[viewerIndex];
+    const stage = viewer.querySelector(".archive-viewer-stage");
+    stage.replaceChildren();
+    const original = source.querySelector("video, img");
+    if (original?.tagName === "VIDEO") {
+      const placeholder = document.createElement("span");
+      placeholder.hidden = true;
+      original.replaceWith(placeholder);
+      restoreVideo = { video: original, placeholder };
+      original.controls = true;
+      stage.appendChild(original);
+    } else if (original?.tagName === "IMG") {
+      const img = document.createElement("img");
+      img.src = original.currentSrc || original.src;
+      img.alt = original.alt;
+      stage.appendChild(img);
+    }
+    viewer.querySelector(".archive-viewer-counter").textContent = `${viewerIndex + 1} / ${viewerMedia.length}`;
+    viewer.querySelectorAll("[data-viewer-step]").forEach((b) => b.hidden = viewerMedia.length < 2);
+  };
+  const moveViewer = (offset) => {
+    viewerIndex = (viewerIndex + offset + viewerMedia.length) % viewerMedia.length;
+    showViewerMedia();
+  };
+  const openViewer = (tile) => {
+    const card = tile.closest("[data-open-archive]");
+    viewerMedia = [...card.querySelectorAll(".social-media")].filter((el) =>
+      !el.classList.contains("media-unavailable") && el.querySelector("img[src], video[src], video[srcObject]")
+    );
+    viewerIndex = viewerMedia.indexOf(tile);
+    if (viewerIndex < 0) return;
+    viewer = document.createElement("div");
+    viewer.className = "archive-media-viewer";
+    viewer.setAttribute("role", "dialog");
+    viewer.setAttribute("aria-modal", "true");
+    viewer.setAttribute("aria-label", "Archived media");
+    viewer.innerHTML = '<button class="archive-viewer-close" aria-label="Close">×</button><button class="archive-viewer-prev" data-viewer-step="-1" aria-label="Previous">‹</button><div class="archive-viewer-stage"></div><button class="archive-viewer-next" data-viewer-step="1" aria-label="Next">›</button><div class="archive-viewer-counter"></div>';
+    document.body.appendChild(viewer);
+    viewer.querySelector(".archive-viewer-close").onclick = closeViewer;
+    viewer.querySelectorAll("[data-viewer-step]").forEach((b) => b.onclick = () => moveViewer(Number(b.dataset.viewerStep)));
+    viewer.onclick = (event) => { if (event.target === viewer) closeViewer(); };
+    document.addEventListener("keydown", viewerKeys);
+    showViewerMedia();
+    viewer.querySelector(".archive-viewer-close").focus();
+  };
   root.onclick = (e) => {
+    if (kind === "x" && e.target.closest(".social-media")) {
+      const tile = e.target.closest(".social-media");
+      if (tile.querySelector("img[src], video")) {
+        e.preventDefault(); e.stopPropagation(); openViewer(tile); return;
+      }
+    }
     const action = e.target.closest("[data-social-action]");
     if (action) {
       e.preventDefault();
@@ -286,6 +371,9 @@ export async function renderSocial(
           ?.focus(),
       );
       return;
+    }
+    if (kind === "x" && (e.key === "Enter" || e.key === " ") && e.target.matches(".social-media[tabindex]")) {
+      e.preventDefault(); openViewer(e.target); return;
     }
     if (e.key === "Enter" && e.target.matches("[data-open-archive]"))
       callbacks.action("open", { id: e.target.dataset.openArchive });
