@@ -14,7 +14,7 @@ import {
 export async function collect({
   language = "system",
   mode = "page",
-  maxPosts = 100,
+  maxPosts,
   autoLoadSeconds = 20,
   includeImages = true,
   includeAvatars = true,
@@ -52,11 +52,17 @@ export async function collect({
       throw new Error(tr("请先打开要收藏的 X 帖子详情，不支持收藏信息流"));
     mode = "thread";
   }
-  // All social platforms share the same comment/reply budget.
-  // Reserve one additional slot for the main saved post.
-  const limit = ["x", "reddit", "xiaohongshu", "zhihu"].includes(kind)
-    ? maxPosts + 1
-    : maxPosts;
+  // A configured budget applies across social platforms. When the
+  // collection API is called without one, keep Reddit's legacy behavior of
+  // capturing every already-loaded comment (including >100).
+  const configuredLimit = Number.isFinite(maxPosts)
+    ? Math.max(0, Math.floor(maxPosts))
+    : null;
+  const limit = kind === "x"
+    ? (configuredLimit ?? 100) + 1
+    : configuredLimit === null
+      ? Infinity
+      : configuredLimit + 1;
   let rootId = null;
   let fallbackRoot = null;
   const candidates = () => {
@@ -394,7 +400,7 @@ export async function collect({
     warnings: [...new Set(warnings)],
     scope: {
       maxMainPosts: kind === "x" ? 1 : null,
-      maxReplies: ["x", "reddit", "xiaohongshu", "zhihu"].includes(kind) ? maxPosts : null,
+      maxReplies: ["x", "reddit", "xiaohongshu", "zhihu"].includes(kind) ? configuredLimit : null,
       capturedPosts: posts.size,
       rootPostId: rootId,
     },
