@@ -313,7 +313,7 @@ export async function renderSocial(
   const openViewer = (tile) => {
     const card = tile.closest("[data-open-archive]");
     viewerMedia = [...card.querySelectorAll(".social-media")].filter((el) =>
-      !el.classList.contains("media-unavailable") && el.querySelector("img[src], video[src], video[srcObject]")
+      !el.classList.contains("media-unavailable") && el.querySelector("img[src], video")
     );
     viewerIndex = viewerMedia.indexOf(tile);
     if (viewerIndex < 0) return;
