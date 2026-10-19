@@ -52,12 +52,11 @@ export async function collect({
       throw new Error(tr("请先打开要收藏的 X 帖子详情，不支持收藏信息流"));
     mode = "thread";
   }
-  const limit =
-    kind === "reddit" || kind === "zhihu"
-      ? 100000
-      : kind === "x"
-        ? maxPosts + 1
-        : maxPosts;
+  // All social platforms share the same comment/reply budget.
+  // Reserve one additional slot for the main saved post.
+  const limit = ["x", "reddit", "xiaohongshu", "zhihu"].includes(kind)
+    ? maxPosts + 1
+    : maxPosts;
   let rootId = null;
   const candidates = () => {
     if (kind === "x" && pageContext(location.href).postId !== context.postId) {
@@ -379,7 +378,7 @@ export async function collect({
     warnings: [...new Set(warnings)],
     scope: {
       maxMainPosts: kind === "x" ? 1 : null,
-      maxReplies: kind === "x" ? maxPosts : null,
+      maxReplies: ["x", "reddit", "xiaohongshu", "zhihu"].includes(kind) ? maxPosts : null,
       capturedPosts: posts.size,
       rootPostId: rootId,
     },
