@@ -80,6 +80,9 @@ try {
   await mkdir("artifacts", { recursive: true });
   for (const kind of kinds) {
     await page.locator(`[data-view="${kind}"]`).click();
+    // Platform switches reload the archive asynchronously; a tab left from
+    // the previous view can otherwise satisfy a count before render finishes.
+    await expect(page.locator(`.${{ x: "x", reddit: "reddit", xiaohongshu: "note", zhihu: "zhihu" }[kind]}-shell`)).toBeVisible();
     const cards = page.locator("#saved-posts [data-open-archive]");
     await expect(cards).toHaveCount(2);
     await expect(
@@ -90,6 +93,7 @@ try {
         ? page.locator(".x-feed-title")
         : page.getByRole("tab", { name: "全部收藏", exact: true });
       const sort = page.locator('[data-social-action="sort-recent"]');
+      await expect(sort).toBeVisible();
       const titleBox = await titleOrTab.boundingBox();
       const sortBox = await sort.boundingBox();
       assert.ok(titleBox && sortBox);
