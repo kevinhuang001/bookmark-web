@@ -1,4 +1,7 @@
 export default {
+  "自动同步周期（秒）": "Automatic sync interval (seconds)",
+  "收藏变更后立即同步；自动同步周期可在下方配置。远端直接保存内容文件。": "Sync immediately after changes; set the automatic sync interval below. Content files are stored directly on the remote server.",
+  "支持 HTTP 与 HTTPS。HTTP 连接不加密，请仅在可信网络使用。": "Both HTTP and HTTPS are supported. HTTP is unencrypted; use it only on trusted networks.",
   "插件设置": "Extension settings",
   "收藏完成": "Saved",
   "单次评论与回复数量上限": "Maximum comments and replies per capture",
