@@ -76,8 +76,15 @@ export async function openSettings({ modal, folders, onSaved, toast }) {
         );
     }
     collect();
-    if (dav.enabled && dav.mode === "local" && !dav.localPath)
-      throw new Error(tr("本地同步路径不能为空且必须是绝对路径"));
+    if (dav.enabled && dav.mode === "local") {
+      const path = dav.localPath.trim();
+      const absolute =
+        path.startsWith("/") ||
+        path.startsWith("\\\\") ||
+        (/^[A-Za-z]:/.test(path) && ["/", "\\"].includes(path[2]));
+      if (!absolute)
+        throw new Error(tr("本地同步路径不能为空且必须是绝对路径"));
+    }
     if (dav.enabled && dav.mode === "webdav" && !dav.url)
       throw new Error(tr("请输入 WebDAV 目录地址"));
     prefs.resolvedLanguage = resolveLocale(prefs.language);
