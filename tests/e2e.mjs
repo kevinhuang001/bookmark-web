@@ -334,6 +334,9 @@ try {
   assert.equal(x.posts[0].authorName, "Lin");
   assert.equal(x.posts[0].stats.likes, "128");
   assert.equal(x.posts[0].media.length, 1);
+  assert.equal(x.posts.find((p) => p.id === "1002")?.parentId, "1001");
+  assert.equal(x.posts.find((p) => p.id === "1003")?.parentId, "1002");
+  assert.equal(x.posts.find((p) => p.id === "1003")?.replyToHandle, "@chenbuilds");
   const wholeSocial = await source.evaluate(() =>
     GlassmarkCapture.collect({ mode: "page" }),
   );
@@ -434,6 +437,8 @@ try {
     "thread",
   );
   assert.equal(reddit.posts.length, 4);
+  assert.equal(reddit.posts.find((p) => p.id === "two")?.parentId, "one");
+  assert.equal(reddit.posts.find((p) => p.id === "one")?.authorName, "quietreader");
   const redditItem = await save(reddit);
   pass(
     "Reddit captures loaded post and comments without requesting hidden comments",
