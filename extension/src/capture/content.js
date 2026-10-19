@@ -190,7 +190,9 @@ export async function collect({
       }
       if (kind === "zhihu" && captured.isComment) {
         if (!captured.text && !captured.media.length) continue;
-        captured.parentId ||= rootId;
+        // Do not infer a reply to the article author: Zhihu top-level comments
+        // and nested replies are distinct, and the DOM may omit parent IDs.
+        // Only persist a parent relation when the adapter found one explicitly.
       }
       if (!posts.has(captured.id) && posts.size >= limit) continue;
       const post = mergePost(posts.get(captured.id), captured);
