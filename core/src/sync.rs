@@ -287,10 +287,16 @@ assert!(config.validate().is_ok());
 let data=tempfile::tempdir().unwrap();
 let share=tempfile::tempdir().unwrap();
 let store=Store::open(data.path().join("data")).unwrap();
+let folder=store.event("folder",serde_json::json!({"name":"Shared"})).unwrap();
 let path=share.path().join("shared");
 let config=SyncConfig{enabled:true,mode:"local".into(),local_path:path.display().to_string(),..Default::default()};
-assert_eq!(run(&store,config).await.unwrap(),0);
+assert_eq!(run(&store,config.clone()).await.unwrap(),1);
 assert!(path.join("glassmark/content-v2/events").is_dir());
 assert!(path.join("glassmark/content-v2/archives").is_dir());
+assert!(path.join("glassmark/content-v2/events").join(format!("{}.json",folder["revision"].as_str().unwrap())).is_file());
+let second_data=tempfile::tempdir().unwrap();
+let second=Store::open(second_data.path().join("data")).unwrap();
+assert_eq!(run(&second,config).await.unwrap(),1);
+assert_eq!(second.list("folder","").unwrap().len(),1);
 }
 }
