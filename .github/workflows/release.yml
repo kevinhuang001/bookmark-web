@@ -47,16 +47,20 @@ jobs:
             const firefoxReport = JSON.parse(fs.readFileSync(reports.find(f=>f.endsWith('firefox-report.json'))));
             if (!firefoxReport.waitsForStableComments || !firefoxReport.waitsForCommentBodies || !firefoxReport.installedAddon || firefoxReport.installedAddonBackend !== 'native-rust' || firefoxReport.addonVersion !== version) throw new Error('Release requires the actual Firefox add-on and native persistence at this version');
             const existing = await github.rest.repos.getReleaseByTag({owner,repo,tag}).then(r=>r.data).catch(e=>{if(e.status===404)return null;throw e;});
-            if (existing && !existing.draft) { core.notice(`${tag} is already published; bump package version for another release.`); return; }
+            if (existing && !existing.draft) {
+              if (existing.body?.includes(`Validated commit: ${sha}`)) {
+                core.notice(`${tag} was already published for this exact commit.`);
+                return;
+              }
+              throw new Error(`${tag} already exists for a different commit. Bump the package version to publish new changes.`);
+            }
             const notes = [
               'Tauri desktop archive with Chromium and Firefox capture extensions.',
               '',
-              '- Fix X post capture when the main post permalink is delayed or the page layout changes.',
-              '- Simplify browser extension popup and capture screens by removing decorative and redundant copy.',
-              '- Move browser pairing and connection controls into the extension settings menu.',
-              '- Show actionable connection errors instead of a persistent ready message.',
-              '- Generalize comment and reply capture limits across supported social platforms.',
-              '- Refresh desktop settings, About, browser identification and release checks.',
+              '- Simplify empty tag views to show only the no-saves message.',
+              '- Place Latest / Top inline with All saves or the tag bar on X, Xiaohongshu and Zhihu.',
+              '- Enable combined Reddit tag and community filters, keeping community options visible across tags.',
+              '- Confirm collection navigation plus Chromium and Firefox capture through end-to-end tests.',
               '',
               'Downloads: macOS universal (Apple Silicon + Intel), Windows x64, Linux x64 (DEB, RPM, Arch package and AppImage); Chromium and Firefox extension ZIPs.',
               'The macOS app is ad-hoc signed; Windows installers and Firefox ZIP are not store-signed. Firefox ZIP is for temporary loading via about:debugging. These are GitHub Releases, not browser-store listings.',
