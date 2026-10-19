@@ -51,6 +51,7 @@ jobs:
             const notes = [
               'Tauri desktop archive with Chromium and Firefox capture extensions.',
               '',
+              '- Fix X post capture when the main post permalink is delayed or the page layout changes.',
               '- Simplify browser extension popup and capture screens by removing decorative and redundant copy.',
               '- Move browser pairing and connection controls into the extension settings menu.',
               '- Show actionable connection errors instead of a persistent ready message.',
