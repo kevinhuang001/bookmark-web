@@ -1485,7 +1485,8 @@ try {
     chosenAnswer.posts.map((p) => p.id),
     ["222", "c1", "reply1", "c2", "c3"],
   );
-  assert.equal(chosenAnswer.posts[1].parentId, "222");
+  // No asserted parent without explicit source metadata for a top-level comment.
+  assert.equal(chosenAnswer.posts[1].parentId, null);
   assert.equal(chosenAnswer.posts[2].parentId, "c1");
   assert.ok(!chosenAnswer.text.includes("其他回答"));
   assert.ok(!chosenAnswer.text.includes("广告"));
