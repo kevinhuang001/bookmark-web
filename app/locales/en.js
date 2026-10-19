@@ -1,4 +1,7 @@
 export default {
+  "此标签下暂无收藏。": "No saves under this tag.",
+  "这里还没有收藏内容。": "No saves yet.",
+
   网页: "Webpages",
   小红书: "Xiaohongshu",
   全部网页: "All webpages",
