@@ -1,4 +1,5 @@
 export default {
+  "查看已保存的媒体": "View saved media",
   "插件设置": "Extension settings",
   "收藏完成": "Saved",
   "单次评论与回复数量上限": "Maximum comments and replies per capture",
