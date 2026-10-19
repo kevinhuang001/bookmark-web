@@ -210,27 +210,27 @@ export async function openSettings({ modal, folders, onSaved, toast }) {
       body =
         section(
           tr("同步设置"),
-          \`<label class="settings-row"><span>\${tr("启用同步")}</span><input id="dav-enabled" type="checkbox" \${dav.enabled ? "checked" : ""}></label>
-          <label class="settings-row"><span>\${tr("自动同步周期（秒）")}</span><input id="dav-interval" aria-label="\${tr("自动同步周期（秒）")}" type="number" min="30" max="86400" step="1" required value="\${esc(dav.intervalSeconds ?? 60)}"></label>
-          <input id="sync-mode" type="hidden" value="\${mode}">
-          <div class="sync-provider-switch" role="group" aria-label="\${tr("同步方式")}">
-            <button type="button" data-sync-mode="local" class="\${mode === "local" ? "active" : ""}">\${icon("folder")}<span>\${tr("本地文件夹")}</span></button>
-            <button type="button" data-sync-mode="webdav" class="\${mode === "webdav" ? "active" : ""}">\${icon("link")}<span>WebDAV</span></button>
-          </div>\`,
+          `<label class="settings-row"><span>${tr("启用同步")}</span><input id="dav-enabled" type="checkbox" ${dav.enabled ? "checked" : ""}></label>
+          <label class="settings-row"><span>${tr("自动同步周期（秒）")}</span><input id="dav-interval" aria-label="${tr("自动同步周期（秒）")}" type="number" min="30" max="86400" step="1" required value="${esc(dav.intervalSeconds ?? 60)}"></label>
+          <input id="sync-mode" type="hidden" value="${mode}">
+          <div class="sync-provider-switch" role="group" aria-label="${tr("同步方式")}">
+            <button type="button" data-sync-mode="local" class="${mode === "local" ? "active" : ""}">${icon("folder")}<span>${tr("本地文件夹")}</span></button>
+            <button type="button" data-sync-mode="webdav" class="${mode === "webdav" ? "active" : ""}">${icon("link")}<span>WebDAV</span></button>
+          </div>`,
           tr("收藏变更后立即同步；自动同步周期可在下方配置。"),
         ) +
         (mode === "local"
           ? section(
               tr("本地文件夹"),
-              \`<label class="sync-path-label">\${tr("本地同步路径")}<input id="sync-local-path" type="text" spellcheck="false" autocomplete="off" placeholder="\${tr("请输入本地同步目录的绝对路径")}" value="\${esc(dav.localPath || "")}"></label>\`,
+              `<label class="sync-path-label">${tr("本地同步路径")}<input id="sync-local-path" type="text" spellcheck="false" autocomplete="off" placeholder="${tr("请输入本地同步目录的绝对路径")}" value="${esc(dav.localPath || "")}"></label>`,
               tr("本地目录下会自动创建 glassmark/content-v2，用于保存同步内容。"),
             )
           : section(
               tr("WebDAV 服务器"),
-              \`<p class="settings-note">\${tr("支持 HTTP 与 HTTPS。HTTP 连接不加密，请仅在可信网络使用。")}</p><label>\${tr("目录地址")}<input id="dav-url" type="url" placeholder="https://cloud.example.com/remote.php/dav/files/user/" value="\${esc(dav.url)}"></label><label>\${tr("用户名")}<input id="dav-username" value="\${esc(dav.username)}" autocomplete="username"></label><label>\${tr("应用密码")}<input id="dav-password" type="password" value="\${esc(dav.password || "")}" placeholder="\${dav.hasPassword ? tr("已保存，留空保留") : tr("输入密码")}" autocomplete="new-password"></label>\`,
+              `<p class="settings-note">${tr("支持 HTTP 与 HTTPS。HTTP 连接不加密，请仅在可信网络使用。")}</p><label>${tr("目录地址")}<input id="dav-url" type="url" placeholder="https://cloud.example.com/remote.php/dav/files/user/" value="${esc(dav.url)}"></label><label>${tr("用户名")}<input id="dav-username" value="${esc(dav.username)}" autocomplete="username"></label><label>${tr("应用密码")}<input id="dav-password" type="password" value="${esc(dav.password || "")}" placeholder="${dav.hasPassword ? tr("已保存，留空保留") : tr("输入密码")}" autocomplete="new-password"></label>`,
               tr("WebDAV 地址下会自动创建 glassmark/content-v2，其他目录内容不会被修改。"),
             )) +
-        \`<button type="button" id="settings-sync-now" class="secondary">\${tr("立即同步")}</button><p id="sync-feedback" class="settings-note">\${esc(localizeError(status.sync?.error) || status.sync?.lastSync || "")}</p><section id="sync-conflicts" class="settings-section"></section>\`;
+        `<button type="button" id="settings-sync-now" class="secondary">${tr("立即同步")}</button><p id="sync-feedback" class="settings-note">${esc(localizeError(status.sync?.error) || status.sync?.lastSync || "")}</p><section id="sync-conflicts" class="settings-section"></section>`;
     }
     if (active === "connection")
       body =
