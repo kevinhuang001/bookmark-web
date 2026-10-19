@@ -58,15 +58,18 @@ export async function collect({
     ? maxPosts + 1
     : maxPosts;
   let rootId = null;
+  let candidatesRoot = null;
   const candidates = () => {
     if (kind === "x" && pageContext(location.href).postId !== context.postId) {
       finish = true;
       return [];
     }
     const scope =
-      document.querySelector('[data-testid="primaryColumn"]') ||
-      document.querySelector("main") ||
-      document.body;
+      kind === "x"
+        ? document
+        : document.querySelector('[data-testid="primaryColumn"]') ||
+          document.querySelector("main") ||
+          document.body;
     let elements = [...scope.querySelectorAll(config.selector)].filter(
       (el) => !isAdvertisement(el),
     );
@@ -88,14 +91,21 @@ export async function collect({
               Node.DOCUMENT_POSITION_FOLLOWING
             ),
         );
-      const primary = elements.find(
-        (el) =>
-          extractPost(el, kind).url?.match(/\/status\/(\d+)/)?.[1] ===
-          context.postId,
-      );
+      // X may omit its timestamp permalink until hydration; a quoted post
+      // must not be mistaken for the current status.
+      const primary = elements.find((el) =>
+        [...el.querySelectorAll('a[href*="/status/"]')].some((a) =>
+          a.closest('article[data-testid="tweet"]') === el &&
+          a.getAttribute("href")?.match(/\/status\/(\d+)/)?.[1] === context.postId,
+        ),
+      ) || (!rootId && elements.find((el) =>
+        el.querySelector('[data-testid="tweetText"]') &&
+        !el.closest('[data-testid="quoteTweet"]'),
+      ));
       if (!primary && !rootId) return [];
       if (primary) {
-        rootId = extractPost(primary, kind).id;
+        rootId = context.postId;
+        candidatesRoot = primary;
         elements = [
           primary,
           ...elements.filter(
@@ -161,6 +171,7 @@ export async function collect({
     for (const element of elements) {
       const captured = extractPost(element, kind);
       if (kind === "x") {
+        if (element === candidatesRoot) { captured.id = rootId; captured.url = location.origin + location.pathname; }
         captured.isComment = captured.id !== rootId;
         captured.parentId = captured.isComment ? rootId : null;
       }
@@ -208,7 +219,7 @@ export async function collect({
       notify();
       if (!rootId) {
         window.scrollTo(0, 0);
-        for (let attempt = 0; attempt < 10 && !rootId; attempt++) {
+        for (let attempt = 0; attempt < 40 && !rootId; attempt++) {
           await new Promise((r) => setTimeout(r, 300));
           if (globalThis.__glassmarkCaptureCanceled)
             throw new Error(tr("已取消收藏"));
