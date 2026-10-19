@@ -100,7 +100,7 @@ Keep the desktop client running while saving. Pairing codes are valid for five m
 
 **Local media.** Images, avatars, GIFs and supported videos are stored alongside your saves. Download limits, concurrency and timeouts are configurable in Settings.
 
-**Your sync server.** Add an HTTPS WebDAV directory in **Settings → WebDAV** to sync saved content, folders, tags and deletions. Files are stored under `glassmark/content-v2/` on your server. See the [user guide](docs/USER-GUIDE.md) for storage and sync details.
+**Your sync server.** Choose a local folder or add an HTTP/HTTPS WebDAV directory in **Settings → Sync** to sync saved content, folders, tags and deletions. Files are stored under `glassmark/` on your server. See the [user guide](docs/USER-GUIDE.md) for storage and sync details.
 
 **Clear capture boundaries.** X can load replies within configurable time and post limits. Reddit and Xiaohongshu save the comments already loaded on the page. Direct MP4/WebM and unencrypted, finite HLS video are supported; live streams, DRM and unavailable media cannot be preserved. Each capture includes a resource report.
 
@@ -114,4 +114,4 @@ Desktop installers and extension ZIPs are distributed through GitHub Releases. T
 
 ## Resolve sync conflicts
 
-Concurrent WebDAV edits retain their causal branches instead of being silently overwritten by a newer device clock. Open **Settings → WebDAV → Sync conflicts** to compare the title, folder, tags and deletion state, then choose a version. If versions differ only in tags, merge all tags. Deletion versus editing stays visible until you decide. Resolutions sync to other devices and remain effective after restarting. Stale resolution choices are rejected and refreshed.
+Concurrent WebDAV edits retain their causal branches instead of being silently overwritten by a newer device clock. Open **Settings → Sync → Sync conflicts** to compare the title, folder, tags and deletion state, then choose a version. If versions differ only in tags, merge all tags. Deletion versus editing stays visible until you decide. Resolutions sync to other devices and remain effective after restarting. Stale resolution choices are rejected and refreshed.

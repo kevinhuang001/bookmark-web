@@ -16,10 +16,11 @@ pub fn atomic_write(path: &Path, bytes: &[u8]) -> Result<()> {
     if let Some(parent)=path.parent(){fs::create_dir_all(parent).map_err(|e|e.to_string())?;}
     let temp=path.with_extension(format!("{}.tmp",Uuid::new_v4()));
     fs::write(&temp,bytes).map_err(|e|e.to_string())?;
-    // Windows rename cannot replace an existing destination. Keep immutable event files,
-    // while a small mutable config file uses remove+rename under the API's serialized call.
-    if path.exists(){fs::remove_file(path).map_err(|e|e.to_string())?;}
-    fs::rename(temp,path).map_err(|e|e.to_string())
+    // Rename replaces a file atomically on supported desktop filesystems.
+    // Never remove the old configuration before the replacement succeeds.
+    let result=fs::rename(&temp,path).map_err(|e|e.to_string());
+    if result.is_err(){let _=fs::remove_file(&temp);}
+    result
 }
 impl Store {
     pub fn open(root: PathBuf) -> Result<Self> {
@@ -80,6 +81,9 @@ impl Store {
             if matched{values.push(value);}
         }Ok(values)
     }
+    pub fn folder(&self,id:&str)->Result<Value>{
+        self.list("folder","")?.into_iter().find(|folder|folder["id"]==id).ok_or_else(||"Folder does not exist".into())
+    }
     pub fn capture(&self, mut value: Value)->Result<Value>{
         if value["version"]!=2{return Err("内容格式不匹配，请更新浏览器扩展后重新收藏".into());}
         let url=value["url"].as_str().ok_or("Missing URL")?;
@@ -87,10 +91,9 @@ impl Store {
         if !["http","https"].contains(&parsed.scheme()){return Err("Only HTTP(S) pages can be archived".into());}
         for key in ["title","text"]{if !value[key].is_string(){return Err(format!("Missing {key}"));}}
         if value["tags"].is_null(){value["tags"]=json!([]);}
-        let tags=value["tags"].as_array().ok_or("Tags must be an array")?;
-        if tags.len()>100||tags.iter().any(|t|t.as_str().is_none_or(|s|s.trim().is_empty()||s.len()>100)){return Err("Invalid tags".into());}
+        crate::validation::tags(&value["tags"])?;
         if let Some(folder)=value["folderId"].as_str(){
-            if !self.list("folder","")?.iter().any(|f|f["id"]==folder){return Err("Folder does not exist".into());}
+            self.folder(folder)?;
         }else if !value["folderId"].is_null(){return Err("Invalid folder".into());}
         if value["mode"]=="thread" && value["posts"].as_array().is_none_or(|p|p.is_empty()){return Err("未识别到帖子，收藏未保存".into());}
         let id=Uuid::new_v4().to_string();let dir=self.root.join("archives").join(&id);fs::create_dir_all(dir.join("assets")).map_err(|e|e.to_string())?;
@@ -139,8 +142,42 @@ mod tests {
         let root=store.root.join("archives").join(saved["id"].as_str().unwrap());
         assert!(root.join("manifest.json").is_file());assert!(!root.join("content.html").exists());assert_eq!(fs::read_dir(root).unwrap().count(),2);
     }
-    #[test]fn revision_order_is_deterministic(){let dir=tempfile::tempdir().unwrap();let store=Store::open(dir.path().to_path_buf()).unwrap();let id=Uuid::new_v4().to_string();
-        let event=|rev:&str,title:&str|json!({"kind":"item","revision":rev,"data":{"id":id,"title":title}});
+    #[test]fn concurrent_heads_choose_a_deterministic_visible_revision(){let dir=tempfile::tempdir().unwrap();let store=Store::open(dir.path().to_path_buf()).unwrap();let id=Uuid::new_v4().to_string();
+        let event=|rev:&str,title:&str|json!({"version":2,"parents":[],"kind":"item","revision":rev,"data":{"id":id,"title":title}});
         store.index(&event("z","new")).unwrap();store.index(&event("a","old")).unwrap();assert_eq!(store.get(&id).unwrap()["title"],"new");
+    }
+}
+
+#[cfg(test)]mod integrity_tests {
+    use super::*;
+    #[test]
+    fn replacing_configuration_never_exposes_missing_or_partial_data() {
+        let dir=tempfile::tempdir().unwrap();
+        let path=dir.path().join("settings.json");
+        atomic_write(&path,b"old").unwrap();
+        let running=Arc::new(std::sync::atomic::AtomicBool::new(true));
+        let reader_path=path.clone();
+        let reader_running=running.clone();
+        let reader=std::thread::spawn(move || {
+            while reader_running.load(std::sync::atomic::Ordering::SeqCst) {
+                let bytes=fs::read(&reader_path).unwrap();
+                assert!(bytes.as_slice()==b"old"||bytes.as_slice()==b"new");
+            }
+        });
+        for index in 0..100 {atomic_write(&path,if index%2==0 {b"new"} else {b"old"}).unwrap();}
+        running.store(false,std::sync::atomic::Ordering::SeqCst);
+        reader.join().unwrap();
+    }
+    #[test]
+    fn tags_and_deleted_documents_are_not_folders() {
+        let dir=tempfile::tempdir().unwrap();
+        let store=Store::open(dir.path().to_path_buf()).unwrap();
+        let tag=store.event("tag",json!({"name":"Research","platform":"web"})).unwrap();
+        assert!(store.folder(tag["id"].as_str().unwrap()).is_err());
+        let mut folder=store.event("folder",json!({"name":"Reading"})).unwrap();
+        let id=folder["id"].as_str().unwrap().to_owned();
+        folder["deleted"]=json!(true);
+        store.event("folder",folder).unwrap();
+        assert!(store.folder(&id).is_err());
     }
 }

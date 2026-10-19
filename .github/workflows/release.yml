@@ -58,7 +58,7 @@ jobs:
               'Tauri desktop archive with Chromium and Firefox capture extensions.',
               '',
               '- Add selectable local-folder and WebDAV sync with a configurable local path and automatic interval.',
-              '- Keep synchronized content isolated under glassmark/content-v2 in the selected destination.',
+              '- Keep synchronized content isolated under glassmark in the selected destination.',
               '- Improve Sync preferences and prevent close controls from receiving initial focus.',
               '- Validate local sync, provider switching and dialog focus with regression tests.',
               '',

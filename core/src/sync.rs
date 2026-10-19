@@ -143,7 +143,7 @@ fn copy_archive(source_root:&Path,destination_root:&Path,event:&Value)->Result<(
 async fn run_local(store:&Store,config:&SyncConfig)->Result<usize>{
     let selected=PathBuf::from(config.local_path.trim());
     fs::create_dir_all(&selected).map_err(|e|e.to_string())?;
-    let base=selected.join("glassmark").join("content-v2");
+    let base=selected.join("glassmark");
     fs::create_dir_all(base.join("events")).map_err(|e|e.to_string())?;
     fs::create_dir_all(base.join("archives")).map_err(|e|e.to_string())?;
     let source_root=fs::canonicalize(&store.root).map_err(|e|e.to_string())?;
@@ -211,8 +211,8 @@ async fn run_webdav(store:&Store,config:SyncConfig)->Result<usize>{
     let mut base=url::Url::parse(&(config.url.trim_end_matches('/').to_owned()+"/")).map_err(|e|e.to_string())?;
     // Dedicated subdirectory leaves the user's other WebDAV files untouched.
     base=base.join("glassmark/").map_err(|e|e.to_string())?;
-    let mut dav=Dav{client:Client::builder().redirect(reqwest::redirect::Policy::none()).timeout(std::time::Duration::from_secs(300)).build().map_err(|e|e.to_string())?,base,config};
-    dav.mkdir("").await?;dav.base=dav.base.join("content-v2/").map_err(|e|e.to_string())?;dav.mkdir("").await?;dav.mkdir("events/").await?;dav.mkdir("archives/").await?;
+    let dav=Dav{client:Client::builder().redirect(reqwest::redirect::Policy::none()).timeout(std::time::Duration::from_secs(300)).build().map_err(|e|e.to_string())?,base,config};
+    dav.mkdir("").await?;dav.mkdir("events/").await?;dav.mkdir("archives/").await?;
     let namespace=format!("{}|{}|",dav.base,dav.config.username);
     let synced:HashSet<String>={let db=store.db.lock().map_err(|e|e.to_string())?;let mut stmt=db.prepare("SELECT event FROM synced").map_err(|e|e.to_string())?;let result=stmt.query_map([],|r|r.get(0)).map_err(|e|e.to_string())?.collect::<std::result::Result<_,_>>().map_err(|e|e.to_string())?;result};
     let mut count=0;
@@ -292,9 +292,10 @@ let folder=store.event("folder",serde_json::json!({"name":"Shared"})).unwrap();
 let path=share.path().join("shared");
 let config=SyncConfig{enabled:true,mode:"local".into(),local_path:path.display().to_string(),..Default::default()};
 assert_eq!(run(&store,config.clone()).await.unwrap(),1);
-assert!(path.join("glassmark/content-v2/events").is_dir());
-assert!(path.join("glassmark/content-v2/archives").is_dir());
-assert!(path.join("glassmark/content-v2/events").join(format!("{}.json",folder["revision"].as_str().unwrap())).is_file());
+assert!(path.join("glassmark/events").is_dir());
+assert!(!path.join("glassmark/content-v2").exists());
+assert!(path.join("glassmark/archives").is_dir());
+assert!(path.join("glassmark/events").join(format!("{}.json",folder["revision"].as_str().unwrap())).is_file());
 let second_data=tempfile::tempdir().unwrap();
 let second=Store::open(second_data.path().join("data")).unwrap();
 assert_eq!(run(&second,config).await.unwrap(),1);

@@ -2,82 +2,29 @@ import { t as tr, locale } from "./i18n.js";
 import { icon, escapeHtml as esc } from "./icons.js";
 import { rootPost, communityFromUrl, feedItems } from "./library.js";
 import { ArchiveMedia } from "./media.js";
+import {
+  stamp,
+  authorName,
+  avatar,
+  bodyText,
+  mediaMarkup,
+  menu,
+  commentTime,
+} from "./social/format.js";
+import {
+  replyIndicator,
+  threadComments,
+  redditThreads,
+  nativeComment,
+} from "./social/comments.js";
+import { attachMediaViewer } from "./social/media-viewer.js";
+import { commentActions } from "./social/comment-actions.js";
 let media;
-let closeMediaViewer = () => {};
+let destroyMediaViewer = () => {};
 export function releaseSocial() {
-  closeMediaViewer();
+  destroyMediaViewer();
   media?.release();
   media = null;
-}
-const stamp = (item) =>
-  new Date(item.capturedAt).toLocaleDateString(locale(), {
-    month: "short",
-    day: "numeric",
-  });
-function authorName(post) {
-  return (
-    post.authorName || post.author?.split("@")[0].trim() || tr("收藏的作者")
-  );
-}
-function avatar(post, item) {
-  const name = authorName(post);
-  const hue = [...name].reduce((n, c) => n + c.codePointAt(0), 0) % 360;
-  return `<span class="social-avatar" style="--avatar-color:hsl(${hue} 24% 45%)">${esc([...name][0])}${post.avatarUrl ? `<img alt="" data-archive-id="${item.id}" data-archive-media="${esc(post.avatarUrl)}">` : ""}</span>`;
-}
-function bodyText(text) {
-  const pattern = /(https?:\/\/[^\s<]+|@[\w_]+|#[^\s<]+)/g;
-  return String(text || "")
-    .split(pattern)
-    .map((part, index) =>
-      index % 2 ? `<span class="social-link">${esc(part)}</span>` : esc(part),
-    )
-    .join("");
-}
-
-// Resolve relationships only from saved identifiers or explicit source metadata.
-function replyTarget(post, item) {
-  const parentId = String(post.parentId || "");
-  const parent = parentId && (item.posts || []).find((candidate) =>
-    String(candidate.id || "") === parentId && candidate !== post);
-  const explicit = String(post.replyToName || post.replyToHandle || "").replace(/^(?:回复|Replying to)\s*/i, "").trim();
-  const name = parent ? authorName(parent) : explicit;
-  return { name, parent: !!parent };
-}
-function replyIndicator(post, item, kind) {
-  const { name } = replyTarget(post, item);
-  if (!name) return "";
-  const label = kind === "x" ? tr("正在回复") : tr("回复");
-  return `<span class="reply-target reply-target-${kind}">${label} <strong>${esc(name)}</strong></span>`;
-}
-function threadComments(item, kind, render) {
-  const posts = (item.posts || []).slice(1);
-  const known = new Map(posts.filter((p) => p.id).map((p) => [String(p.id), p]));
-  const children = new Map();
-  const roots = [];
-  for (const post of posts) {
-    const parent = String(post.parentId || "");
-    if (parent && known.has(parent) && known.get(parent) !== post) {
-      if (!children.has(parent)) children.set(parent, []);
-      children.get(parent).push(post);
-    } else roots.push(post);
-  }
-  const rendered = new Set();
-  const walk = (post, depth = 0) => {
-    if (rendered.has(post)) return "";
-    rendered.add(post);
-    const key = String(post.id || "");
-    const content = render(post, depth);
-    return content + (children.get(key) || []).map((child) => walk(child, depth + 1)).join("");
-  };
-  return roots.map((post) => walk(post)).join("") + posts.filter((post) => !rendered.has(post)).map((post) => walk(post)).join("");
-}
-function mediaMarkup(post, item) {
-  const records = post.media || [];
-  if (!records.length) return "";
-  return `<div class="social-media-grid media-count-${records.length}">${records.map((m) => `<div class="social-media media-loading ${m.type === "video" ? "video-media" : ""}" tabindex="0" role="button" aria-label="${tr("查看已保存的媒体")}">${m.type === "video" ? `<video controls preload="metadata" data-archive-id="${item.id}" data-archive-media="${esc(m.url)}"></video>` : `<img loading="lazy" alt="${esc(m.alt || tr("收藏的图片"))}" data-archive-id="${item.id}" data-archive-media="${esc(m.url)}">`}<span class="media-fallback">${tr("媒体未归档")}</span></div>`).join("")}</div>`;
-}
-function menu(item) {
-  return `<details class="post-menu"><summary aria-label="${tr("更多收藏操作")}">${icon("more")}</summary><div><button data-social-action="tags" data-id="${item.id}">${tr("编辑标签")}</button><button data-social-action="info" data-id="${item.id}">${tr("保存详情")}</button><button class="danger" data-social-action="delete" data-id="${item.id}">${tr("删除收藏")}</button></div></details>`;
 }
 function xActions(post, item, reply = false) {
   const stats = post.stats || {};
@@ -86,7 +33,7 @@ function xActions(post, item, reply = false) {
 }
 function xPost(post, item, { detail = false, reply = false } = {}) {
   const name = authorName(post);
-  return `<article class="x-post ${detail ? "x-post-detail" : ""} ${reply ? "x-reply" : ""}" data-open-archive="${item.id}" tabindex="0" role="link" aria-label="${tr("打开 {3} 的帖子", { 3: esc(name) })}">
+  return `<article class="x-post ${detail ? "x-post-detail" : ""} ${reply ? "x-reply" : ""}" ${reply ? "" : `data-open-archive="${item.id}" tabindex="0" role="link" aria-label="${tr("打开 {3} 的帖子", { 3: esc(name) })}"`}>
  ${avatar(post, item)}<div class="x-post-content"><div class="x-author-line"><button class="author-name" data-social-action="author" data-author="${esc(name)}">${esc(name)}</button>${post.verified ? icon("verified") : ""}<span>${esc(post.authorHandle || "")}</span><span>· ${commentTime(post) || stamp(item)}</span>${menu(item)}</div>
  ${reply ? replyIndicator(post, item, "x") : ""}<div class="x-post-text">${bodyText(post.text)}</div>${mediaMarkup(post, item)}${detail ? `<div class="x-capture-time">${tr("{0} · 已收藏", { 0: new Date(item.capturedAt).toLocaleString(locale()) })}</div>` : ""}${xActions(post, item, reply)}</div></article>`;
 }
@@ -132,10 +79,6 @@ function redditSidebar(items, options) {
   ];
   return `<aside class="reddit-saved-sidebar" aria-label="${tr("Reddit 已保存导航")}"><button class="saved-nav-entry active" data-social-action="bookmarks">${icon("bookmark")}<span>${tr("已保存")}</span><small>${items.length}</small></button>${sidebarTags(options)}${communities.length ? `<div class="saved-communities"><h2>${tr("已收藏的社区")}</h2><button class="${!options.filters.community ? "active" : ""}" data-social-action="community" data-community="">${tr("全部社区")}</button>${communities.map((c) => `<button class="${options.filters.community === c ? "active" : ""}" data-social-action="community" data-community="${esc(c)}"><span class="reddit-community-mark">r/</span>${esc(c)}</button>`).join("")}</div>` : ""}</aside>`;
 }
-function discussionScope(item) {
-  const count = Math.max(0, (item.posts?.length || 1) - 1);
-  return `<div class="discussion-scope">${icon("archive")}<span>${tr("已保存 {1} 条回复 / 评论 · 下方显示本次归档的全部内容", { 1: count })}</span><button data-social-action="copy" data-id="${item.id}" title="${tr("复制来源地址，在浏览器插件中继续收藏")}">${tr("{3}来源链接", { 3: icon("link") })}</button></div>`;
-}
 function xShell(items, options) {
   const selected = items.find((i) => i.id === options.selected);
   const rows = feedItems(items, options.filters);
@@ -143,14 +86,17 @@ function xShell(items, options) {
  ${
    selected
      ? xPost(rootPost(selected), selected, { detail: true }) +
-       discussionScope(selected) +
-       threadComments(selected, "x", (p, depth) =>
-         `<div class="x-thread-entry" style="--depth:${Math.min(depth, 7)}">${xPost(p, selected, { reply: true })}</div>`)
+       threadComments(
+         selected,
+         "x",
+         (p, depth) =>
+           `<div class="x-thread-entry">${xPost(p, selected, { reply: true })}</div>`,
+       )
      : `<div ${collectionPanel(options)}>${options.filters.author ? `<div class="feed-filter-bar">${esc(options.filters.author)}<button data-social-action="clear-filter">${tr("{1} 清除筛选", { 1: icon("close") })}</button></div>` : ""}${rows.map((item) => xPost(rootPost(item), item)).join("") || emptyCollection(options)}<div class="feed-end">${rows.length ? tr("已显示全部书签") : ""}</div></div>`
  }</section></div>`;
 }
 function redditActions(post, item) {
-  return `<div class="reddit-post-actions"><span class="reddit-votes">${icon("arrowUp")}<b>${esc(post.stats?.votes || "—")}</b>${icon("arrowDown")}</span><button data-social-action="open" data-id="${item.id}">${icon("comment")}<b>${esc(post.stats?.comments || (item.posts?.length > 1 ? item.posts.length - 1 : tr("评论")))}</b></button><button data-social-action="copy" data-id="${item.id}">${icon("share")}<b>${tr("分享")}</b></button><button class="reddit-save" data-social-action="info" data-id="${item.id}" title="${tr("已收藏")}">${icon("bookmark")}</button></div>`;
+  return `<div class="reddit-post-actions"><span class="reddit-votes">${icon("arrowUp")}<b>${esc(post.stats?.votes || "—")}</b>${icon("arrowDown")}</span><button data-social-action="comments" data-id="${item.id}">${icon("comment")}<b>${esc(post.stats?.comments || (item.posts?.length > 1 ? item.posts.length - 1 : tr("评论")))}</b></button><button data-social-action="copy" data-id="${item.id}">${icon("share")}<b>${tr("分享")}</b></button><button class="reddit-save" data-social-action="info" data-id="${item.id}" title="${tr("已收藏")}">${icon("bookmark")}</button></div>`;
 }
 function redditPost(item, detail = false) {
   const post = rootPost(item);
@@ -158,16 +104,13 @@ function redditPost(item, detail = false) {
   const title = post.title || item.title.replace(/\s*[:|]\s*r\/.*$/, "");
   return `<article class="reddit-post ${detail ? "reddit-post-detail" : ""}" data-open-archive="${item.id}" tabindex="0" role="link" aria-label="${tr("打开 {2}", { 2: esc(title) })}"><div class="reddit-author-line"><button class="community-avatar" data-social-action="community" data-community="${esc(community)}">r/</button><button class="community-name" data-social-action="community" data-community="${esc(community)}">r/${esc(community)}</button><span>· ${stamp(item)}</span><span class="reddit-post-author">u/${esc(authorName(post))}</span>${menu(item)}</div><h1>${esc(title)}</h1><div class="reddit-post-text">${bodyText(post.text)}</div>${mediaMarkup(post, item)}${redditActions(post, item)}</article>`;
 }
-function redditComment(post, item, threadDepth = 0) {
-  return `<article class="reddit-comment" style="--depth:${Math.min(Math.max(post.depth || 0, threadDepth), 7)}"><div class="reddit-comment-author">${avatar(post, item)}<strong>${esc(authorName(post))}</strong><span>· ${commentTime(post) || stamp(item)}</span></div>${replyIndicator(post, item, "reddit")}<p>${bodyText(post.text)}</p><div class="reddit-comment-actions">${icon("arrowUp")}<span>${esc(post.stats?.votes || "")}</span>${icon("arrowDown")}<span>${tr("回复")}</span></div></article>`;
-}
 function redditShell(items, options) {
   const selected = items.find((i) => i.id === options.selected);
   const rows = feedItems(items, options.filters);
   return `<div class="reddit-shell"><header class="reddit-archive-header"><div class="reddit-wordmark">${icon("reddit")}<strong>reddit</strong></div>${savedSearch("reddit", options.query)}</header>${redditSidebar(items, options)}<div class="reddit-main"><div class="reddit-layout"><section class="reddit-timeline">${
     selected
       ? `${detailBack()}${redditPost(selected, true)}<div class="reddit-comments-title"><h2>${tr("评论")} <span>${Math.max(0, (selected.posts?.length || 1) - 1)}</span></h2></div>${
-          threadComments(selected, "reddit", (p, depth) => redditComment(p, selected, depth)) ||
+          redditThreads(selected) ||
           `<div class="social-empty">${tr("这份收藏中没有已加载的评论。")}</div>`
         }`
       : `<div ${collectionPanel(options)}><div class="reddit-sort-bar"><div><button data-social-action="sort-recent" class="${options.filters.sort !== "best" ? "active" : ""}">${tr("最新")}</button><button data-social-action="sort-best" class="${options.filters.sort === "best" ? "active" : ""}">${tr("最佳")}</button></div></div>${rows.map((item) => redditPost(item)).join("") || emptyCollection(options)}</div>`
@@ -184,22 +127,13 @@ function notePost(item) {
   const post = rootPost(item);
   return `<article class="note-post" data-open-archive="${item.id}" tabindex="0" role="link" aria-label="${tr("打开 {1}", { 1: esc(post.title || item.title) })}">${noteCover(post, item)}<div class="note-card-info"><h2>${esc(post.title || post.text?.slice(0, 50) || item.title)}</h2><div class="note-card-author">${avatar(post, item)}<span>${esc(authorName(post))}</span><span class="note-card-likes">${icon("heart")}${esc(post.stats?.likes || "")}</span></div></div></article>`;
 }
-function commentTime(post) {
-  const raw = post.postedAt;
-  if (raw) {
-    const date = new Date(raw);
-    if (!Number.isNaN(date.getTime())) return date.toLocaleString(locale(), { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
-  }
-  return esc(post.postedAtText || "");
-}
-function noteComment(post, item, kind = "xiaohongshu", threadDepth = 0) {
-  return `<article class="note-comment" style="--depth:${Math.min(Math.max(post.depth || 0, threadDepth), 4)}">${avatar(post, item)}<div><strong>${esc(authorName(post))}</strong>${replyIndicator(post, item, kind)}<p>${bodyText(post.text)}</p><span>${commentTime(post)}</span></div><span class="note-comment-likes">${icon("heart")}${esc(post.stats?.likes || "")}</span></article>`;
-}
 function noteDetail(item) {
   const post = rootPost(item);
   const count = post.media?.length || 0;
   return `<div class="note-detail"><section class="note-gallery" aria-label="${tr("笔记图片与视频")}">${count ? mediaMarkup(post, item) : `<div class="note-gallery-empty">${icon("file")}<span>${tr("文字笔记")}</span></div>`}${count > 1 ? `<div class="note-gallery-controls"><button data-note-slide="-1" aria-label="${tr("上一张")}">${icon("back")}</button><span class="note-gallery-count">1 / ${count}</span><button data-note-slide="1" aria-label="${tr("下一张")}">${icon("arrowRight")}</button></div>` : ""}</section><article class="note-post note-detail-content"><div class="note-detail-author">${avatar(post, item)}<strong>${esc(authorName(post))}</strong>${menu(item)}</div><div class="note-detail-scroll"><h1>${esc(post.title || item.title)}</h1><div class="note-body">${bodyText(post.text)}</div><p class="note-date">${stamp(item)}</p><section class="note-comments"><h2>${tr("共 {8} 条已收藏评论", { 8: Math.max(0, (item.posts?.length || 1) - 1) })}</h2>${
-    threadComments(item, "xiaohongshu", (p, depth) => noteComment(p, item, "xiaohongshu", depth)) || `<p class="note-no-comments">${tr("暂无已收藏评论")}</p>`
+    threadComments(item, "xiaohongshu", (p, depth) =>
+      nativeComment(p, item, "xiaohongshu", depth),
+    ) || `<p class="note-no-comments">${tr("暂无已收藏评论")}</p>`
   }</section></div><div class="note-detail-actions"><span>${icon("heart")}${esc(post.stats?.likes || "—")}</span><span>${icon("bookmark")}${esc(post.stats?.saves || "—")}</span><button data-note-comments aria-label="${tr("查看已收藏评论")}">${icon("comment")}${esc(post.stats?.comments || (item.posts?.length || 1) - 1)}</button><button data-social-action="copy" data-id="${item.id}" aria-label="${tr("复制来源链接")}">${icon("share")}</button></div></article></div>`;
 }
 function noteShell(items, options) {
@@ -214,7 +148,7 @@ function zhihuPost(item, detail = false) {
   return `<article class="zhihu-post ${detail ? "zhihu-detail" : ""}" ${detail ? "" : `data-open-archive="${item.id}" tabindex="0" role="link" aria-label="${tr("打开 {2}", { 2: esc(title) })}"`}>
     <h1>${esc(title)}</h1><div class="zhihu-author">${avatar(post, item)}<strong>${esc(authorName(post))}</strong><span>${stamp(item)}</span></div>
     <div class="zhihu-body">${bodyText(post.text)}</div>${detail ? mediaMarkup(post, item) : `<button class="zhihu-read-more" data-social-action="open" data-id="${item.id}">${tr("阅读全文")}${icon("chevron")}</button>`}
-    <footer class="zhihu-actions"><span class="zhihu-votes">${icon("arrowUp")}${esc(post.stats?.votes || "—")}</span><button data-social-action="open" data-id="${item.id}">${icon("comment")}${tr("评论")} ${Math.max(0, (item.posts?.length || 1) - 1)}</button><button data-social-action="info" data-id="${item.id}">${icon("bookmark")}${tr("已收藏")}</button><button data-social-action="copy" data-id="${item.id}" title="${tr("复制来源链接")}">${icon("share")}${tr("分享")}</button>${menu(item)}</footer></article>`;
+    <footer class="zhihu-actions"><span class="zhihu-votes">${icon("arrowUp")}${esc(post.stats?.votes || "—")}</span><button data-social-action="comments" data-id="${item.id}">${icon("comment")}${tr("评论")} ${Math.max(0, (item.posts?.length || 1) - 1)}</button><button data-social-action="info" data-id="${item.id}">${icon("bookmark")}${tr("已收藏")}</button><button data-social-action="copy" data-id="${item.id}" title="${tr("复制来源链接")}">${icon("share")}${tr("分享")}</button>${menu(item)}</footer></article>`;
 }
 function zhihuShell(items, options) {
   const selected = items.find((i) => i.id === options.selected);
@@ -222,7 +156,17 @@ function zhihuShell(items, options) {
   return `<div class="zhihu-shell"><header class="zhihu-header"><div class="zhihu-wordmark">${icon("zhihu")}<strong>${tr("知乎")}</strong></div>${savedSearch("zhihu", options.query)}</header><div class="zhihu-layout"><section class="zhihu-main">${
     selected
       ? `${detailBack()}${zhihuPost(selected, true)}<div class="zhihu-comments"><h2>${tr("评论")} · ${Math.max(0, (selected.posts?.length || 1) - 1)}</h2>${
-          threadComments({...selected, posts: [rootPost(selected), ...(selected.posts || []).slice(1).filter((p) => p.isComment)]}, "zhihu", (p, depth) => noteComment(p, selected, "zhihu", depth)) ||
+          threadComments(
+            {
+              ...selected,
+              posts: [
+                rootPost(selected),
+                ...(selected.posts || []).slice(1).filter((p) => p.isComment),
+              ],
+            },
+            "zhihu",
+            (p, depth) => nativeComment(p, selected, "zhihu", depth),
+          ) ||
           `<p class="social-empty">${tr("这份收藏中没有已加载的评论。")}</p>`
         }</div>`
       : `<div class="zhihu-list">${collectionTabs(options, true)}<div ${collectionPanel(options)}>${rows.map((i) => zhihuPost(i)).join("") || emptyCollection(options)}</div></div>`
@@ -231,7 +175,17 @@ function zhihuShell(items, options) {
 
 export async function renderSocial(
   root,
-  { kind, items, selected, query, filters, callbacks, tags = [], tag = null, communities = null },
+  {
+    kind,
+    items,
+    selected,
+    query,
+    filters,
+    callbacks,
+    tags = [],
+    tag = null,
+    communities = null,
+  },
 ) {
   releaseSocial();
   media = new ArchiveMedia();
@@ -242,7 +196,14 @@ export async function renderSocial(
         ? noteShell(items, { selected, query, filters, tags, tag })
         : kind === "x"
           ? xShell(items, { selected, query, filters, tags, tag })
-          : redditShell(items, { selected, query, filters, tags, tag, communities });
+          : redditShell(items, {
+              selected,
+              query,
+              filters,
+              tags,
+              tag,
+              communities,
+            });
   root
     .querySelector('[role="tab"][aria-selected="true"]')
     ?.scrollIntoView({ block: "nearest", inline: "nearest" });
@@ -289,117 +250,43 @@ export async function renderSocial(
       root
         .querySelector(".note-comments")
         ?.scrollIntoView({ behavior: "smooth", block: "start" });
-  // Preview archived X media without navigating away from the saved post.
-  let viewer = null;
-  let restoreVideo = null;
-  const closeViewer = () => {
-    if (!viewer) return;
-    if (restoreVideo) {
-      const { video, placeholder } = restoreVideo;
-      video.pause();
-      placeholder.replaceWith(video);
-      restoreVideo = null;
-    }
-    viewer.remove();
-    viewer = null;
-    document.removeEventListener("keydown", viewerKeys, true);
-  };
-  closeMediaViewer = closeViewer;
-  const viewerKeys = (event) => {
-    if (!viewer || !["Escape", "ArrowRight", "ArrowLeft"].includes(event.key)) return;
-    // Handle the viewer before the app's global Escape/back shortcut.
-    // Closing media must not also navigate away from the archived thread.
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    if (event.key === "Escape") closeViewer();
-    else moveViewer(event.key === "ArrowRight" ? 1 : -1);
-  };
-  let viewerMedia = [];
-  let viewerIndex = 0;
-  const showViewerMedia = () => {
-    if (!viewer) return;
-    if (restoreVideo) {
-      restoreVideo.video.pause();
-      restoreVideo.placeholder.replaceWith(restoreVideo.video);
-      restoreVideo = null;
-    }
-    const source = viewerMedia[viewerIndex];
-    const stage = viewer.querySelector(".archive-viewer-stage");
-    stage.replaceChildren();
-    const original = source.querySelector("video, img");
-    if (original?.tagName === "VIDEO") {
-      const placeholder = document.createElement("span");
-      placeholder.hidden = true;
-      original.replaceWith(placeholder);
-      restoreVideo = { video: original, placeholder };
-      original.controls = true;
-      stage.appendChild(original);
-    } else if (original?.tagName === "IMG") {
-      const img = document.createElement("img");
-      img.src = original.currentSrc || original.src;
-      img.alt = original.alt;
-      stage.appendChild(img);
-    }
-    viewer.querySelector(".archive-viewer-counter").textContent = `${viewerIndex + 1} / ${viewerMedia.length}`;
-    viewer.querySelectorAll("[data-viewer-step]").forEach((b) => b.hidden = viewerMedia.length < 2);
-  };
-  const moveViewer = (offset) => {
-    viewerIndex = (viewerIndex + offset + viewerMedia.length) % viewerMedia.length;
-    showViewerMedia();
-  };
-  const openViewer = (tile) => {
-    const card = tile.closest("[data-open-archive]");
-    viewerMedia = [...card.querySelectorAll(".social-media")].filter((el) =>
-      !el.classList.contains("media-unavailable") && el.querySelector("img[src], video")
-    );
-    viewerIndex = viewerMedia.indexOf(tile);
-    if (viewerIndex < 0) return;
-    viewer = document.createElement("div");
-    viewer.className = "archive-media-viewer";
-    viewer.setAttribute("role", "dialog");
-    viewer.setAttribute("aria-modal", "true");
-    viewer.setAttribute("aria-label", "Archived media");
-    viewer.innerHTML = '<button class="archive-viewer-close" aria-label="Close">×</button><button class="archive-viewer-prev" data-viewer-step="-1" aria-label="Previous">‹</button><div class="archive-viewer-stage"></div><button class="archive-viewer-next" data-viewer-step="1" aria-label="Next">›</button><div class="archive-viewer-counter"></div>';
-    document.body.appendChild(viewer);
-    viewer.querySelector(".archive-viewer-close").onclick = closeViewer;
-    viewer.querySelectorAll("[data-viewer-step]").forEach((b) => b.onclick = () => moveViewer(Number(b.dataset.viewerStep)));
-    viewer.onclick = (event) => { if (event.target === viewer) closeViewer(); };
-    document.addEventListener("keydown", viewerKeys, true);
-    showViewerMedia();
-    viewer.querySelector(".archive-viewer-close").focus();
-  };
+  const viewer = attachMediaViewer(root);
+  destroyMediaViewer = viewer.destroy;
+  const comments = commentActions(root, {
+    kind,
+    selected,
+    items,
+    renderX: (post, item) => xPost(post, item, { reply: true }),
+    hydrate: (panel, item) => media.hydrate(panel, [item]),
+  });
   root.onclick = (e) => {
-    if (kind === "x" && e.target.closest(".social-media")) {
-      const tile = e.target.closest(".social-media");
-      if (tile.querySelector("img[src], video")) {
-        e.preventDefault(); e.stopPropagation(); openViewer(tile); return;
-      }
-    }
-    const action = e.target.closest("[data-social-action]");
-    if (action?.dataset.socialAction === "x-comments") {
-      e.preventDefault();
-      e.stopPropagation();
-      const card = action.closest(".x-post");
-      if (!card) return;
-      let panel = card.querySelector(":scope > .x-inline-comments");
-      if (panel) { panel.remove(); return; }
-      const item = items.find((entry) => entry.id === action.dataset.id);
-      panel = document.createElement("div");
-      panel.className = "x-inline-comments";
-      const replies = (item?.posts || []).filter((post) => post !== item.posts?.[0] && post.id !== item.posts?.[0]?.id);
-      panel.innerHTML = replies.length
-        ? threadComments(item, "x", (post, depth) => `<div class="x-inline-reply" style="--depth:${Math.min(depth, 7)}"><strong>${esc(authorName(post))}</strong>${replyIndicator(post, item, "x")}<div>${bodyText(post.text)}</div><span class="x-inline-date">${commentTime(post) || stamp(item)}</span></div>`)
-        : `<p>${tr("暂无已收藏评论")}</p>`;
-      card.appendChild(panel);
+    const toggle = e.target.closest(".reddit-thread-toggle");
+    if (toggle) {
+      const node = toggle.closest(".reddit-comment-node");
+      const expanded = toggle.getAttribute("aria-expanded") !== "true";
+      toggle.setAttribute("aria-expanded", String(expanded));
+      toggle.setAttribute(
+        "aria-label",
+        tr(expanded ? "折叠讨论串" : "展开讨论串"),
+      );
+      toggle.querySelector("span").textContent = expanded ? "−" : "+";
+      node.classList.toggle("thread-collapsed", !expanded);
+      node.querySelector(":scope > .reddit-child-comments").hidden = !expanded;
       return;
     }
+    const action = e.target.closest("[data-social-action]");
+    if (comments(e, action)) return;
     if (action) {
       e.preventDefault();
       e.stopPropagation();
       callbacks.action(action.dataset.socialAction, action.dataset);
       return;
     }
-    if (e.target.closest("button,summary,details,video,form,input,select"))
+    if (
+      e.target.closest(
+        "button,summary,details,video,form,input,select,.x-reply,.native-comment,.reddit-comment,.inline-comments",
+      )
+    )
       return;
     const card = e.target.closest("[data-open-archive]");
     if (card) callbacks.action("open", { id: card.dataset.openArchive });
@@ -425,9 +312,6 @@ export async function renderSocial(
           ?.focus(),
       );
       return;
-    }
-    if (kind === "x" && (e.key === "Enter" || e.key === " ") && e.target.matches(".social-media[tabindex]")) {
-      e.preventDefault(); openViewer(e.target); return;
     }
     if (e.key === "Enter" && e.target.matches("[data-open-archive]"))
       callbacks.action("open", { id: e.target.dataset.openArchive });

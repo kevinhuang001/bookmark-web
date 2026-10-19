@@ -3,7 +3,9 @@ import { pageContext } from "../context.js";
 import { isAdvertisement } from "./ads.js";
 import { mergePost } from "./merge.js";
 import { videoSources } from "./video.js";
-import { platform, adapterFor, extractPost } from "./adapters.js";
+import { platform, adapterFor } from "./platforms.js";
+import { extractPost } from "./adapters.js";
+import { xPostIdentity, noteIdentity } from "./identity.js";
 import { serializeElement, contentDocument, escapeHtml } from "./serialize.js";
 import {
   zhihuRoot,
@@ -53,18 +55,18 @@ export async function collect({
     mode = "thread";
   }
   // A configured budget applies across social platforms. When the
-  // collection API is called without one, keep Reddit's legacy behavior of
+  // collection API is called without one, capture all of Reddit's
   // capturing every already-loaded comment (including >100).
   const configuredLimit = Number.isFinite(maxPosts)
     ? Math.max(0, Math.floor(maxPosts))
     : null;
-  const limit = kind === "x"
-    ? (configuredLimit ?? 100) + 1
-    : configuredLimit === null
-      ? Infinity
-      : configuredLimit + 1;
+  const limit =
+    kind === "x"
+      ? (configuredLimit ?? 100) + 1
+      : configuredLimit === null
+        ? Infinity
+        : configuredLimit + 1;
   let rootId = null;
-  let fallbackRoot = null;
   const candidates = () => {
     if (kind === "x" && pageContext(location.href).postId !== context.postId) {
       finish = true;
@@ -99,19 +101,12 @@ export async function collect({
         );
       // X may omit its timestamp permalink until hydration; a quoted post
       // must not be mistaken for the current status.
-      const primary = elements.find((el) =>
-        [...el.querySelectorAll('a[href*="/status/"]')].some((a) =>
-          a.closest('article[data-testid="tweet"]') === el &&
-          a.getAttribute("href")?.match(/\/status\/(\d+)/)?.[1] === context.postId,
-        ),
-      ) || (!rootId && elements.find((el) =>
-        el.querySelector('[data-testid="tweetText"]') &&
-        !el.closest('[data-testid="quoteTweet"]'),
-      ));
+      const primary = elements.find(
+        (el) => xPostIdentity(el)?.id === context.postId,
+      );
       if (!primary && !rootId) return [];
       if (primary) {
         rootId = context.postId;
-        if (!posts.size && ![...primary.querySelectorAll('a[href*="/status/"]')].some((link) => link.getAttribute('href')?.match(/\/status\/(\d+)/)?.[1] === context.postId)) fallbackRoot = primary;
         elements = [
           primary,
           ...elements.filter(
@@ -151,9 +146,20 @@ export async function collect({
       } else elements = [];
     }
     if (kind === "xiaohongshu") {
-      const primary = elements.find((el) =>
-        el.querySelector("#detail-desc,#detail-title,.note-content"),
+      const visible = elements.filter(
+        (el) =>
+          el.getClientRects().length &&
+          !el.closest('[hidden],[aria-hidden="true"]') &&
+          getComputedStyle(el).visibility !== "hidden" &&
+          el.querySelector("#detail-desc,#detail-title,.note-content"),
       );
+      const matching = visible.filter(
+        (el) => noteIdentity(el) === context.postId,
+      );
+      const unknown = visible.filter((el) => !noteIdentity(el));
+      const primary =
+        matching[0] ||
+        (visible.length === 1 && unknown.length === 1 ? unknown[0] : null);
       if (!primary) return [];
       rootId = extractPost(primary, kind).id;
       elements = [
@@ -177,12 +183,7 @@ export async function collect({
     for (const element of elements) {
       const captured = extractPost(element, kind);
       if (kind === "x") {
-        // Only normalize the first root snapshot. X recycles tweet DOM nodes
-        // while scrolling: node identity is not post identity.
-        if (element === fallbackRoot && !posts.has(rootId)) {
-          captured.id = rootId;
-          captured.url = location.origin + location.pathname;
-        }
+        if (!captured.id) continue;
         captured.isComment = captured.id !== rootId;
         // X's DOM does not expose a trustworthy parent tweet ID for every
         // reply. Never present an unknown parent as a verified root reply.
@@ -368,9 +369,26 @@ export async function collect({
       warnings.push(tr("部分跨域字体无法读取，正文仍按保存的排版显示"));
     }
   }
+  if (mode === "thread" && (!rootId || !posts.has(rootId)))
+    throw new Error(
+      tr(
+        "未识别到当前主帖，请等待帖子详情加载完成后重试；登录或访问限制也可能导致内容不可见",
+      ),
+    );
   return {
     version: 2,
-    title: sourceTitle,
+    title:
+      mode === "thread"
+        ? posts.get(rootId)?.title ||
+          [
+            posts.get(rootId)?.authorName || posts.get(rootId)?.author,
+            posts.get(rootId)?.text,
+          ]
+            .filter(Boolean)
+            .join(" · ")
+            .slice(0, 160) ||
+          sourceTitle
+        : sourceTitle,
     url: zhihuIdentityAtStart?.url || context.url,
     sourceUrl: context.url,
     platform: mode === "thread" ? kind : "web",
@@ -404,7 +422,9 @@ export async function collect({
     warnings: [...new Set(warnings)],
     scope: {
       maxMainPosts: kind === "x" ? 1 : null,
-      maxReplies: ["x", "reddit", "xiaohongshu", "zhihu"].includes(kind) ? configuredLimit : null,
+      maxReplies: ["x", "reddit", "xiaohongshu", "zhihu"].includes(kind)
+        ? configuredLimit
+        : null,
       capturedPosts: posts.size,
       rootPostId: rootId,
     },
