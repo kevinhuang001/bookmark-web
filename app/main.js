@@ -494,9 +494,7 @@ async function renderReader() {
     $(id).disabled = !item;
   if (!item) {
     releasePreview();
-    $("reader").innerHTML =
-      `<section class="empty-reader"><div class="glass-emblem">${icon("logo")}</div><p class="eyebrow">${tr("YOUR PERSONAL CORNER OF THE WEB")}</p><h1>${tr("让好内容，留下来。")}</h1><p>${tr("一篇文章，一段对话，一瞬灵感。")}<br>${tr("从浏览器收藏，在这里慢慢读。")}</p><div class="empty-features"><span>${tr("{1}本地保存", { 1: icon("archive") })}</span><span>${tr("{2}原站外观", { 2: icon("globe") })}</span><span>${tr("{3}跨设备同步", { 3: icon("refresh") })}</span></div><button id="connect-start" class="primary">${tr("连接浏览器插件 {4}", { 4: icon("external") })}</button></section>`;
-    $("connect-start").onclick = guarded(showSettings);
+    $("reader").innerHTML = `<section class="empty-reader"><p>${tr("暂无内容")}</p></section>`;
     return;
   }
   applyPageZoom();
