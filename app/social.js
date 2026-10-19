@@ -44,7 +44,7 @@ function menu(item) {
 function xActions(post, item) {
   const stats = post.stats || {};
   const liked = item.tags?.includes("喜欢");
-  return `<div class="x-post-actions"><button data-social-action="open" data-id="${item.id}" title="${tr("查看已收藏的回复")}">${icon("comment")}<span>${esc(stats.replies || (item.posts?.length > 1 ? item.posts.length - 1 : ""))}</span></button><span>${icon("repeat")}<span>${esc(stats.reposts || "")}</span></span><button class="${liked ? "locally-liked" : ""}" data-social-action="like" data-id="${item.id}" title="${tr("标记喜欢（本地）")}">${icon("heart")}<span>${esc(stats.likes || "")}</span></button><span>${icon("chart")}<span>${esc(stats.views || "")}</span></span><button data-social-action="info" data-id="${item.id}" title="${tr("已保存的收藏")}">${icon("bookmark")}</button><button data-social-action="copy" data-id="${item.id}" title="${tr("复制来源链接")}">${icon("share")}</button></div>`;
+  return `<div class="x-post-actions"><button data-social-action="x-comments" data-id="${item.id}" title="${tr("查看已收藏的回复")}">${icon("comment")}<span>${esc(stats.replies || (item.posts?.length > 1 ? item.posts.length - 1 : ""))}</span></button><span>${icon("repeat")}<span>${esc(stats.reposts || "")}</span></span><button class="${liked ? "locally-liked" : ""}" data-social-action="like" data-id="${item.id}" title="${tr("标记喜欢（本地）")}">${icon("heart")}<span>${esc(stats.likes || "")}</span></button><span>${icon("chart")}<span>${esc(stats.views || "")}</span></span><button data-social-action="info" data-id="${item.id}" title="${tr("已保存的收藏")}">${icon("bookmark")}</button><button data-social-action="copy" data-id="${item.id}" title="${tr("复制来源链接")}">${icon("share")}</button></div>`;
 }
 function xPost(post, item, { detail = false, reply = false } = {}) {
   const name = authorName(post);
@@ -339,6 +339,23 @@ export async function renderSocial(
       }
     }
     const action = e.target.closest("[data-social-action]");
+    if (action?.dataset.socialAction === "x-comments") {
+      e.preventDefault();
+      e.stopPropagation();
+      const card = action.closest(".x-post");
+      if (!card) return;
+      let panel = card.querySelector(":scope > .x-inline-comments");
+      if (panel) { panel.remove(); return; }
+      const item = items.find((entry) => entry.id === action.dataset.id);
+      panel = document.createElement("div");
+      panel.className = "x-inline-comments";
+      const replies = (item?.posts || []).filter((post) => post !== item.posts?.[0] && post.id !== item.posts?.[0]?.id);
+      panel.innerHTML = replies.length
+        ? replies.map((post) => `<div class="x-inline-reply"><strong>${esc(authorName(post))}</strong><div>${bodyText(post.text)}</div></div>`).join("")
+        : `<p>${tr("暂无已收藏评论")}</p>`;
+      card.appendChild(panel);
+      return;
+    }
     if (action) {
       e.preventDefault();
       e.stopPropagation();
