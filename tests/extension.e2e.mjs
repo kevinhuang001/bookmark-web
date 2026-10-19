@@ -10,6 +10,7 @@ import { staticServer } from "../scripts/dev.mjs";
 const root = path.resolve(".test-data/extension");
 await rm(root, { recursive: true, force: true });
 await mkdir(root, { recursive: true });
+await mkdir("artifacts", { recursive: true });
 const file = root + "/connection.json";
 const child = spawn(path.resolve(process.env.GLASSMARK_BRIDGE_BIN), [], {
   env: {
