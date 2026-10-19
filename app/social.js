@@ -59,13 +59,16 @@ function savedSearch(kind, query) {
   }[kind];
   return `<form class="saved-search" role="search">${icon("search")}<input type="search" name="q" aria-label="${tr("搜索 {1} 收藏", { 1: label })}" placeholder="${tr("搜索收藏")}" value="${esc(query)}"><button type="submit" aria-label="${tr("搜索收藏")}">${icon("arrowRight")}</button></form>`;
 }
-function collectionTabs(options) {
+function sortControls(filters) {
+  return `<div class="social-sort-bar" role="group" aria-label="${tr("最新")} / ${tr("最佳")}"><button data-social-action="sort-recent" class="${filters.sort !== "best" ? "active" : ""}">${tr("最新")}</button><button data-social-action="sort-best" class="${filters.sort === "best" ? "active" : ""}">${tr("最佳")}</button></div>`;
+}
+function collectionTabs(options, withSort = false) {
   const tags = ["", ...(options.tags || [])];
-  return `<nav class="collection-navigation" aria-label="${tr("标签")}"><div class="collection-tabs" role="tablist" aria-label="${tr("标签")}">${tags.map((tag, index) => `<button id="collection-tab-${index}" role="tab" aria-controls="saved-posts" aria-selected="${(options.tag || "") === tag}" tabindex="${(options.tag || "") === tag ? 0 : -1}" data-social-action="tag-filter" data-tag="${esc(tag)}">${esc(tag || tr("全部收藏"))}</button>`).join("")}</div><button class="collection-add-tag" data-social-action="new-tag" aria-label="${tr("新建标签")}">${icon("plus")}</button></nav>`;
+  return `<nav class="collection-navigation" aria-label="${tr("标签")}"><div class="collection-tabs" role="tablist" aria-label="${tr("标签")}">${tags.map((tag, index) => `<button id="collection-tab-${index}" role="tab" aria-controls="saved-posts" aria-selected="${(options.tag || "") === tag}" tabindex="${(options.tag || "") === tag ? 0 : -1}" data-social-action="tag-filter" data-tag="${esc(tag)}">${esc(tag || tr("全部收藏"))}</button>`).join("")}</div><button class="collection-add-tag" data-social-action="new-tag" aria-label="${tr("新建标签")}">${icon("plus")}</button>${withSort ? sortControls(options.filters) : ""}</nav>`;
 }
 function emptyCollection(options) {
   return options.tag
-    ? `<div class="social-empty tag-empty"><strong># ${esc(options.tag)}</strong><p>${tr("此标签下暂无收藏。")}</p></div>`
+    ? `<div class="social-empty tag-empty">${tr("此标签下暂无收藏。")}</div>`
     : `<div class="social-empty">${tr("这里还没有收藏内容。")}</div>`;
 }
 function sidebarTags(options) {
@@ -82,7 +85,7 @@ function xSidebar(options) {
   return `<aside class="saved-site-sidebar x-saved-sidebar" aria-label="${tr("X 书签导航")}"><div class="saved-site-brand">${icon("x")}</div><button class="saved-nav-entry active" data-social-action="bookmarks">${icon("bookmark")}<span>${tr("书签")}</span><small>${options.items.length}</small></button>${savedSearch("x", options.query)}${sidebarTags(options)}<p class="saved-local-note">${tr("{5}本地收藏", { 5: icon("archive") })}</p></aside>`;
 }
 function redditSidebar(items, options) {
-  const communities = [
+  const communities = options.communities || [
     ...new Set(
       items.map((i) => rootPost(i).community || communityFromUrl(i.url)),
     ),
@@ -96,7 +99,7 @@ function discussionScope(item) {
 function xShell(items, options) {
   const selected = items.find((i) => i.id === options.selected);
   const rows = feedItems(items, options.filters);
-  return `<div class="x-shell">${xSidebar({ ...options, items })}<section class="x-timeline"><header class="x-feed-header">${selected ? detailBack() : `<div class="x-feed-title">${tr("全部收藏")}</div>`}</header>
+  return `<div class="x-shell">${xSidebar({ ...options, items })}<section class="x-timeline"><header class="x-feed-header ${selected ? "" : "x-feed-controls"}">${selected ? detailBack() : `<div class="x-feed-title">${tr("全部收藏")}</div>${sortControls(options.filters)}`}</header>
  ${
    selected
      ? xPost(rootPost(selected), selected, { detail: true }) +
@@ -105,7 +108,7 @@ function xShell(items, options) {
          .slice(1)
          .map((p) => xPost(p, selected, { reply: true }))
          .join("")
-     : `<div ${collectionPanel(options)}><div class="social-sort-bar"><button data-social-action="sort-recent" class="${options.filters.sort !== "best" ? "active" : ""}">${tr("最新")}</button><button data-social-action="sort-best" class="${options.filters.sort === "best" ? "active" : ""}">${tr("最佳")}</button></div>${options.filters.author ? `<div class="feed-filter-bar">${esc(options.filters.author)}<button data-social-action="clear-filter">${tr("{1} 清除筛选", { 1: icon("close") })}</button></div>` : ""}${rows.map((item) => xPost(rootPost(item), item)).join("") || emptyCollection(options)}<div class="feed-end">${rows.length ? tr("已显示全部书签") : ""}</div></div>`
+     : `<div ${collectionPanel(options)}>${options.filters.author ? `<div class="feed-filter-bar">${esc(options.filters.author)}<button data-social-action="clear-filter">${tr("{1} 清除筛选", { 1: icon("close") })}</button></div>` : ""}${rows.map((item) => xPost(rootPost(item), item)).join("") || emptyCollection(options)}<div class="feed-end">${rows.length ? tr("已显示全部书签") : ""}</div></div>`
  }</section></div>`;
 }
 function redditActions(post, item) {
@@ -162,7 +165,7 @@ function noteDetail(item) {
 function noteShell(items, options) {
   const selected = items.find((i) => i.id === options.selected);
   const rows = feedItems(items, options.filters);
-  return `<div class="note-shell"><header class="note-archive-header"><div class="note-wordmark">${icon("xiaohongshu").replace('viewBox="0 0 24 24"', 'viewBox="0 6 24 12"')}</div>${savedSearch("xiaohongshu", options.query)}</header>${selected ? detailBack() + noteDetail(selected) : `${collectionTabs(options)}<div class="note-content"><div class="note-sort"><div class="social-sort-bar"><button data-social-action="sort-recent" class="${options.filters.sort !== "best" ? "active" : ""}">${tr("最新")}</button><button data-social-action="sort-best" class="${options.filters.sort === "best" ? "active" : ""}">${tr("最佳")}</button></div></div><div ${collectionPanel(options)} class="note-grid">${rows.map(notePost).join("") || emptyCollection(options)}</div></div>`}</div>`;
+  return `<div class="note-shell"><header class="note-archive-header"><div class="note-wordmark">${icon("xiaohongshu").replace('viewBox="0 0 24 24"', 'viewBox="0 6 24 12"')}</div>${savedSearch("xiaohongshu", options.query)}</header>${selected ? detailBack() + noteDetail(selected) : `${collectionTabs(options, true)}<div class="note-content"><div ${collectionPanel(options)} class="note-grid">${rows.map(notePost).join("") || emptyCollection(options)}</div></div>`}</div>`;
 }
 
 function zhihuPost(item, detail = false) {
@@ -185,13 +188,13 @@ function zhihuShell(items, options) {
             .join("") ||
           `<p class="social-empty">${tr("这份收藏中没有已加载的评论。")}</p>`
         }</div>`
-      : `<div class="zhihu-list">${collectionTabs(options)}<div ${collectionPanel(options)}><div class="zhihu-sort"><button data-social-action="sort-recent" class="${options.filters.sort !== "best" ? "active" : ""}">${tr("最新")}</button><button data-social-action="sort-best" class="${options.filters.sort === "best" ? "active" : ""}">${tr("最佳")}</button></div>${rows.map((i) => zhihuPost(i)).join("") || emptyCollection(options)}</div></div>`
+      : `<div class="zhihu-list">${collectionTabs(options, true)}<div ${collectionPanel(options)}>${rows.map((i) => zhihuPost(i)).join("") || emptyCollection(options)}</div></div>`
   }</section></div></div>`;
 }
 
 export async function renderSocial(
   root,
-  { kind, items, selected, query, filters, callbacks, tags = [], tag = null },
+  { kind, items, selected, query, filters, callbacks, tags = [], tag = null, communities = null },
 ) {
   releaseSocial();
   media = new ArchiveMedia();
@@ -202,7 +205,7 @@ export async function renderSocial(
         ? noteShell(items, { selected, query, filters, tags, tag })
         : kind === "x"
           ? xShell(items, { selected, query, filters, tags, tag })
-          : redditShell(items, { selected, query, filters, tags, tag });
+          : redditShell(items, { selected, query, filters, tags, tag, communities });
   root
     .querySelector('[role="tab"][aria-selected="true"]')
     ?.scrollIntoView({ block: "nearest", inline: "nearest" });

@@ -1338,24 +1338,7 @@
   grid-row: 1;
   min-width: 0;
 }
-.zhihu-sort {
-  display: flex;
-  justify-content: flex-end;
-  gap: 20px;
-  padding: 12px 24px;
-  border-bottom: 1px solid #f0f2f7;
-}
-.zhihu-sort button {
-  border: 0;
-  background: transparent;
-  color: #8590a6;
-  padding: 4px 0;
-  font-size: 13px;
-}
-.zhihu-sort button.active {
-  color: #1772f6;
-  font-weight: 650;
-}
+
 .zhihu-list {
   background: #fff;
   border-radius: 3px;
@@ -1644,11 +1627,15 @@
 .sidebar-tag-section .collection-tabs [role="tab"][aria-selected="true"]::after { top: 9px; bottom: 9px; left: 0; right: auto; width: 3px; height: auto; }
 .sidebar-tag-section .collection-add-tag { width: auto; height: 35px; margin: 0 0 0 4px; align-self: flex-start; padding: 0 10px; border-radius: 9px; }
 .x-feed-title { font-size: 15px; font-weight: 700; padding: 17px 18px; }
+.x-feed-controls { display: flex; justify-content: space-between; align-items: center; min-width: 0; gap: 8px; }
+.x-feed-controls > .social-sort-bar { border: 0; padding: 0 12px 0 0; flex-shrink: 0; }
 .social-sort-bar { display: flex; justify-content: flex-end; align-items: center; gap: 6px; padding: 9px 16px; border-bottom: 1px solid #eff3f4; }
 .social-sort-bar button { border: 0; background: transparent; border-radius: 20px; padding: 7px 13px; color: #71808d; font-size: 13px; cursor: pointer; }
 .social-sort-bar button:hover { background: #f3f6f8; }
 .social-sort-bar button.active { color: var(--collection-accent, #0f1419); background: color-mix(in srgb, var(--collection-accent, #0f1419) 10%, white); font-weight: 700; }
-.note-sort { margin-bottom: 18px; }
-.tag-empty { text-align: center; padding: 60px 24px; }
-.tag-empty strong { color: #263440; font-size: 18px; }
-.tag-empty p { margin: 8px 0 0; color: #71808d; }
+.collection-navigation > .social-sort-bar { flex-shrink: 0; border: 0; padding: 0 10px 0 0; gap: 2px; }
+.collection-navigation > .social-sort-bar button { padding: 7px 9px; }
+@media (max-width: 520px) { .collection-navigation > .social-sort-bar button { padding: 7px 6px; font-size: 12px; } }
+
+.tag-empty { text-align: center; padding: 60px 24px; font-size: 14px; font-weight: 400; color: #71808d; }
+

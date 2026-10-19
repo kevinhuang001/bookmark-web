@@ -8,7 +8,7 @@ import { renderSocial, releaseSocial } from "./social.js";
 import { icon, hydrateIcons } from "./icons.js";
 hydrateIcons();
 import { readPageZoom, normalizeZoom, nextZoom, zoomSteps } from "./zoom.js";
-import { itemsInView, itemPlatform, rootPost } from "./library.js";
+import { itemsInView, itemPlatform, rootPost, communityFromUrl } from "./library.js";
 const $ = (id) => document.getElementById(id);
 const state = {
   items: [],
@@ -465,6 +465,7 @@ async function renderReader() {
         ]),
       ],
       tag: state.tag,
+      communities: state.view === "reddit" ? [...new Set(state.allItems.filter((item) => itemPlatform(item) === "reddit").map((item) => rootPost(item).community || communityFromUrl(item.url)))].sort((a, b) => a.localeCompare(b)) : null,
       filters: state.filters,
       callbacks: { action: guarded(socialAction) },
     });

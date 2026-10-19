@@ -41,7 +41,7 @@ try {
         platform: kind,
         mode: "thread",
         title: `${kind} 阅读内容 ${index}`,
-        url: `https://${kind === "x" ? "x.com/a/status" : kind === "reddit" ? "www.reddit.com/r/books/comments" : kind === "zhihu" ? "www.zhihu.com/question/100/answer" : "www.xiaohongshu.com/explore"}/${100 + index}`,
+        url: `https://${kind === "x" ? "x.com/a/status" : kind === "reddit" ? `www.reddit.com/r/${index ? "programming" : "books"}/comments` : kind === "zhihu" ? "www.zhihu.com/question/100/answer" : "www.xiaohongshu.com/explore"}/${100 + index}`,
         capturedAt: new Date().toISOString(),
         text: "保存值得回看的正文与讨论。",
         resources: [],
@@ -85,6 +85,18 @@ try {
     await expect(
       page.getByRole("tab", { name: "全部收藏", exact: true }),
     ).toHaveAttribute("aria-selected", "true");
+    if (kind !== "reddit") {
+      const titleOrTab = kind === "x"
+        ? page.locator(".x-feed-title")
+        : page.getByRole("tab", { name: "全部收藏", exact: true });
+      const sort = page.locator('[data-social-action="sort-recent"]');
+      const titleBox = await titleOrTab.boundingBox();
+      const sortBox = await sort.boundingBox();
+      assert.ok(titleBox && sortBox);
+      assert.ok(Math.abs(titleBox.y + titleBox.height / 2 - (sortBox.y + sortBox.height / 2)) < 20, "sort controls should share the All saves row");
+    } else {
+      await expect(page.locator(".reddit-sort-bar")).toBeVisible();
+    }
     assert.equal(
       await page
         .locator(
@@ -99,6 +111,25 @@ try {
       ).toHaveCount(0);
     await page.getByRole("tab", { name: "研读 & <摘录>", exact: true }).click();
     await expect(cards).toHaveCount(1);
+    if (kind === "reddit") {
+      const community = (name) => page.locator('.saved-communities [data-social-action="community"][data-community="' + name + '"]');
+      await expect(community("books")).toBeVisible();
+      await expect(community("programming")).toBeVisible();
+      await community("programming").click();
+      await expect(cards).toHaveCount(0);
+      await expect(page.getByRole("tab", { name: "研读 & <摘录>", exact: true })).toHaveAttribute("aria-selected", "true");
+      await expect(community("programming")).toHaveClass(/active/);
+      await community("books").click();
+      await expect(cards).toHaveCount(1);
+      await page.getByRole("tab", { name: "备用", exact: true }).click();
+      await expect(cards).toHaveCount(0);
+      await expect(community("books")).toHaveClass(/active/);
+      await community("programming").click();
+      await expect(cards).toHaveCount(1);
+      await community("").click();
+      await page.getByRole("tab", { name: "研读 & <摘录>", exact: true }).click();
+      await expect(cards).toHaveCount(1);
+    }
     if (kind === "reddit" || kind === "zhihu")
       await page.locator('[data-social-action="sort-best"]').click();
     await cards.first().click();
@@ -125,7 +156,8 @@ try {
       ).toHaveClass(/active/);
     await selected.focus();
     await selected.press("End");
-    await expect(page.locator(".social-empty")).toBeVisible();
+    await expect(page.locator(".social-empty.tag-empty")).toHaveText("此标签下暂无收藏。");
+    await expect(page.locator(".social-empty.tag-empty").locator("strong,p")).toHaveCount(0);
     await expect(
       page.getByRole("tab", { name: "独有-" + kind, exact: true }),
     ).toBeFocused();
