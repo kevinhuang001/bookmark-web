@@ -211,7 +211,8 @@ try {
       "body,button,input,select{font-family:'Noto Sans SC',sans-serif!important}",
   });
   await page.evaluate(() => document.fonts.ready);
-  await page.getByText("让好内容，留下来。").waitFor();
+  await page.locator("html[data-app-ready=\"true\"]").waitFor();
+  await page.getByText("暂无内容", { exact: true }).waitFor();
   if (recording) {
     await page.evaluate(() => {
       const note = document.createElement("div");
