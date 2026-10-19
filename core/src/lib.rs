@@ -138,7 +138,7 @@ async fn save_settings(State(state):State<AppState>,Json(mut value):Json<Value>)
 async fn synchronize(State(state):State<AppState>)->Result<Json<Value>>{Ok(Json(state.synchronize().await?))}
 pub async fn serve(state:AppState)->store::Result<()>{
     let listener=tokio::net::TcpListener::bind((std::net::Ipv4Addr::LOCALHOST,PORT)).await.map_err(|e|format!("无法监听本地端口 {PORT}：{e}"))?;
-    let periodic=state.clone();tokio::spawn(async move{let mut timer=tokio::time::interval(Duration::from_secs(60));loop{timer.tick().await;let _=periodic.synchronize().await;}});
+    let periodic=state.clone();tokio::spawn(async move{let mut last=Instant::now();let mut timer=tokio::time::interval(Duration::from_secs(1));loop{timer.tick().await;let config=sync::SyncConfig::read(&periodic.store);if config.enabled&&last.elapsed()>=Duration::from_secs(config.interval_seconds.clamp(30,86400)){last=Instant::now();let _=periodic.synchronize().await;}}});
     axum::serve(listener,router(state)).await.map_err(|e|e.to_string())
 }
 
