@@ -73,7 +73,7 @@ try {
     `chrome-extension://${extensionId}/capture.html?tab=${tabId}&mode=page`,
   );
   await progress
-    .getByText("已收藏，留待慢慢读", { exact: true })
+    .getByText("收藏完成", { exact: true })
     .waitFor({ timeout: 60000 });
   const items = await (
     await fetch(connection.base + "/api/items", {
@@ -94,7 +94,7 @@ try {
     `chrome-extension://${extensionId}/capture.html?tab=${tabId}&mode=thread`,
   );
   await progress
-    .getByText("已收藏，留待慢慢读", { exact: true })
+    .getByText("收藏完成", { exact: true })
     .waitFor({ timeout: 45000 });
   const captured = await (
     await fetch(connection.base + "/api/items", {
@@ -110,7 +110,7 @@ try {
     body: JSON.stringify({
       ...preferences,
       language: "zh-CN",
-      maxPosts: 1,
+      maxPosts: 20, // This flow expects all expanded Zhihu comments.
       autoLoadSeconds: 8,
     }),
   });
@@ -177,7 +177,7 @@ try {
     const capturePage = await newPage;
     await capturePage.waitForURL(/capture\.html.*mode=thread/);
     await capturePage
-      .getByText("已收藏，留待慢慢读", { exact: true })
+      .getByText("收藏完成", { exact: true })
       .waitFor({ timeout: 45000 });
     const archives = await (
       await fetch(connection.base + "/api/items", { headers: auth })

@@ -50,7 +50,7 @@ try {
     GlassmarkCapture.collect({
       mode: "thread",
       language: "zh-CN",
-      maxPosts: 1,
+      maxPosts: 20,
       autoLoadSeconds: 8,
     }),
   );
@@ -96,7 +96,7 @@ try {
       GlassmarkCapture.collect({
         mode: "thread",
         language: "zh-CN",
-        maxPosts: 1,
+        maxPosts: 20,
         autoLoadSeconds: 8,
       }),
     );

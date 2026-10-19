@@ -43,7 +43,7 @@ try {
     body: JSON.stringify({
       ...preferences,
       language: "zh-CN",
-      maxPosts: 1,
+      maxPosts: 20, // Validate full Zhihu comment expansion; not the configured one-reply cap.
       autoLoadSeconds: 8,
     }),
   });
