@@ -184,7 +184,9 @@ export async function collect({
           captured.url = location.origin + location.pathname;
         }
         captured.isComment = captured.id !== rootId;
-        captured.parentId = captured.isComment ? (captured.parentId || rootId) : null;
+        // X's DOM does not expose a trustworthy parent tweet ID for every
+        // reply. Never present an unknown parent as a verified root reply.
+        captured.parentId = captured.isComment ? captured.parentId : null;
       }
       if (kind === "zhihu" && captured.isComment) {
         if (!captured.text && !captured.media.length) continue;
