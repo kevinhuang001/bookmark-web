@@ -184,7 +184,7 @@ export async function collect({
           captured.url = location.origin + location.pathname;
         }
         captured.isComment = captured.id !== rootId;
-        captured.parentId = captured.isComment ? rootId : null;
+        captured.parentId = captured.isComment ? (captured.parentId || rootId) : null;
       }
       if (kind === "zhihu" && captured.isComment) {
         if (!captured.text && !captured.media.length) continue;
