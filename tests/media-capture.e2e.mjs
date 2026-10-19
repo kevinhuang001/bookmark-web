@@ -44,12 +44,15 @@ try {
   await page.addScriptTag({
     content: await readFile("dist/extension-chromium/content.js", "utf8"),
   });
-  const capture = await page.evaluate(() =>
-    globalThis.GlassmarkCapture.collect({
-      mode: "thread",
-      maxPosts: 0,
-      autoLoadSeconds: 1,
-    }),
+  const capture = await page.evaluate(
+    (url) =>
+      globalThis.GlassmarkCapture.collect({
+        mode: "thread",
+        maxPosts: 0,
+        autoLoadSeconds: 1,
+        pageData: { "note:abc": { media: [{ type: "image", url }] } },
+      }),
+    img(2),
   );
   assert.deepEqual(
     new Set(capture.posts[0].media.map((m) => m.url)),
@@ -123,7 +126,7 @@ try {
   await page.route("https://x.com/**", (route) =>
     route.fulfill({
       contentType: "text/html",
-      body: '<main><article data-testid="tweet"><a href="/a/status/101"><time></time></a><div data-testid="tweetText">Root</div><div data-testid="tweetPhoto"><img src="https://pbs.twimg.com/media/one?name=small"></div></article><article data-testid="tweet"><a href="/b/status/102"><time></time></a><div data-testid="tweetText">Reply</div></article></main>',
+      body: '<main><article data-testid="tweet"><a href="/a/status/101"><time></time></a><div data-testid="tweetText">Root</div><div data-testid="tweetPhoto"><img src="https://pbs.twimg.com/media/photo1?format=jpg&name=small"></div></article><article data-testid="tweet"><a href="/b/status/102"><time></time></a><div data-testid="tweetText">Reply</div></article></main>',
     }),
   );
   await page.goto("https://x.com/a/status/101");

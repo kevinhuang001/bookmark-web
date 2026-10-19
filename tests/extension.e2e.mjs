@@ -94,6 +94,8 @@ try {
     const articles = [
       ...document.querySelectorAll('article[data-testid="tweet"]'),
     ];
+    articles[0].querySelector(".photo img").src =
+      "http://127.0.0.1:1420/fixtures/note-cover.svg?unmounted=1&name=orig";
     articles[0].__reactProps$mediaTest = {
       tweet: {
         rest_id: "1001",

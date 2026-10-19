@@ -58,7 +58,7 @@ export function readPageData() {
             poster,
           });
         }
-        if (media.length) posts["note:" + id] = { media, complete: true };
+        if (media.length) posts["note:" + id] = { media };
       }
     }
     if (!/(^|\.)(?:x\.com|twitter\.com)$/.test(location.hostname)) return posts;
@@ -141,7 +141,6 @@ export function readPageData() {
               ? "@" + legacy.in_reply_to_screen_name
               : "",
             media,
-            complete: media.length > 0,
           };
           break;
         }
@@ -194,6 +193,24 @@ export function readPageData() {
   return posts;
 }
 
+function attachmentKey(media) {
+  if (media.type === "video")
+    return "video:" + (media.id || media.url || media.poster || "");
+  const raw = media.type === "video" ? media.poster || media.url : media.url;
+  try {
+    const url = new URL(raw);
+    if (url.hostname === "pbs.twimg.com")
+      return (
+        media.type +
+        ":" +
+        url.pathname.replace(/\.(?:jpg|jpeg|png|webp|gif)$/i, "")
+      );
+    if (/(^|\.)xhscdn\.com$/.test(url.hostname) && media.type === "image")
+      return "image:" + url.pathname.split("/").at(-1).split("!")[0];
+  } catch {}
+  return media.type + ":" + (raw || media.id || "");
+}
+
 export function enrichPost(post, kind, pageData = {}) {
   const key =
     kind === "xiaohongshu"
@@ -201,18 +218,49 @@ export function enrichPost(post, kind, pageData = {}) {
       : String(post.id);
   const data = pageData[key];
   if (!data || (post.isComment && kind !== "x")) return post;
+  const media = new Map();
+  // Page state may lag behind the carousel. Keep every distinct DOM attachment,
+  // preferring the page's original-quality source when both describe one file.
+  for (const entry of data.media || []) {
+    const key = attachmentKey(entry);
+    if (!media.has(key)) media.set(key, entry);
+  }
+  for (const entry of post.media || []) {
+    const key = attachmentKey(entry);
+    if (media.has(key)) continue;
+    if (entry.type === "video") {
+      const videos = [...media.values()].filter(
+        (m) => m.type === "video" && (!m.id || !entry.id || m.id === entry.id),
+      );
+      const urls = new Set(
+        [entry.url, ...(entry.sources || [])].filter(Boolean),
+      );
+      const direct = videos.filter(
+        (m) =>
+          (entry.id && m.id === entry.id) ||
+          [m.url, ...(m.sources || [])].some((url) => urls.has(url)),
+      );
+      const matches = direct.length
+        ? direct
+        : videos.filter((m) => entry.poster && m.poster === entry.poster);
+      if (matches.length === 1) continue;
+    }
+    media.set(key, entry);
+  }
   return {
     ...post,
     parentId: data.parentId || post.parentId,
     replyToHandle: data.replyToHandle || post.replyToHandle,
-    media: data.complete ? data.media : post.media,
+    media: [...media.values()],
   };
 }
 
 export function enrichCapture(capture, pageData, options = {}) {
-  const resources = new Set(capture.resources);
+  const resources = new Set(capture.mode === "thread" ? [] : capture.resources);
   capture.posts = capture.posts.map((post) => {
     const result = enrichPost(post, capture.platform, pageData);
+    if (/^https?:/.test(result.avatarUrl || ""))
+      resources.add(result.avatarUrl);
     result.media = (result.media || []).filter((m) =>
       m.type === "video"
         ? options.includeVideos !== false
