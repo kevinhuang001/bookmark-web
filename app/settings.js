@@ -1,4 +1,9 @@
 import {
+  renderSyncSettings,
+  readSyncDraft,
+  validateSyncDraft,
+} from "./settings/sync.js";
+import {
   t as tr,
   languages,
   getLanguage,
@@ -49,18 +54,7 @@ export async function openSettings({ modal, folders, onSaved, toast }) {
           : input.tagName === "SELECT"
             ? input.value || null
             : Number(input.value);
-    if (document.getElementById("dav-enabled")) {
-      dav.enabled = document.getElementById("dav-enabled").checked;
-      dav.mode = document.getElementById("sync-mode")?.value || dav.mode || "webdav";
-      dav.intervalSeconds = Number(document.getElementById("dav-interval").value);
-      const localPath = document.getElementById("sync-local-path");
-      if (localPath) dav.localPath = localPath.value.trim();
-      if (document.getElementById("dav-url")) {
-        dav.url = document.getElementById("dav-url").value.trim();
-        dav.username = document.getElementById("dav-username").value;
-        dav.password = document.getElementById("dav-password").value;
-      }
-    }
+    readSyncDraft(dav);
   }
   async function save() {
     for (const input of document.querySelectorAll(
@@ -76,17 +70,7 @@ export async function openSettings({ modal, folders, onSaved, toast }) {
         );
     }
     collect();
-    if (dav.enabled && dav.mode === "local") {
-      const path = dav.localPath.trim();
-      const absolute =
-        path.startsWith("/") ||
-        path.startsWith("\\\\") ||
-        (/^[A-Za-z]:/.test(path) && ["/", "\\"].includes(path[2]));
-      if (!absolute)
-        throw new Error(tr("本地同步路径不能为空且必须是绝对路径"));
-    }
-    if (dav.enabled && dav.mode === "webdav" && !dav.url)
-      throw new Error(tr("请输入 WebDAV 目录地址"));
+    validateSyncDraft(dav);
     prefs.resolvedLanguage = resolveLocale(prefs.language);
     await mutate("/api/preferences", prefs, "PUT");
     await mutate("/api/settings", dav, "PUT");
@@ -213,31 +197,7 @@ export async function openSettings({ modal, folders, onSaved, toast }) {
           tr("网络失败会记录在保存报告中，其余资源继续下载。"),
         );
     if (active === "sync") {
-      const mode = dav.mode === "local" ? "local" : "webdav";
-      body =
-        section(
-          tr("同步设置"),
-          `<label class="settings-row"><span>${tr("启用同步")}</span><input id="dav-enabled" type="checkbox" ${dav.enabled ? "checked" : ""}></label>
-          <label class="settings-row"><span>${tr("自动同步周期（秒）")}</span><input id="dav-interval" aria-label="${tr("自动同步周期（秒）")}" type="number" min="30" max="86400" step="1" required value="${esc(dav.intervalSeconds ?? 60)}"></label>
-          <input id="sync-mode" type="hidden" value="${mode}">
-          <div class="sync-provider-switch" role="group" aria-label="${tr("同步方式")}">
-            <button type="button" data-sync-mode="local" class="${mode === "local" ? "active" : ""}">${icon("folder")}<span>${tr("本地文件夹")}</span></button>
-            <button type="button" data-sync-mode="webdav" class="${mode === "webdav" ? "active" : ""}">${icon("link")}<span>WebDAV</span></button>
-          </div>`,
-          tr("收藏变更后立即同步；自动同步周期可在下方配置。"),
-        ) +
-        (mode === "local"
-          ? section(
-              tr("本地文件夹"),
-              `<label class="sync-path-label">${tr("本地同步路径")}<input id="sync-local-path" type="text" spellcheck="false" autocomplete="off" placeholder="${tr("请输入本地同步目录的绝对路径")}" value="${esc(dav.localPath || "")}"></label>`,
-              tr("本地目录下会自动创建 glassmark/content-v2，用于保存同步内容。"),
-            )
-          : section(
-              tr("WebDAV 服务器"),
-              `<p class="settings-note">${tr("支持 HTTP 与 HTTPS。HTTP 连接不加密，请仅在可信网络使用。")}</p><label>${tr("目录地址")}<input id="dav-url" type="url" placeholder="https://cloud.example.com/remote.php/dav/files/user/" value="${esc(dav.url)}"></label><label>${tr("用户名")}<input id="dav-username" value="${esc(dav.username)}" autocomplete="username"></label><label>${tr("应用密码")}<input id="dav-password" type="password" value="${esc(dav.password || "")}" placeholder="${dav.hasPassword ? tr("已保存，留空保留") : tr("输入密码")}" autocomplete="new-password"></label>`,
-              tr("WebDAV 地址下会自动创建 glassmark/content-v2，其他目录内容不会被修改。"),
-            )) +
-        `<button type="button" id="settings-sync-now" class="secondary">${tr("立即同步")}</button><p id="sync-feedback" class="settings-note">${esc(localizeError(status.sync?.error) || status.sync?.lastSync || "")}</p><section id="sync-conflicts" class="settings-section"></section>`;
+      body = renderSyncSettings(dav, status);
     }
     if (active === "connection")
       body =
@@ -258,7 +218,7 @@ export async function openSettings({ modal, folders, onSaved, toast }) {
         );
     if (active === "about")
       body =
-        `<section class="about-overview"><div class="about-brand-mark">${icon("logo")}</div><h3>GlassMark</h3><p class="about-version">${tr("当前版本")} <strong id="about-current-version">0.8.14</strong></p></section>` +
+        `<section class="about-overview"><div class="about-brand-mark">${icon("logo")}</div><h3>GlassMark</h3><p class="about-version">${tr("当前版本")} <strong id="about-current-version">0.8.15</strong></p></section>` +
         section(
           tr("软件更新"),
           `<div class="about-update-row"><div><strong>${tr("检查最新版本")}</strong><p id="about-update-status" aria-live="polite">${tr("尚未检查更新")}</p></div><button type="button" id="about-check-update" class="secondary">${tr("检查更新")}</button></div><a id="about-release-link" href="https://github.com/kevinhuang001/bookmark-web/releases" target="_blank" rel="noopener noreferrer">${tr("查看所有版本")}</a>`,
@@ -274,23 +234,41 @@ export async function openSettings({ modal, folders, onSaved, toast }) {
       const versionLabel = panel.querySelector("#about-current-version");
       const releaseLink = panel.querySelector("#about-release-link");
       // The desktop app version is reported by the running backend, not a hard-coded UI value.
-      json("/api/status").then((info) => {
-        const version = info.version || info.appVersion;
-        if (version && versionLabel?.isConnected) versionLabel.textContent = version;
-      }).catch(() => {});
+      json("/api/status")
+        .then((info) => {
+          const version = info.version || info.appVersion;
+          if (version && versionLabel?.isConnected)
+            versionLabel.textContent = version;
+        })
+        .catch(() => {});
       checkUpdate.onclick = async () => {
         checkUpdate.disabled = true;
         label.textContent = tr("正在检查更新…");
         try {
           const release = await json("/api/latest-release");
           const latest = String(release.tag_name || "").replace(/^v/i, "");
-          if (!/^\d+\.\d+\.\d+/.test(latest)) throw new Error("Invalid release version");
+          if (!/^\d+\.\d+\.\d+/.test(latest))
+            throw new Error("Invalid release version");
           const current = versionLabel.textContent.trim();
-          const numbers = (v) => v.split(/[.-]/).slice(0, 3).map((x) => Number(x) || 0);
-          const l = numbers(latest), c = numbers(current);
-          const newer = l.some((n, i) => n > c[i] && l.slice(0, i).every((x, j) => x === c[j]));
-          label.textContent = newer ? tr("发现新版本：{0}", { 0: latest }) : tr("已是最新版本");
-          if (newer && String(release.html_url || "").startsWith("https://github.com/kevinhuang001/bookmark-web/releases/")) {
+          const numbers = (v) =>
+            v
+              .split(/[.-]/)
+              .slice(0, 3)
+              .map((x) => Number(x) || 0);
+          const l = numbers(latest),
+            c = numbers(current);
+          const newer = l.some(
+            (n, i) => n > c[i] && l.slice(0, i).every((x, j) => x === c[j]),
+          );
+          label.textContent = newer
+            ? tr("发现新版本：{0}", { 0: latest })
+            : tr("已是最新版本");
+          if (
+            newer &&
+            String(release.html_url || "").startsWith(
+              "https://github.com/kevinhuang001/bookmark-web/releases/",
+            )
+          ) {
             releaseLink.href = release.html_url;
             releaseLink.textContent = tr("查看新版本并下载");
           }
@@ -324,6 +302,18 @@ export async function openSettings({ modal, folders, onSaved, toast }) {
         dav.mode = button.dataset.syncMode;
         draw();
       };
+    const passwordToggle = panel.querySelector("#sync-password-toggle");
+    if (passwordToggle)
+      passwordToggle.onclick = () => {
+        const input = panel.querySelector("#dav-password");
+        const visible = input.type === "password";
+        input.type = visible ? "text" : "password";
+        passwordToggle.setAttribute("aria-pressed", String(visible));
+        passwordToggle.setAttribute(
+          "aria-label",
+          tr(visible ? "隐藏密码" : "显示密码"),
+        );
+      };
     for (const button of panel.querySelectorAll(".revoke"))
       button.onclick = async () => {
         try {
@@ -346,6 +336,9 @@ export async function openSettings({ modal, folders, onSaved, toast }) {
     if (document.getElementById("settings-sync-now"))
       document.getElementById("settings-sync-now").onclick = async () => {
         try {
+          collect();
+          validateSyncDraft(dav);
+          await mutate("/api/settings", dav, "PUT");
           const result = await mutate("/api/sync", {});
           document.getElementById("sync-feedback").textContent =
             localizeError(result.error) || tr("同步完成");

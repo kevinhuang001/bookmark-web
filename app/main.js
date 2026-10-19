@@ -5,23 +5,29 @@ import { ArchiveMedia } from "./media.js";
 let webMedia;
 import { preview, releasePreview } from "./preview.js";
 import { renderSocial, releaseSocial } from "./social.js";
-import { icon, hydrateIcons } from "./icons.js";
+import { readLocal, writeLocal } from "./storage.js";
+import { icon, hydrateIcons, escapeHtml as escape } from "./icons.js";
 hydrateIcons();
 import { readPageZoom, normalizeZoom, nextZoom, zoomSteps } from "./zoom.js";
-import { itemsInView, itemPlatform, rootPost, communityFromUrl } from "./library.js";
+import {
+  itemsInView,
+  itemPlatform,
+  rootPost,
+  communityFromUrl,
+} from "./library.js";
 const $ = (id) => document.getElementById(id);
 const state = {
   items: [],
   allItems: [],
   view: ["web", "x", "reddit", "xiaohongshu", "zhihu"].includes(
-    localStorage.getItem("glassmark-view"),
+    readLocal("glassmark-view"),
   )
-    ? localStorage.getItem("glassmark-view")
+    ? readLocal("glassmark-view")
     : "web",
   editing: null,
   draggingItem: false,
   folderTreeMarkup: null,
-  filters: { threads: false, sort: "recent", author: "", community: "" },
+  filters: { sort: "recent", author: "", community: "" },
   collapsed: new Set(),
   feedScroll: { x: 0, reddit: 0, xiaohongshu: 0, zhihu: 0 },
   folders: [],
@@ -38,14 +44,6 @@ const state = {
   viewKey: "",
   settingsOpen: false,
 };
-const escape = (value) =>
-  String(value ?? "").replace(
-    /[&<>"']/g,
-    (c) =>
-      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
-        c
-      ],
-  );
 const platformLabel = {
   x: "X",
   reddit: "Reddit",
@@ -103,7 +101,6 @@ async function switchView(view) {
   if (state.view === view && view !== "web") {
     state.selected = null;
     state.filters = {
-      threads: false,
       sort: "recent",
       author: "",
       community: "",
@@ -114,13 +111,12 @@ async function switchView(view) {
     state.folder = null;
     state.tag = null;
     state.filters = {
-      threads: false,
       sort: "recent",
       author: "",
       community: "",
     };
   }
-  localStorage.setItem("glassmark-view", view);
+  writeLocal("glassmark-view", view);
   state.viewKey = "";
   if (view === "web" && visible().length) state.selected = visible()[0].id;
   revealSelected();
@@ -376,9 +372,7 @@ function applyPageZoom(value = readPageZoom(state.selected)) {
 function changePageZoom(value) {
   if (state.view !== "web" || !state.selected) return;
   const zoom = normalizeZoom(value);
-  try {
-    localStorage.setItem("glassmark-page-zoom:" + state.selected, String(zoom));
-  } catch {}
+  writeLocal("glassmark-page-zoom:" + state.selected, String(zoom));
   applyPageZoom(zoom);
 }
 function readerZoomKey(event) {
@@ -465,7 +459,19 @@ async function renderReader() {
         ]),
       ],
       tag: state.tag,
-      communities: state.view === "reddit" ? [...new Set(state.allItems.filter((item) => itemPlatform(item) === "reddit").map((item) => rootPost(item).community || communityFromUrl(item.url)))].sort((a, b) => a.localeCompare(b)) : null,
+      communities:
+        state.view === "reddit"
+          ? [
+              ...new Set(
+                state.allItems
+                  .filter((item) => itemPlatform(item) === "reddit")
+                  .map(
+                    (item) =>
+                      rootPost(item).community || communityFromUrl(item.url),
+                  ),
+              ),
+            ].sort((a, b) => a.localeCompare(b))
+          : null,
       filters: state.filters,
       callbacks: { action: guarded(socialAction) },
     });
@@ -494,7 +500,8 @@ async function renderReader() {
     $(id).disabled = !item;
   if (!item) {
     releasePreview();
-    $("reader").innerHTML = `<section class="empty-reader"><p>${tr("暂无内容")}</p></section>`;
+    $("reader").innerHTML =
+      `<section class="empty-reader"><p>${tr("暂无内容")}</p></section>`;
     return;
   }
   applyPageZoom();
@@ -586,7 +593,6 @@ async function socialAction(action, data = {}) {
   if (action === "bookmarks") {
     state.selected = null;
     state.filters = {
-      threads: false,
       sort: "recent",
       author: "",
       community: "",

@@ -2084,59 +2084,45 @@ body,
 .about-links a .icon { width:15px; height:15px; opacity:.55; }
 
 
-/* Compact provider selector for the Sync preferences. */
-.sync-provider-switch {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 5px;
-  margin: 12px 0 7px;
-  padding: 4px;
-  border: 1px solid #e1e7ed;
-  border-radius: 12px;
-  background: #edf1f5;
-}
-.sync-provider-switch button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-width: 0;
-  min-height: 39px;
-  padding: 8px 10px;
-  border: 1px solid transparent;
-  border-radius: 9px;
-  background: transparent;
-  color: #697b89;
-  font-size: 12px;
-  font-weight: 550;
-  transition: background 140ms ease, color 140ms ease, box-shadow 140ms ease;
-}
-.sync-provider-switch button:hover {
-  background: #ffffff8c;
-  color: #365c76;
-}
-.sync-provider-switch button.active {
-  border-color: #dce5ec;
-  background: #fff;
-  color: #315f7c;
-  box-shadow: 0 2px 6px #263d5012;
-}
-.sync-provider-switch .icon {
-  width: 15px;
-  height: 15px;
-  flex: 0 0 auto;
-}
-#dialog-body .sync-path-label {
-  display: block;
-  margin: 14px 0 !important;
-  color: #526879;
-  font-size: 12px;
-}
-#dialog-body .sync-path-label input {
-  width: 100%;
-  margin-top: 8px;
-  text-align: left;
-  font-size: 12px;
+/* Sync preferences mirror the grouped source settings layout. */
+.sync-method-card, .sync-config-card { border:1px solid #e1e6ed; border-radius:15px; background:#ffffffb8; box-shadow:0 3px 15px #29445b04; }
+.sync-method-card { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:17px 19px; margin-bottom:16px; }
+#dialog-body .sync-row-copy { display:flex; flex-direction:column; gap:4px; min-width:0; }
+.sync-row-copy strong { font-size:13px; font-weight:600; color:#26374d; }
+.sync-row-copy small { font-size:11px; line-height:1.5; color:#8590a1; }
+.sync-provider-switch { display:flex; flex-shrink:0; padding:3px; background:#eaf0f6; border-radius:10px; }
+.sync-provider-switch button { border:0; background:transparent; border-radius:8px; padding:10px 17px; color:#4b596d; font-size:12px; font-weight:600; }
+.sync-provider-switch button.active { background:#3478f6; color:#fff; box-shadow:0 2px 5px #3478f633; }
+.sync-provider-switch button:focus-visible { outline:2px solid #3478f6; outline-offset:3px; }
+.sync-config-card { padding:17px 15px 14px; }
+.sync-config-card > header { display:flex; align-items:center; gap:12px; padding:0 3px 16px; }
+.sync-config-icon { display:grid; place-items:center; width:39px; height:39px; flex-shrink:0; border-radius:50%; background:#eaf1ff; color:#3478f6; }
+.sync-config-icon .icon { width:21px; height:21px; }
+#dialog-body .sync-config-card h3 { font-size:15px; margin:0 0 4px; color:#26374d; }
+.sync-config-card header p { font-size:11px; line-height:1.5; color:#8590a1; margin:0; }
+.sync-config-fields { border:1px solid #e7ebf0; border-radius:12px; background:#fff; }
+#dialog-body .sync-config-row { display:flex; align-items:center; justify-content:space-between; gap:18px; margin:0; padding:13px 16px; min-height:68px; }
+.sync-config-row + .sync-config-row { border-top:1px solid #edf0f4; }
+.sync-config-row .sync-row-copy { flex:1; margin:0 !important; }
+#dialog-body .sync-config-row input:not([type=checkbox]), .sync-password { width:48%; min-width:0; flex-shrink:0; }
+#dialog-body .sync-config-row input:not([type=checkbox]) { margin:0; padding:10px 12px; border:1px solid #d8dfe9; border-radius:8px; font-size:12px; background:#fff; color:#34465e; }
+#dialog-body .sync-config-row input[type=number] { width:88px; text-align:right; }
+#dialog-body .sync-config-row input:focus-visible { outline:2px solid #3478f6; outline-offset:2px; }
+#dialog-body .sync-toggle { appearance:none; position:relative; width:40px; height:24px; margin:0; padding:0; flex-shrink:0; background:#ccd3dc; border:0; border-radius:20px; cursor:pointer; }
+.sync-toggle::after { content:""; position:absolute; left:3px; top:3px; width:18px; height:18px; border-radius:50%; background:#fff; box-shadow:0 1px 3px #0002; transition:transform 140ms ease; }
+#dialog-body .sync-toggle:checked { background:#3478f6; }
+.sync-toggle:checked::after { transform:translateX(16px); }
+.sync-password { position:relative; }
+#dialog-body .sync-password input { width:100% !important; padding-right:36px !important; }
+.sync-password button { position:absolute; right:5px; top:50%; transform:translateY(-50%); display:grid; place-items:center; width:30px; height:30px; border:0; background:transparent; color:#7e8a9c; border-radius:5px; }
+.sync-password button .icon { width:17px; height:17px; }
+.sync-footer { display:flex; align-items:center; gap:12px; margin-top:16px; }
+.sync-footer .settings-note { margin:0; }
+@media (max-width:800px) {
+  .sync-method-card { align-items:stretch; flex-direction:column; }
+  .sync-provider-switch button { flex:1; }
+  #dialog-body .sync-config-row { flex-wrap:wrap; gap:9px; }
+  #dialog-body .sync-config-row input:not([type=checkbox]):not([type=number]), .sync-password { width:100%; }
 }
 #dialog-title:focus {
   outline: none;

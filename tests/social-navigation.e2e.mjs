@@ -94,7 +94,7 @@ try {
     // Platform switches reload the archive asynchronously; a tab left from
     // the previous view can otherwise satisfy a count before render finishes.
     await expect(page.locator(`.${{ x: "x", reddit: "reddit", xiaohongshu: "note", zhihu: "zhihu" }[kind]}-shell`)).toBeVisible();
-    const cards = page.locator("#saved-posts [data-open-archive]");
+    const cards = page.locator("#saved-posts [data-open-archive]:not(.x-reply)");
     await expect(cards).toHaveCount(2);
     await expect(
       page.getByRole("tab", { name: "全部收藏", exact: true }),
@@ -155,9 +155,30 @@ try {
       kind === "x" || kind === "reddit" ? 1 : 0,
     );
     // No flattening: each official-style comment shows the actual parent.
-    await expect(page.locator(".reply-target strong")).toHaveCount(2);
-    assert.deepEqual(await page.locator(".reply-target strong").allTextContents(), ["阅读者", "读者"]);
-    await expect(page.getByText("对讨论的再次回复。", { exact: true })).toBeVisible();
+    if (kind === "reddit") {
+      const thread = page.locator(".reddit-comment-node").first();
+      await expect(thread.locator(".reddit-child-comments .reddit-comment")).toHaveCount(1);
+      const toggle = thread.locator(":scope > .reddit-thread-toggle");
+      await toggle.click();
+      await expect(toggle).toHaveAttribute("aria-expanded", "false");
+      await expect(thread.locator(".reddit-child-comments").first()).toBeHidden();
+      await toggle.press("Enter");
+      await expect(toggle).toHaveAttribute("aria-expanded", "true");
+      await expect(thread.locator(".reddit-child-comments").first()).toBeVisible();
+    } else {
+      const targets = page.locator(kind === "x" ? ".reply-target strong" : ".comment-reply-prefix > span");
+      await expect(targets).toHaveCount(kind === "x" ? 2 : 1);
+      assert.deepEqual(await targets.allTextContents(), kind === "x" ? ["阅读者", "读者"] : ["读者"]);
+      if (kind === "x") {
+        await expect(page.locator(".x-thread-group")).toHaveCount(1);
+        const offsets = await page.locator(".x-thread-entry").evaluateAll((nodes) => nodes.map((n) => n.getBoundingClientRect().x));
+        assert.equal(offsets[0], offsets[1]);
+      } else {
+        await expect(page.locator(".comment-child")).toHaveCount(1);
+        await expect(page.locator(".native-comment .post-menu")).toHaveCount(2);
+      }
+    }
+    await expect(page.getByText("对讨论的再次回复。", { exact: false }).last()).toBeVisible();
     await expect(page.locator(".discussion-back")).not.toContainText(
       /份收藏|篇笔记|我的收藏/,
     );
@@ -168,9 +189,9 @@ try {
       const action = cards.first().locator('[data-social-action="x-comments"]');
       await action.click();
       await expect(cards).toHaveCount(1);
-      await expect(cards.first().locator(".x-inline-reply")).toHaveCount(2);
+      await expect(cards.first().locator(".x-inline-comments .x-thread-entry")).toHaveCount(2);
       await action.click();
-      await expect(cards.first().locator(".x-inline-reply")).toHaveCount(0);
+      await expect(cards.first().locator(".x-inline-comments .x-thread-entry")).toHaveCount(0);
     }
 
     await expect(cards).toHaveCount(1);

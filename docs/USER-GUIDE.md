@@ -24,10 +24,10 @@ UI labels, dialogs, capture progress and known error messages are localized. Dat
 
 Content is stored in the app's data directory under `content-v2/`. Webpages retain one reading file plus assets. Social captures store structured posts, comments and media references. Settings and paired browser credentials are stored locally.
 
-Configure an HTTPS directory, username and app password in **Settings → WebDAV**. Sync runs on startup, after changes and every minute. The service uses only the `glassmark/content-v2/` subdirectory on your server:
+Choose a local folder, or configure an HTTP/HTTPS WebDAV directory, username and app password in **Settings → Sync**. Sync runs on startup, after changes and at the configured interval. The service uses only the `glassmark/` subdirectory on your server:
 
 ```text
-glassmark/content-v2/
+glassmark/
   events/<revision>.json
   archives/<id>/
     manifest.json
@@ -57,6 +57,6 @@ Use the reading toolbar to zoom a saved webpage from 50% to 200%. The scale is r
 
 ## WebDAV conflicts
 
-A settings badge and connection status indicate unresolved conflicts. In Settings → WebDAV, compare preserved versions and select one. For tag-only differences, “Merge all tags” combines both tag sets. A delete concurrent with an edit keeps the live record visible until you explicitly choose the deletion. If another change arrives while you are choosing, refresh and choose again. All clients should be updated to the same version to manage causal revisions consistently.
+A settings badge and connection status indicate unresolved conflicts. In Settings → Sync, compare preserved versions and select one. For tag-only differences, “Merge all tags” combines both tag sets. A delete concurrent with an edit keeps the live record visible until you explicitly choose the deletion. If another change arrives while you are choosing, refresh and choose again. All clients should be updated to the same version to manage causal revisions consistently.
 
 X saves require an individual status URL. Each capture has exactly one main post; the X count setting limits replies. Feed captures are blocked even if a whole-page capture is requested. Marked ads, posts before the selected root and recommendation sections are excluded. Source URLs and video players stay scoped to their own media tile.

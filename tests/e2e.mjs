@@ -402,10 +402,7 @@ try {
   await page.screenshot({ path: "artifacts/glassmark-x.png" });
   await page.locator(`.x-post[data-open-archive="${xItem.id}"] .x-post-text`).click();
   assert.equal(await page.locator(".x-reply").count(), 2);
-  assert.match(
-    await page.locator(".discussion-scope").textContent(),
-    /已保存 2 条/,
-  );
+  assert.equal(await page.locator(".discussion-scope").count(), 0);
   await page.getByRole("button", { name: "返回收藏", exact: true }).click();
   pass("X has a saved-content timeline and structured thread detail");
   // Model a virtualized feed: only one DOM article exists at any point.
@@ -529,6 +526,15 @@ try {
   await page.locator("#settings").click();
   await expect(page.locator("#dialog-title")).toBeFocused();
   await page.locator('[data-settings-category="sync"]').click();
+  await expect(page.locator('[data-sync-config="webdav"] #dav-enabled')).toBeVisible();
+  await expect(page.locator('[data-sync-config="webdav"] #dav-interval')).toBeVisible();
+  await page.locator("#dav-password").fill("test-app-password");
+  await page.locator("#sync-password-toggle").click();
+  await expect(page.locator("#dav-password")).toHaveAttribute("type", "text");
+  await page.locator("#sync-password-toggle").click();
+  await expect(page.locator("#dav-password")).toHaveAttribute("type", "password");
+  await page.locator("#dav-password").fill("");
+  await page.screenshot({ path: "artifacts/glassmark-sync-settings.png" });
   await page.locator('[data-sync-mode="local"]').click();
   await page.locator("#sync-local-path").fill("/tmp/glassmark-sync");
   await page.locator('[data-sync-mode="webdav"]').click();
@@ -1561,7 +1567,7 @@ try {
     await expect(video).toHaveAttribute("src", /^blob:/);
 
   await page.locator(".x-post-detail .social-media img").first().click();
-  await expect(page.getByRole("dialog", { name: "Archived media" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "查看已保存的媒体" })).toBeVisible();
   await expect(page.locator(".archive-viewer-counter")).toHaveText("1 / 6");
   await page.locator('[data-viewer-step="1"]').click();
   await expect(page.locator(".archive-viewer-counter")).toHaveText("2 / 6");

@@ -2,6 +2,7 @@ pub mod conflicts;
 pub mod preferences;
 pub mod store;
 pub mod sync;
+mod validation;
 use axum::{body::Bytes,extract::{Path,Query,Request,State,DefaultBodyLimit},http::{HeaderMap,HeaderValue,Method,StatusCode},middleware::{self,Next},response::{IntoResponse,Response},routing::{get,post,put},Json,Router};
 use serde_json::{json,Value};
 use std::{collections::HashMap,fs,sync::{Arc,Mutex,atomic::{AtomicBool,Ordering}},time::{Duration,Instant}};
@@ -90,9 +91,9 @@ fn check_revision(headers:&HeaderMap,patch:&Value,current:&Value)->Result<()>{
 }
 async fn update_item(State(state):State<AppState>,Path(id):Path<String>,headers:HeaderMap,Json(patch):Json<Value>)->Result<Json<Value>>{
     safe_id(&id)?;let _guard=state.store.writes.lock().map_err(|e|e.to_string())?;let mut value=state.store.get(&id)?;check_revision(&headers,&patch,&value)?;
-    if !patch["tags"].is_null(){let tags=patch["tags"].as_array().ok_or("Tags must be an array".to_string())?;if tags.len()>100||tags.iter().any(|t|!t.is_string()||t.as_str().unwrap().len()>100){return Err("Invalid tags".to_string().into());}value["tags"]=patch["tags"].clone();}
+    if !patch["tags"].is_null(){validation::tags(&patch["tags"])?;value["tags"]=patch["tags"].clone();}
     if let Some(title)=patch["title"].as_str(){if !title.trim().is_empty(){value["title"]=json!(title);}}
-    if let Some(folder)=patch.get("folderId"){if !folder.is_null(){let found=state.store.get(folder.as_str().ok_or("Invalid folder".to_string())?)?;if found["name"].is_null()||found["deleted"]==true{return Err("Folder does not exist".to_string().into());}}value["folderId"]=folder.clone();}
+    if let Some(folder)=patch.get("folderId"){if !folder.is_null(){state.store.folder(folder.as_str().ok_or("Invalid folder".to_string())?)?;}value["folderId"]=folder.clone();}
     let saved=state.store.event_unlocked("item",value,None)?;state.schedule_sync();Ok(Json(saved))
 }
 async fn delete_item(State(state):State<AppState>,Path(id):Path<String>,headers:HeaderMap)->Result<Json<Value>>{safe_id(&id)?;let _guard=state.store.writes.lock().map_err(|e|e.to_string())?;let mut value=state.store.get(&id)?;check_revision(&headers,&Value::Null,&value)?;value["deleted"]=json!(true);state.store.event_unlocked("item",value,None)?;state.schedule_sync();Ok(Json(json!({"ok":true})))}
@@ -115,7 +116,7 @@ async fn folders(State(state):State<AppState>)->Result<Json<Value>>{Ok(Json(json
 fn validate_folder(state:&AppState,value:&Value)->store::Result<()>{
     if value["name"].as_str().is_none_or(|s|s.trim().is_empty()||s.len()>100){return Err("文件夹名称需要 1–100 个字节".into());}
     let mut parent=value["parentId"].as_str().map(str::to_owned);let mut visited=std::collections::HashSet::new();
-    while let Some(id)=parent {if Some(id.as_str())==value["id"].as_str()||!visited.insert(id.clone()){return Err("文件夹不能包含自身或形成循环".into());}let folder=state.store.get(&id)?;if folder["name"].is_null(){return Err("父文件夹不存在".into());}parent=folder["parentId"].as_str().map(str::to_owned);}
+    while let Some(id)=parent {if Some(id.as_str())==value["id"].as_str()||!visited.insert(id.clone()){return Err("文件夹不能包含自身或形成循环".into());}let folder=state.store.folder(&id)?;parent=folder["parentId"].as_str().map(str::to_owned);}
     Ok(())
 }
 async fn create_folder(State(state):State<AppState>,Json(mut value):Json<Value>)->Result<Json<Value>>{value["id"]=json!(Uuid::new_v4());validate_folder(&state,&value)?;let saved=state.store.event("folder",value)?;state.schedule_sync();Ok(Json(saved))}

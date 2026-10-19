@@ -6,7 +6,15 @@
 | -------------------------- | -------------------------------------- |
 | `app/main.js`              | 目录、全局搜索、收藏选择、标签与删除   |
 | `app/settings.js`          | 分组偏好设置与连接管理                 |
-| `app/social.js`            | X / Reddit 信息流、帖子和评论          |
+| `app/social.js`            | 四个平台的页面布局与渲染入口          |
+| `app/social/comments.js`   | 评论树、回复对象和平台专属评论布局    |
+| `app/social/comment-actions.js` | 评论原地展开与滚动                 |
+| `app/social/media-viewer.js` | 独立媒体查看器、视频还原与焦点管理    |
+| `app/settings/sync.js`     | 同步设置渲染、草稿收集与校验          |
+| `app/storage.js`           | 可失败的浏览器偏好缓存                |
+| `extension/src/capture/identity.js` | 主帖自身链接和 DOM 身份判定     |
+| `extension/src/capture/adapters/` | 各平台独立的结构化 DOM 读取器     |
+| `extension/src/capture/validate.js` | 保存前再次核验主帖与来源标签页   |
 | `app/preview.js`           | 安全呈现单份网页内容                   |
 | `app/media.js`             | 本地媒体与离线 HLS 播放                |
 | `extension/src/context.js` | URL 识别与帖子范围                     |
@@ -20,7 +28,7 @@
 
 ## 收藏流程
 
-扩展识别当前 URL，读取客户端保存位置、标签目录和偏好。帖子只提取结构化正文、评论和媒体；网页逐节点读取计算样式并形成一份用于阅读的内容文件。
+扩展识别当前 URL，读取客户端保存位置、标签目录和偏好。帖子必须匹配来源 URL 的主帖自身标识；不会将首条内容或引用帖重新标记为目标帖。保存前再次核验来源文档、主帖与目标链接。帖子只提取结构化正文、评论和媒体；网页逐节点读取计算样式并形成一份用于阅读的内容文件。
 
 帖子加载期间保持来源页激活，避免后台页面的计时器节流与虚拟列表暂停。页面内浮层显示进度，支持保存已加载内容与取消。X 达到设置的条数、加载时长或无新增内容后结束；Reddit 不请求尚未加载的评论。
 
@@ -59,7 +67,7 @@ SQLite 存储文档、设备凭证、同步记录与 FTS5 trigram 索引。正�
 
 ## 同步
 
-WebDAV 仅操作独立的 `glassmark/content-v2/` 子目录，与其他内容格式隔离。资源与内容上传完成后再发布事件；下载端先完成资源、校验 SHA256，再提交事件与索引。修订事件不可变，删除使用 tombstone，冲突按 revision 确定顺序。
+WebDAV 仅操作独立的 `glassmark/` 子目录，与其他内容格式隔离。资源与内容上传完成后再发布事件；下载端先完成资源、校验 SHA256，再提交事件与索引。修订事件不可变，删除使用 tombstone，冲突按 revision 确定顺序。
 
 偏好与设备配对属于本机配置。标签、文件夹、收藏与删除事件跨设备同步。凭证不会进入内容目录。
 
@@ -78,3 +86,5 @@ CI 的 Rust 工作区缓存按平台、工具链和依赖锁文件隔离，缓�
 Revision events name their parent revisions. SQLite `revisions` stores immutable events and `heads` materializes each document's unconsumed branches. A sole head supersedes its ancestors regardless of clock order; multiple heads remain an explicit conflict. Existing unparented history replays as one ordered chain. Live branches remain visible during delete/edit conflicts. Resolutions atomically check the expected head set and create a new event referencing every resolved head.
 
 The desktop-only conflict API exposes metadata comparisons and permits version selection or explicit tag union when other editable fields agree. Mutation requests carry revision preconditions; stale requests return HTTP 409. WebDAV conditional writes verify an existing event's exact bytes before marking it uploaded. Archive bodies and content-addressed media remain immutable.
+
+同步事件仅接受 version 2 且必须显式记录 parents。旧的按修订排序拼接历史的兼容分支已删除。配置文件通过同目录临时文件替换，写入失败保留原文件。

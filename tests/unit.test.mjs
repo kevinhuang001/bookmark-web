@@ -130,7 +130,7 @@ test("navigation isolates X/Twitter, Reddit and ordinary web pages", async () =>
   const { itemsInView } = await import("../app/library.js");
   const items = [
     { id: "a", url: "https://x.com/a/status/1", platform: "x", tags: [] },
-    { id: "b", url: "https://twitter.com/b/status/2", tags: [] },
+    { id: "b", url: "https://twitter.com/b/status/2", platform: "x", tags: [] },
     { id: "c", url: "https://reddit.com/r/a", platform: "reddit", tags: [] },
     { id: "d", url: "https://example.com", folderId: "child", tags: [] },
   ];
@@ -164,7 +164,6 @@ test("social feed sorts archived metrics and filters root authors without flatte
     feedItems(items, { author: "Lin" }).map((i) => i.id),
     ["a"],
   );
-  assert.equal(feedItems(items, { threads: true }).length, 2);
 });
 
 test("social media refuses live and executable URLs outside the archive", async () => {

@@ -2,6 +2,7 @@
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 const aliases = {
   video: "video",
+  eye: "eye",
   copy: "copy",
   file: "file-text",
   search: "search",

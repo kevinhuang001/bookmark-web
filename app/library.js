@@ -2,13 +2,6 @@
 export function itemPlatform(item) {
   if (["web", "x", "reddit", "xiaohongshu", "zhihu"].includes(item.platform))
     return item.platform;
-  try {
-    const host = new URL(item.url).hostname;
-    if (/(^|\.)(x\.com|twitter\.com)$/.test(host)) return "x";
-    if (/(^|\.)reddit\.com$/.test(host)) return "reddit";
-    if (/(^|\.)xiaohongshu\.com$/.test(host)) return "xiaohongshu";
-    if (/(^|\.)zhihu\.com$/.test(host)) return "zhihu";
-  } catch {}
   return "web";
 }
 export function descendants(folders, id, seen = new Set()) {
@@ -56,12 +49,11 @@ export function metric(value) {
 }
 export function feedItems(
   items,
-  { threads = false, author = "", community = "", sort = "recent" } = {},
+  { author = "", community = "", sort = "recent" } = {},
 ) {
   return items
     .filter(
       (item) =>
-        (!threads || (item.posts?.length || 0) > 1) &&
         (!author ||
           (rootPost(item).authorName || rootPost(item).author) === author) &&
         (!community ||

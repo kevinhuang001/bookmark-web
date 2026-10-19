@@ -1,4 +1,4 @@
-import { platform } from "./capture/adapters.js";
+import { platform } from "./capture/platforms.js";
 /** URL scope is deliberately independent of the site's surrounding page chrome. */
 export function pageContext(value) {
   try {

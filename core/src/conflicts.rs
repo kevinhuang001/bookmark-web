@@ -9,7 +9,7 @@ fn revision_name(value: &str) -> bool {
     !value.is_empty() && value.len() < 100 && value.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-')
 }
 pub fn validate_event(event: &Value) -> Result<()> {
-    if !event["data"].is_object()
+    if event["version"] != 2 || !event["parents"].is_array() || !event["data"].is_object()
         || !valid_id(event["data"]["id"].as_str().ok_or("Missing id")?)
         || !["item", "folder", "tag"].contains(&event["kind"].as_str().unwrap_or(""))
         || !revision_name(event["revision"].as_str().unwrap_or("")) {
@@ -74,14 +74,9 @@ impl Store {
             events
         };
         let mut ancestors = BTreeSet::new();
-        let mut previous_untracked: Option<&str> = None;
-        for (rev, old) in &events {
-            if let Some(parents) = old["parents"].as_array() {
-                for parent in parents { ancestors.insert(parent.as_str().unwrap().to_owned()); }
-            } else {
-                // Existing history replays as one chain; new edits explicitly name their bases.
-                if let Some(previous) = previous_untracked { ancestors.insert(previous.to_owned()); }
-                previous_untracked = Some(rev);
+        for old in events.values() {
+            for parent in old["parents"].as_array().ok_or("Invalid revision parents")? {
+                ancestors.insert(parent.as_str().ok_or("Invalid revision parent")?.to_owned());
             }
         }
         let heads: Vec<_> = events.iter().filter(|(rev,_)|!ancestors.contains(*rev)).collect();
@@ -140,7 +135,7 @@ impl Store {
     use super::*;
     #[test]fn causal_heads_override_clock_order_and_reject_stale_resolution(){
         let dir=tempfile::tempdir().unwrap();let store=Store::open(dir.path().to_path_buf()).unwrap();let id=Uuid::new_v4().to_string();
-        let event=|revision:&str,parents:Value,name:&str|json!({"revision":revision,"kind":"folder","parents":parents,"data":{"id":id,"name":name}});
+        let event=|revision:&str,parents:Value,name:&str|json!({"version":2,"revision":revision,"kind":"folder","parents":parents,"data":{"id":id,"name":name}});
         let root=event("z",json!([]),"Root");let left=event("a",json!(["z"]),"Left");let right=event("b",json!(["z"]),"Right");
         store.index(&left).unwrap();store.index(&root).unwrap();assert_eq!(store.get(&id).unwrap()["name"],"Left");store.index(&right).unwrap();assert_eq!(store.conflict_count().unwrap(),1);
         assert!(store.resolve_conflict(&id,&["a".into()],"a",false).is_err());store.resolve_conflict(&id,&["a".into(),"b".into()],"a",false).unwrap();assert_eq!(store.get(&id).unwrap()["name"],"Left");store.index(&right).unwrap();assert_eq!(store.conflict_count().unwrap(),0);
@@ -149,5 +144,19 @@ impl Store {
         let dir=tempfile::tempdir().unwrap();let store=Store::open(dir.path().to_path_buf()).unwrap();let base=store.event("folder",json!({"name":"Root"})).unwrap();let id=base["id"].as_str().unwrap().to_owned();
         let mut left=base.clone();left["name"]=json!("Left");store.event("folder",left).unwrap();let mut right=base;right["name"]=json!("Right");store.event("folder",right).unwrap();drop(store);
         let store=Store::open(dir.path().to_path_buf()).unwrap();assert_eq!(store.conflict_count().unwrap(),1);let conflict=store.conflicts().unwrap().remove(0);let heads:Vec<String>=conflict["versions"].as_array().unwrap().iter().map(|v|v["revision"].as_str().unwrap().to_owned()).collect();store.resolve_conflict(&id,&heads,&heads[0],false).unwrap();drop(store);assert_eq!(Store::open(dir.path().to_path_buf()).unwrap().conflict_count().unwrap(),0);
+    }
+}
+
+#[cfg(test)]mod format_tests {
+    use super::*;
+    #[test]
+    fn obsolete_history_without_explicit_causal_parents_is_rejected() {
+        let mut event=json!({"version":2,"revision":"a","kind":"folder","parents":[],"data":{"id":Uuid::new_v4().to_string(),"name":"A"}});
+        assert!(validate_event(&event).is_ok());
+        event.as_object_mut().unwrap().remove("parents");
+        assert!(validate_event(&event).is_err());
+        event["parents"]=json!([]);
+        event["version"]=json!(1);
+        assert!(validate_event(&event).is_err());
     }
 }
