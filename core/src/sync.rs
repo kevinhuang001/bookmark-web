@@ -3,18 +3,24 @@ use crate::store::{atomic_write, valid_asset, valid_id, Result, Store};
 use reqwest::{Client, Method, StatusCode};
 use serde::{Deserialize,Serialize};
 use serde_json::Value;
-use std::{collections::HashSet,fs,path::Path};
+use std::{collections::HashSet,fs,io::Read,path::{Path,PathBuf}};
 use sha2::{Digest,Sha256};
 
 fn default_sync_interval()->u64{60}
+fn default_sync_mode()->String{"webdav".into()}
 #[derive(Clone,Debug,Serialize,Deserialize)]
 #[serde(rename_all="camelCase")]
-pub struct SyncConfig { pub enabled:bool,pub url:String,pub username:String,#[serde(default)]pub password:String,#[serde(default="default_sync_interval")]pub interval_seconds:u64 }
-impl Default for SyncConfig {fn default()->Self{Self{enabled:false,url:String::new(),username:String::new(),password:String::new(),interval_seconds:default_sync_interval()}}}
+pub struct SyncConfig { pub enabled:bool,#[serde(default="default_sync_mode")]pub mode:String,#[serde(default)]pub local_path:String,pub url:String,pub username:String,#[serde(default)]pub password:String,#[serde(default="default_sync_interval")]pub interval_seconds:u64 }
+impl Default for SyncConfig {fn default()->Self{Self{enabled:false,mode:default_sync_mode(),local_path:String::new(),url:String::new(),username:String::new(),password:String::new(),interval_seconds:default_sync_interval()}}}
 impl SyncConfig {
     pub fn validate(&self)->Result<()> {
         if !(30..=86400).contains(&self.interval_seconds){return Err("同步周期应在 30 到 86400 秒之间".into());}
+        if !["local","webdav"].contains(&self.mode.as_str()){return Err("同步方式只能选择本地或 WebDAV".into());}
         if !self.enabled{return Ok(());}
+        if self.mode=="local" {
+            if !Path::new(self.local_path.trim()).is_absolute(){return Err("本地同步路径不能为空且必须是绝对路径".into());}
+            return Ok(());
+        }
         let url=url::Url::parse(&self.url).map_err(|e|e.to_string())?;
         if !["http","https"].contains(&url.scheme())||url.host_str().is_none(){return Err("WebDAV 地址必须是 HTTP 或 HTTPS".into());}
         if !url.username().is_empty()||url.password().is_some()||url.query().is_some()||url.fragment().is_some(){return Err("请使用不含账号、查询参数或锚点的 WebDAV 地址".into());}Ok(())
@@ -66,8 +72,141 @@ impl Dav {
     }
 }
 fn archive_files(data:&Value)->Vec<&'static str>{if data["platform"]=="web"{vec!["content.html","manifest.json"]}else{vec!["manifest.json"]}}
-pub async fn run(store:&Store,config:SyncConfig)->Result<usize> {
-    config.validate()?;if !config.enabled{return Ok(0);}
+
+fn file_sha256(path:&Path)->Result<String>{
+    let mut file=fs::File::open(path).map_err(|e|e.to_string())?;
+    let mut hasher=Sha256::new();
+    let mut buffer=[0u8;65536];
+    loop{let size=file.read(&mut buffer).map_err(|e|e.to_string())?;if size==0{break;}hasher.update(&buffer[..size]);}
+    Ok(format!("{:x}",hasher.finalize()))
+}
+fn copy_once(source:&Path,destination:&Path,expected_hash:Option<&str>)->Result<()>{
+    if !source.is_file(){return Err(format!("同步文件不存在：{}",source.display()));}
+    if let Some(expected)=expected_hash{if file_sha256(source)?!=expected{return Err("同步资源校验失败".into());}}
+    if destination.is_file(){
+        if let Some(expected)=expected_hash{if file_sha256(destination)?!=expected{return Err("同步资源校验失败".into());}}
+        return Ok(());
+    }
+    if let Some(parent)=destination.parent(){fs::create_dir_all(parent).map_err(|e|e.to_string())?;}
+    let temp=destination.with_extension(format!("{}.tmp",uuid::Uuid::new_v4()));
+    fs::copy(source,&temp).map_err(|e|e.to_string())?;
+    if let Some(expected)=expected_hash{
+        if file_sha256(&temp)?!=expected{let _=fs::remove_file(&temp);return Err("同步资源校验失败".into());}
+    }
+    if destination.exists(){
+        let _=fs::remove_file(&temp);
+        if let Some(expected)=expected_hash{if file_sha256(destination)?!=expected{return Err("同步资源校验失败".into());}}
+        return Ok(());
+    }
+    match fs::hard_link(&temp,destination){
+        Ok(())=>{fs::remove_file(&temp).map_err(|e|e.to_string())?;}
+        Err(_) if destination.exists()=>{
+            let _=fs::remove_file(&temp);
+            if let Some(expected)=expected_hash{if file_sha256(destination)?!=expected{return Err("同步资源校验失败".into());}}
+        }
+        Err(_)=>{
+            if destination.exists(){let _=fs::remove_file(&temp);return Ok(());}
+            if let Err(error)=fs::rename(&temp,destination){let _=fs::remove_file(&temp);return Err(error.to_string());}
+        }
+    }
+    Ok(())
+}
+fn copy_event_once(source:&Path,destination:&Path)->Result<()>{
+    let expected=fs::read(source).map_err(|e|e.to_string())?;
+    if destination.is_file(){
+        if fs::read(destination).map_err(|e|e.to_string())?!=expected{return Err(format!("同步事件内容不一致：{}",destination.file_name().unwrap_or_default().to_string_lossy()));}
+        return Ok(());
+    }
+    copy_once(source,destination,None)?;
+    if fs::read(destination).map_err(|e|e.to_string())?!=expected{return Err("同步事件校验失败".into());}
+    Ok(())
+}
+fn copy_archive(source_root:&Path,destination_root:&Path,event:&Value)->Result<()>{
+    if event["kind"]!="item"||event["data"]["deleted"]==true{return Ok(());}
+    let id=event["data"]["id"].as_str().ok_or("Missing archive id")?;
+    if !valid_id(id){return Err("Invalid archive id".into());}
+    let source=source_root.join("archives").join(id);
+    let destination=destination_root.join("archives").join(id);
+    fs::create_dir_all(destination.join("assets")).map_err(|e|e.to_string())?;
+    for file in archive_files(&event["data"]){copy_once(&source.join(file),&destination.join(file),None)?;}
+    if let Some(resources)=event["data"]["resources"].as_array(){
+        for resource in resources{
+            if resource["status"]!="saved"{continue;}
+            let name=resource["name"].as_str().ok_or("Missing resource name")?;
+            if !valid_asset(name){return Err("Invalid resource name".into());}
+            let hash=name.split('.').next().unwrap();
+            copy_once(&source.join("assets").join(name),&destination.join("assets").join(name),Some(hash))?;
+        }
+    }
+    Ok(())
+}
+async fn run_local(store:&Store,config:&SyncConfig)->Result<usize>{
+    let selected=PathBuf::from(config.local_path.trim());
+    fs::create_dir_all(&selected).map_err(|e|e.to_string())?;
+    let base=selected.join("glassmark").join("content-v2");
+    fs::create_dir_all(base.join("events")).map_err(|e|e.to_string())?;
+    fs::create_dir_all(base.join("archives")).map_err(|e|e.to_string())?;
+    let source_root=fs::canonicalize(&store.root).map_err(|e|e.to_string())?;
+    let target_root=fs::canonicalize(&base).map_err(|e|e.to_string())?;
+    if target_root.starts_with(&source_root)||source_root.starts_with(&target_root){
+        return Err("本地同步目录不能位于 Glassmark 本地数据目录内或包含该目录".into());
+    }
+    let remote_events=target_root.join("events");
+    let namespace=format!("local|{}|",target_root.display());
+    let synced:HashSet<String>={
+        let db=store.db.lock().map_err(|e|e.to_string())?;
+        let mut stmt=db.prepare("SELECT event FROM synced").map_err(|e|e.to_string())?;
+        stmt.query_map([],|r|r.get(0)).map_err(|e|e.to_string())?
+            .collect::<std::result::Result<_,_>>().map_err(|e|e.to_string())?
+    };
+    let mut count=0;
+    for entry in fs::read_dir(source_root.join("events")).map_err(|e|e.to_string())?{
+        let entry=entry.map_err(|e|e.to_string())?;
+        let name=entry.file_name().to_string_lossy().to_string();
+        if !event_name(&name){continue;}
+        let remote=remote_events.join(&name);
+        if synced.contains(&(namespace.clone()+&name))&&remote.is_file(){continue;}
+        let bytes=fs::read(entry.path()).map_err(|e|e.to_string())?;
+        if bytes.len()>16*1024*1024{return Err("本地同步事件超过大小限制".into());}
+        let event:Value=serde_json::from_slice(&bytes).map_err(|e|e.to_string())?;
+        crate::conflicts::validate_event(&event)?;
+        if event["revision"].as_str().is_none_or(|revision|format!("{revision}.json")!=name){return Err("Invalid sync event filename".into());}
+        copy_archive(&source_root,&target_root,&event)?;
+        copy_event_once(&entry.path(),&remote)?;
+        store.db.lock().map_err(|e|e.to_string())?.execute("INSERT OR IGNORE INTO synced VALUES(?1)",[&(namespace.clone()+&name)]).map_err(|e|e.to_string())?;
+        count+=1;
+    }
+    for entry in fs::read_dir(&remote_events).map_err(|e|e.to_string())?{
+        let entry=entry.map_err(|e|e.to_string())?;
+        let name=entry.file_name().to_string_lossy().to_string();
+        if !event_name(&name){continue;}
+        let remote=entry.path();
+        let bytes=fs::read(&remote).map_err(|e|e.to_string())?;
+        if bytes.len()>16*1024*1024{return Err("本地同步事件超过大小限制".into());}
+        let local=source_root.join("events").join(&name);
+        if local.is_file(){
+            if fs::read(&local).map_err(|e|e.to_string())?!=bytes{return Err(format!("同步事件内容不一致：{name}"));}
+            continue;
+        }
+        let event:Value=serde_json::from_slice(&bytes).map_err(|e|e.to_string())?;
+        crate::conflicts::validate_event(&event)?;
+        if event["revision"].as_str().is_none_or(|revision|format!("{revision}.json")!=name){return Err("Invalid sync event filename".into());}
+        copy_archive(&target_root,&source_root,&event)?;
+        atomic_write(&local,&bytes)?;
+        if let Err(error)=store.index(&event){let _=fs::remove_file(&local);return Err(error);}
+        store.db.lock().map_err(|e|e.to_string())?.execute("INSERT OR IGNORE INTO synced VALUES(?1)",[&(namespace.clone()+&name)]).map_err(|e|e.to_string())?;
+        count+=1;
+    }
+    Ok(count)
+}
+
+pub async fn run(store:&Store,config:SyncConfig)->Result<usize>{
+    config.validate()?;
+    if !config.enabled{return Ok(0);}
+    if config.mode=="local"{return run_local(store,&config).await;}
+    run_webdav(store,config).await
+}
+async fn run_webdav(store:&Store,config:SyncConfig)->Result<usize>{
     let mut base=url::Url::parse(&(config.url.trim_end_matches('/').to_owned()+"/")).map_err(|e|e.to_string())?;
     // Dedicated subdirectory leaves the user's other WebDAV files untouched.
     base=base.join("glassmark/").map_err(|e|e.to_string())?;
@@ -119,4 +258,39 @@ pub async fn run(store:&Store,config:SyncConfig)->Result<usize> {
     Ok(count)
 }
 
-#[cfg(test)]mod tests{use super::*;#[test]fn rejects_unsafe_endpoints(){assert!(SyncConfig{enabled:true,url:"http://example.com".into(),..Default::default()}.validate().is_ok());assert!(SyncConfig{enabled:true,url:"ftp://example.com".into(),..Default::default()}.validate().is_err());assert!(SyncConfig{interval_seconds:29,..Default::default()}.validate().is_err());assert!(SyncConfig{enabled:true,url:"https://user:pass@example.com".into(),..Default::default()}.validate().is_err());assert!(!event_name("../secret.json"));}}
+#[cfg(test)]mod tests{
+use super::*;
+#[test]fn rejects_unsafe_endpoints(){
+assert!(SyncConfig{enabled:true,url:"http://example.com".into(),..Default::default()}.validate().is_ok());
+assert!(SyncConfig{enabled:true,url:"ftp://example.com".into(),..Default::default()}.validate().is_err());
+assert!(SyncConfig{interval_seconds:29,..Default::default()}.validate().is_err());
+assert!(SyncConfig{enabled:true,url:"https://user:pass@example.com".into(),..Default::default()}.validate().is_err());
+assert!(!event_name("../secret.json"));
+}
+#[test]fn old_config_defaults_to_webdav(){
+let config:SyncConfig=serde_json::from_str(r#"{"enabled":true,"url":"https://example.com/dav/","username":"user","password":"secret","intervalSeconds":60}"#).unwrap();
+assert_eq!(config.mode,"webdav");
+assert_eq!(config.local_path,"");
+assert!(config.validate().is_ok());
+}
+#[test]fn local_mode_requires_an_absolute_path(){
+let mut config=SyncConfig{enabled:true,mode:"local".into(),..Default::default()};
+assert!(config.validate().is_err());
+config.local_path="/tmp/glassmark-sync".into();
+assert!(config.validate().is_ok());
+config.local_path="relative/path".into();
+assert!(config.validate().is_err());
+config.enabled=false;
+assert!(config.validate().is_ok());
+}
+#[tokio::test]async fn local_sync_creates_a_dedicated_glassmark_directory(){
+let data=tempfile::tempdir().unwrap();
+let share=tempfile::tempdir().unwrap();
+let store=Store::open(data.path().join("data")).unwrap();
+let path=share.path().join("shared");
+let config=SyncConfig{enabled:true,mode:"local".into(),local_path:path.display().to_string(),..Default::default()};
+assert_eq!(run(&store,config).await.unwrap(),0);
+assert!(path.join("glassmark/content-v2/events").is_dir());
+assert!(path.join("glassmark/content-v2/archives").is_dir());
+}
+}
