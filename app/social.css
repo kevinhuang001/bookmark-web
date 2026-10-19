@@ -1632,3 +1632,23 @@
 .zhihu-main > .discussion-back {
   margin-bottom: 12px;
 }
+
+
+/* X and Reddit use vertical tag navigation; Xiaohongshu and Zhihu keep top tabs. */
+.sidebar-tag-section { margin: 20px 0 8px; min-width: 0; }
+.sidebar-tag-title { padding: 0 13px 9px; font-size: 12px; font-weight: 650; color: #6c7b86; }
+.sidebar-tag-section .collection-navigation { display: flex; flex-direction: column; align-items: stretch; border: 0; gap: 6px; background: transparent; }
+.sidebar-tag-section .collection-tabs { display: flex; flex-direction: column; align-items: stretch; gap: 3px; overflow: visible; padding: 0; }
+.sidebar-tag-section .collection-tabs [role="tab"] { display: block; width: 100%; min-height: 37px; padding: 9px 13px; text-align: left; border-radius: 10px; overflow: hidden; text-overflow: ellipsis; font-size: 13px; }
+.sidebar-tag-section .collection-tabs [role="tab"][aria-selected="true"] { background: color-mix(in srgb, var(--collection-accent) 9%, white); }
+.sidebar-tag-section .collection-tabs [role="tab"][aria-selected="true"]::after { top: 9px; bottom: 9px; left: 0; right: auto; width: 3px; height: auto; }
+.sidebar-tag-section .collection-add-tag { width: auto; height: 35px; margin: 0 0 0 4px; align-self: flex-start; padding: 0 10px; border-radius: 9px; }
+.x-feed-title { font-size: 15px; font-weight: 700; padding: 17px 18px; }
+.social-sort-bar { display: flex; justify-content: flex-end; align-items: center; gap: 6px; padding: 9px 16px; border-bottom: 1px solid #eff3f4; }
+.social-sort-bar button { border: 0; background: transparent; border-radius: 20px; padding: 7px 13px; color: #71808d; font-size: 13px; cursor: pointer; }
+.social-sort-bar button:hover { background: #f3f6f8; }
+.social-sort-bar button.active { color: var(--collection-accent, #0f1419); background: color-mix(in srgb, var(--collection-accent, #0f1419) 10%, white); font-weight: 700; }
+.note-sort { margin-bottom: 18px; }
+.tag-empty { text-align: center; padding: 60px 24px; }
+.tag-empty strong { color: #263440; font-size: 18px; }
+.tag-empty p { margin: 8px 0 0; color: #71808d; }
