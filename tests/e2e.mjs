@@ -212,7 +212,7 @@ try {
   });
   await page.evaluate(() => document.fonts.ready);
   await page.locator("html[data-app-ready=\"true\"]").waitFor();
-  await page.getByText("暂无内容", { exact: true }).waitFor();
+  await page.locator("#reader .empty-reader p").getByText("暂无内容", { exact: true }).waitFor();
   if (recording) {
     await page.evaluate(() => {
       const note = document.createElement("div");
