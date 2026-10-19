@@ -151,8 +151,16 @@ function notePost(item) {
   const post = rootPost(item);
   return `<article class="note-post" data-open-archive="${item.id}" tabindex="0" role="link" aria-label="${tr("打开 {1}", { 1: esc(post.title || item.title) })}">${noteCover(post, item)}<div class="note-card-info"><h2>${esc(post.title || post.text?.slice(0, 50) || item.title)}</h2><div class="note-card-author">${avatar(post, item)}<span>${esc(authorName(post))}</span><span class="note-card-likes">${icon("heart")}${esc(post.stats?.likes || "")}</span></div></div></article>`;
 }
+function commentTime(post) {
+  const raw = post.postedAt;
+  if (raw) {
+    const date = new Date(raw);
+    if (!Number.isNaN(date.getTime())) return date.toLocaleString(locale(), { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+  }
+  return esc(post.postedAtText || "");
+}
 function noteComment(post, item) {
-  return `<article class="note-comment" style="--depth:${Math.min(post.depth || 0, 4)}">${avatar(post, item)}<div><strong>${esc(authorName(post))}</strong><p>${bodyText(post.text)}</p><span>${esc(post.postedAt ? new Date(post.postedAt).toLocaleDateString(locale()) : "")}</span></div><span class="note-comment-likes">${icon("heart")}${esc(post.stats?.likes || "")}</span></article>`;
+  return `<article class="note-comment" style="--depth:${Math.min(post.depth || 0, 4)}">${avatar(post, item)}<div><strong>${esc(authorName(post))}</strong><p>${bodyText(post.text)}</p><span>${commentTime(post)}</span></div><span class="note-comment-likes">${icon("heart")}${esc(post.stats?.likes || "")}</span></article>`;
 }
 function noteDetail(item) {
   const post = rootPost(item);
