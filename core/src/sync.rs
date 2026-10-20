@@ -5,6 +5,20 @@ use serde::{Deserialize,Serialize};
 use serde_json::Value;
 use std::{collections::HashSet,fs,io::Read,path::{Path,PathBuf}};
 use sha2::{Digest,Sha256};
+use std::sync::{Arc,Mutex};
+#[derive(Clone,Default)]
+pub struct Progress(Option<Arc<Mutex<Value>>>);
+impl Progress {
+    pub fn new(state:Arc<Mutex<Value>>)->Self{Self(Some(state))}
+    pub fn update(&self,stage:&str,detail:&str){if let Some(state)=&self.0{if let Ok(mut value)=state.lock(){value["stage"]=Value::String(stage.into());value["detail"]=Value::String(detail.into());}}}
+}
+fn network_error(error:reqwest::Error)->String{
+    let reason=if error.is_timeout(){"Connection timed out"}else if error.is_connect(){"Connection failed"}else{"WebDAV request failed"};
+    let mut message=format!("{reason}: {error}");
+    let mut source=std::error::Error::source(&error);
+    while let Some(cause)=source{message.push_str(&format!(": {cause}"));source=cause.source();}
+    message
+}
 
 fn default_sync_interval()->u64{60}
 fn default_sync_mode()->String{"webdav".into()}
@@ -32,26 +46,27 @@ impl SyncConfig {
     pub fn save(&self,store:&Store)->Result<()> {self.validate()?;atomic_write(&store.root.join("webdav.json"),&serde_json::to_vec(self).unwrap())}
 }
 fn event_name(name:&str)->bool{name.ends_with(".json")&&name.len()<100&&name.bytes().all(|b|b.is_ascii_alphanumeric()||b==b'-'||b==b'.')&&!name.contains("..")}
-struct Dav { client:Client,base:url::Url,config:SyncConfig }
+struct Dav { client:Client,base:url::Url,config:SyncConfig,progress:Progress }
 impl Dav {
     fn url(&self,path:&str)->Result<url::Url>{self.base.join(path).map_err(|e|e.to_string())}
     fn req(&self,method:Method,path:&str)->Result<reqwest::RequestBuilder>{Ok(self.client.request(method,self.url(path)?).basic_auth(&self.config.username,Some(&self.config.password)))}
     async fn mkdir(&self,path:&str)->Result<()> {
-        let response=self.req(Method::from_bytes(b"MKCOL").unwrap(),path)?.send().await.map_err(|e|e.to_string())?;
+        let response=self.req(Method::from_bytes(b"MKCOL").unwrap(),path)?.send().await.map_err(network_error)?;
         if response.status().is_success()||response.status()==StatusCode::METHOD_NOT_ALLOWED{Ok(())}else{Err(format!("WebDAV MKCOL {path}: {}",response.status()))}
     }
     async fn put(&self,remote:&str,local:&Path)->Result<()> {
-        let head=self.req(Method::HEAD,remote)?.send().await.map_err(|e|e.to_string())?;
+        self.progress.update("upload",remote);
+        let head=self.req(Method::HEAD,remote)?.send().await.map_err(network_error)?;
         if head.status().is_success(){return self.verify_event(remote,local).await;}
         if head.status()!=StatusCode::NOT_FOUND{return Err(format!("WebDAV HEAD: {}",head.status()));}
         let file=tokio::fs::File::open(local).await.map_err(|e|e.to_string())?;
         let stream=tokio_util::io::ReaderStream::new(file);
-        let response=self.req(Method::PUT,remote)?.header("If-None-Match","*").body(reqwest::Body::wrap_stream(stream)).send().await.map_err(|e|e.to_string())?;
+        let response=self.req(Method::PUT,remote)?.header("If-None-Match","*").body(reqwest::Body::wrap_stream(stream)).send().await.map_err(network_error)?;
         if response.status().is_success(){Ok(())}else if response.status()==StatusCode::PRECONDITION_FAILED{self.verify_event(remote,local).await}else{Err(format!("WebDAV PUT: {}",response.status()))}
     }
     async fn verify_event(&self,remote:&str,local:&Path)->Result<()> {
         if !remote.starts_with("events/"){return Ok(());}
-        let response=self.req(Method::GET,remote)?.send().await.map_err(|e|e.to_string())?.error_for_status().map_err(|e|e.to_string())?;
+        let response=self.req(Method::GET,remote)?.send().await.map_err(network_error)?.error_for_status().map_err(|e|e.to_string())?;
         if response.content_length().is_some_and(|n|n>16*1024*1024){return Err("WebDAV 索引过大".into());}
         let bytes=response.bytes().await.map_err(|e|e.to_string())?;
         if bytes.len()>16*1024*1024 || bytes.as_ref()!=fs::read(local).map_err(|e|e.to_string())? {return Err("远端同步事件不一致，已停止同步".into());}
@@ -59,7 +74,8 @@ impl Dav {
     }
     async fn get_file(&self,remote:&str,local:&Path,limit:u64,hash:Option<&str>)->Result<()> {
         if local.is_file(){return Ok(());}
-        let mut response=self.req(Method::GET,remote)?.send().await.map_err(|e|e.to_string())?.error_for_status().map_err(|e|e.to_string())?;
+        self.progress.update("download",remote);
+        let mut response=self.req(Method::GET,remote)?.send().await.map_err(network_error)?.error_for_status().map_err(|e|e.to_string())?;
         if response.content_length().is_some_and(|n|n>limit){return Err("远端文件超过大小限制".into());}
         if let Some(parent)=local.parent(){fs::create_dir_all(parent).map_err(|e|e.to_string())?;}
         let temp=local.with_extension(format!("{}.part",uuid::Uuid::new_v4()));
@@ -143,7 +159,8 @@ fn copy_archive(source_root:&Path,destination_root:&Path,event:&Value)->Result<(
     }
     Ok(())
 }
-fn run_local(store:&Store,config:&SyncConfig)->Result<usize>{
+fn run_local(store:&Store,config:&SyncConfig,progress:&Progress)->Result<usize>{
+    progress.update("local",&config.local_path);
     let selected=PathBuf::from(config.local_path.trim());
     fs::create_dir_all(&selected).map_err(|e|e.to_string())?;
     let base=selected.join("glassmark");
@@ -168,6 +185,7 @@ fn run_local(store:&Store,config:&SyncConfig)->Result<usize>{
         let entry=entry.map_err(|e|e.to_string())?;
         let name=entry.file_name().to_string_lossy().to_string();
         if !event_name(&name){continue;}
+        progress.update("local",&name);
         let remote=remote_events.join(&name);
         if synced.contains(&(namespace.clone()+&name))&&remote.is_file(){continue;}
         let bytes=fs::read(entry.path()).map_err(|e|e.to_string())?;
@@ -204,29 +222,32 @@ fn run_local(store:&Store,config:&SyncConfig)->Result<usize>{
     Ok(count)
 }
 
-pub async fn run(store:&Store,config:SyncConfig)->Result<usize>{
+pub async fn run(store:&Store,config:SyncConfig)->Result<usize>{run_with_progress(store,config,Progress::default()).await}
+pub async fn run_with_progress(store:&Store,config:SyncConfig,progress:Progress)->Result<usize>{
     config.validate()?;
     if !config.configured() && config.local_path.trim().is_empty(){return Ok(0);}
     // The archive is always local. A selected folder is mirrored in either mode.
     let mut count=0;
     if !config.local_path.trim().is_empty(){
-        let local_store=store.clone();let local_config=config.clone();
-        count=tokio::task::spawn_blocking(move||run_local(&local_store,&local_config)).await.map_err(|e|e.to_string())??;
+        let local_store=store.clone();let local_config=config.clone();let local_progress=progress.clone();
+        count=tokio::task::spawn_blocking(move||run_local(&local_store,&local_config,&local_progress)).await.map_err(|e|e.to_string())??;
     }
     if config.mode=="local"{return Ok(count);}
-    run_webdav(store,config).await.map(|remote|count+remote)
+    run_webdav(store,config,progress).await.map(|remote|count+remote)
 }
-async fn run_webdav(store:&Store,config:SyncConfig)->Result<usize>{
+async fn run_webdav(store:&Store,config:SyncConfig,progress:Progress)->Result<usize>{
+    progress.update("connect", "WebDAV");
     let mut base=url::Url::parse(&(config.url.trim_end_matches('/').to_owned()+"/")).map_err(|e|e.to_string())?;
     // Dedicated subdirectory leaves the user's other WebDAV files untouched.
     base=base.join("glassmark/").map_err(|e|e.to_string())?;
-    let dav=Dav{client:Client::builder().redirect(reqwest::redirect::Policy::none()).timeout(std::time::Duration::from_secs(300)).build().map_err(|e|e.to_string())?,base,config};
+    let dav=Dav{client:Client::builder().redirect(reqwest::redirect::Policy::none()).connect_timeout(std::time::Duration::from_secs(15)).timeout(std::time::Duration::from_secs(300)).build().map_err(|e|e.to_string())?,base,config,progress:progress.clone()};
     dav.mkdir("").await?;dav.mkdir("events/").await?;dav.mkdir("archives/").await?;
     let namespace=format!("{}|{}|",dav.base,dav.config.username);
     let synced:HashSet<String>={let db=store.db.lock().map_err(|e|e.to_string())?;let mut stmt=db.prepare("SELECT event FROM synced").map_err(|e|e.to_string())?;let result=stmt.query_map([],|r|r.get(0)).map_err(|e|e.to_string())?.collect::<std::result::Result<_,_>>().map_err(|e|e.to_string())?;result};
     let mut count=0;
     for entry in fs::read_dir(store.root.join("events")).map_err(|e|e.to_string())? {
         let entry=entry.map_err(|e|e.to_string())?;let name=entry.file_name().to_string_lossy().to_string();if !event_name(&name)||synced.contains(&(namespace.clone()+&name)){continue;}
+        progress.update("upload",&name);
         let event:Value=serde_json::from_slice(&fs::read(entry.path()).map_err(|e|e.to_string())?).map_err(|e|e.to_string())?;
         crate::conflicts::validate_event(&event)?;
         if event["kind"]=="item"&&event["data"]["deleted"]!=true {
@@ -239,7 +260,8 @@ async fn run_webdav(store:&Store,config:SyncConfig)->Result<usize>{
         dav.put(&("events/".to_owned()+&name),&entry.path()).await?;
         store.db.lock().map_err(|e|e.to_string())?.execute("INSERT OR IGNORE INTO synced VALUES(?1)",[&(namespace.clone()+&name)]).map_err(|e|e.to_string())?;count+=1;
     }
-    let response=dav.req(Method::from_bytes(b"PROPFIND").unwrap(),"events/")?.header("Depth","1").header("Content-Type","application/xml").body("<?xml version=\"1.0\"?><d:propfind xmlns:d=\"DAV:\"><d:prop><d:resourcetype/></d:prop></d:propfind>").send().await.map_err(|e|e.to_string())?.error_for_status().map_err(|e|e.to_string())?;
+    progress.update("index","events/");
+    let response=dav.req(Method::from_bytes(b"PROPFIND").unwrap(),"events/")?.header("Depth","1").header("Content-Type","application/xml").body("<?xml version=\"1.0\"?><d:propfind xmlns:d=\"DAV:\"><d:prop><d:resourcetype/></d:prop></d:propfind>").send().await.map_err(network_error)?.error_for_status().map_err(|e|e.to_string())?;
     if response.content_length().is_some_and(|n|n>16*1024*1024){return Err("WebDAV 索引过大".into());}
     let xml=response.text().await.map_err(|e|e.to_string())?;if xml.len()>16*1024*1024{return Err("WebDAV 索引过大".into());}
     let doc=roxmltree::Document::parse(&xml).map_err(|e|e.to_string())?;

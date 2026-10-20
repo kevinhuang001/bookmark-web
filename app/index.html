@@ -110,7 +110,9 @@
         </div>
         <div class="sidebar-footer">
           <span id="connection-dot" class="dot"></span
-          ><span id="connection-status" data-i18n="正在连接…">正在连接…</span
+          ><span class="sync-status-copy" aria-live="polite"
+            ><span id="connection-status" data-i18n="正在连接…">正在连接…</span
+            ><small id="sync-last-time"></small></span
           ><button
             id="sync-button"
             class="icon-button"

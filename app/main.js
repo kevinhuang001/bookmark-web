@@ -1,3 +1,4 @@
+import { syncStatus } from "./sync-status.js";
 import { enhanceSelects } from "./controls.js";
 import { t as tr, localizeError, locale } from "./i18n.js";
 import { openSettings } from "./settings.js";
@@ -1042,32 +1043,29 @@ async function poll() {
     const status = await json("/api/status");
     $("connection-dot").classList.add("online");
     $("settings").classList.toggle("has-conflicts", Boolean(status.conflicts));
-    $("connection-status").textContent = status.conflicts
-      ? tr("有 {count} 项同步冲突，点击设置处理", { count: status.conflicts })
-      : status.running
-        ? tr("正在同步…")
-        : status.sync?.error
-          ? tr("未同步")
-          : status.sync?.lastSync && !status.sync?.localOnly
-            ? tr("同步完成")
-            : tr("本地已保存");
-    const feedback = $("sync-feedback");
-    if (feedback)
-      feedback.textContent = status.running
-        ? tr("正在同步…")
-        : status.sync?.error
-          ? tr("未同步") + " · " + localizeError(status.sync.error)
-          : status.sync?.lastSync && !status.sync?.localOnly
-            ? tr("同步完成")
-            : tr("本地已保存");
+    const summary = syncStatus(status);
+    $("connection-status").textContent = summary.message;
+    $("sync-last-time").textContent = summary.lastSync;
+    $("connection-status").title = summary.full;
+    $("connection-dot").classList.toggle(
+      "sync-error",
+      Boolean(status.sync?.error),
+    );
+    $("dialog").dispatchEvent(
+      new CustomEvent("sync-status", { detail: status }),
+    );
     const syncNow = $("settings-sync-now");
     if (syncNow) syncNow.disabled = Boolean(status.running);
     $("sync-button").disabled = Boolean(status.running);
-    $("connection-status").title = localizeError(status.sync?.error) || "";
+    $("sync-button").classList.toggle("is-syncing", Boolean(status.running));
+    $("sync-button").setAttribute("aria-busy", String(Boolean(status.running)));
+    $("sync-button").title = summary.full;
     if (!$("dialog").open) await refresh();
   } catch {
     $("connection-dot").classList.remove("online");
     $("connection-status").textContent = tr("本地服务未连接");
+    $("sync-button").classList.remove("is-syncing");
+    $("sync-button").setAttribute("aria-busy", "false");
   } finally {
     busy = false;
   }

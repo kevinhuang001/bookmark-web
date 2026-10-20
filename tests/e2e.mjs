@@ -537,7 +537,7 @@ try {
   await page.locator("#settings").click();
   await expect(page.locator("#dialog-title")).toBeFocused();
   await page.locator('.app-select-trigger').first().click();
-  await expect(page.locator('.app-select-menu').first()).toBeVisible();
+  await expect(page.locator('.app-select-menu:not([hidden])')).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.locator('.app-select-menu').first()).toBeHidden();
   await page.locator('[data-settings-category="sync"]').click();

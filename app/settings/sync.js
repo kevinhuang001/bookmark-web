@@ -1,4 +1,5 @@
-import { t as tr, localizeError } from "../i18n.js";
+import { syncStatus } from "../sync-status.js";
+import { t as tr } from "../i18n.js";
 import { icon, escapeHtml as esc } from "../icons.js";
 export function renderSyncSettings(dav, status) {
   const mode = dav.mode === "local" ? "local" : "webdav";
@@ -38,7 +39,7 @@ export function renderSyncSettings(dav, status) {
               ) +
               `<div class="sync-config-row"><label class="sync-row-copy" for="dav-password"><strong>${tr("应用密码")}</strong><small>${tr("建议使用应用专用密码，避免使用账号主密码")}</small></label><div class="sync-password"><input id="dav-password" type="password" value="${esc(dav.password || "")}" placeholder="${dav.hasPassword ? tr("已保存，留空保留") : tr("输入密码")}" autocomplete="new-password"><button type="button" id="sync-password-toggle" aria-label="${tr("显示密码")}" aria-pressed="false">${icon("eye")}</button></div></div>`
         }
-        </div>${mode === "webdav" ? `<div class="sync-footer"><button type="button" id="settings-sync-now" class="secondary">${icon("refresh")}${tr("立即同步")}</button><p id="sync-feedback" class="settings-note" role="status">${esc(status.running ? tr("正在同步…") : status.sync?.error ? tr("未同步") : status.sync?.lastSync ? tr("同步完成") : "")}</p></div><section id="sync-conflicts" class="settings-section"></section>` : ""}</section>`;
+        </div>${mode === "webdav" ? `<div class="sync-footer"><button type="button" id="settings-sync-now" class="secondary">${icon("refresh")}${tr("立即同步")}</button><p id="sync-feedback" class="settings-note" role="status">${esc(syncStatus(status).full)}</p></div><section id="sync-conflicts" class="settings-section"></section>` : ""}</section>`;
 }
 
 export function readSyncDraft(dav) {

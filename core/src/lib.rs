@@ -16,16 +16,25 @@ struct Pairing { code:String,expires:Instant,attempts:u8 }
 impl AppState {
     pub fn open(root:std::path::PathBuf)->store::Result<Self>{
         let store=Store::open(root.join("content-v2"))?;
+        let mut last_status:Value=fs::read(store.root.join("sync-status.json")).ok().and_then(|bytes|serde_json::from_slice::<Value>(&bytes).ok()).filter(Value::is_object).unwrap_or_else(||json!({}));
+        last_status["running"]=json!(false);last_status["stage"]=json!("idle");last_status["detail"]=json!("");
         // Desktop token is process-scoped; paired device tokens persist independently.
-        Ok(Self{store,token:format!("{}{}",Uuid::new_v4().simple(),Uuid::new_v4().simple()),pairing:Arc::new(Mutex::new(new_pairing())),syncing:Arc::new(AtomicBool::new(false)),sync_status:Arc::new(Mutex::new(json!({"running":false})))})
+        Ok(Self{store,token:format!("{}{}",Uuid::new_v4().simple(),Uuid::new_v4().simple()),pairing:Arc::new(Mutex::new(new_pairing())),syncing:Arc::new(AtomicBool::new(false)),sync_status:Arc::new(Mutex::new(last_status))})
     }
     pub fn connection(&self)->Value{json!({"base":format!("http://127.0.0.1:{PORT}"),"token":self.token})}
     pub async fn synchronize(&self)->store::Result<Value>{
         if self.syncing.swap(true,Ordering::SeqCst){return Ok(json!({"running":true}));}
         let config=sync::SyncConfig::read(&self.store);
         let local_only=!config.configured();
-        let result=tokio::time::timeout(Duration::from_secs(900),sync::run(&self.store,config)).await.unwrap_or_else(|_|Err("Sync timed out".into()));
-        let status=match result{Ok(count)=>json!({"running":false,"lastSync":now(),"localOnly":local_only,"events":count,"conflicts":self.store.conflict_count().unwrap_or(0),"error":null}),Err(error)=>json!({"running":false,"error":error})};
+        let last_sync=self.sync_status.lock().unwrap()["lastSync"].clone();
+        {let mut status=self.sync_status.lock().unwrap();status["running"]=json!(true);status["stage"]=json!("prepare");status["detail"]=json!("");status["error"]=Value::Null;}
+        let progress=sync::Progress::new(self.sync_status.clone());
+        let result=tokio::time::timeout(Duration::from_secs(900),sync::run_with_progress(&self.store,config,progress)).await.unwrap_or_else(|_|Err("Sync timed out after 15 minutes".into()));
+        let status=match result{
+            Ok(count)=>json!({"running":false,"stage":"idle","lastSync":if local_only{last_sync}else{json!(now())},"lastAttemptAt":now(),"localOnly":local_only,"events":count,"conflicts":self.store.conflict_count().unwrap_or(0),"error":null}),
+            Err(error)=>{let previous=self.sync_status.lock().unwrap();json!({"running":false,"stage":"failed","failedStage":previous["stage"],"detail":previous["detail"],"lastSync":last_sync,"lastAttemptAt":now(),"error":error})}
+        };
+        let _=atomic_write(&self.store.root.join("sync-status.json"),&serde_json::to_vec(&status).unwrap());
         *self.sync_status.lock().unwrap()=status.clone();self.syncing.store(false,Ordering::SeqCst);Ok(status)
     }
     fn schedule_sync(&self){let state=self.clone();tokio::spawn(async move {let _=state.synchronize().await;});}
@@ -173,16 +182,30 @@ pub async fn serve(state:AppState)->store::Result<()>{
         let (release_tx,release_rx)=tokio::sync::oneshot::channel::<()>();
         let server=tokio::spawn(async move{use tokio::io::{AsyncReadExt,AsyncWriteExt};let(mut socket,_)=listener.accept().await.unwrap();let mut bytes=[0;4096];let _=socket.read(&mut bytes).await;let _=release_rx.await;socket.write_all(b"HTTP/1.1 503 Unavailable\r\nContent-Length: 0\r\nConnection: close\r\n\r\n").await.unwrap();});
         sync::SyncConfig{url:format!("http://{address}/"),..Default::default()}.save(&state.store).unwrap();
+        state.sync_status.lock().unwrap()["lastSync"]=json!("2026-10-20T04:10:23Z");
         let router=router(state.clone());let mut req=request("/api/sync",Some(&state.token));*req.method_mut()=Method::POST;
         let response=tokio::time::timeout(Duration::from_secs(1),router.clone().oneshot(req)).await.unwrap().unwrap();
         assert_eq!(response.status(),StatusCode::OK);
         release_tx.send(()).unwrap();server.await.unwrap();
         tokio::time::timeout(Duration::from_secs(3),async {loop{if state.sync_status.lock().unwrap()["error"].is_string(){break;}tokio::task::yield_now().await;}}).await.unwrap();
         assert!(!state.syncing.load(Ordering::SeqCst));
+        assert_eq!(state.sync_status.lock().unwrap()["lastSync"],"2026-10-20T04:10:23Z");
+        assert_eq!(state.sync_status.lock().unwrap()["failedStage"],"connect");
+        let reopened=AppState::open(_dir.path().to_path_buf()).unwrap();
+        assert_eq!(reopened.sync_status.lock().unwrap()["lastSync"],"2026-10-20T04:10:23Z");
         assert_eq!(sync::SyncConfig::read(&state.store).mode,"webdav");
         let response=router.oneshot(request("/api/settings",Some(&state.token))).await.unwrap();
         let settings:Value=serde_json::from_slice(&to_bytes(response.into_body(),10000).await.unwrap()).unwrap();
         assert_eq!(settings["defaultLocalPath"],fs::canonicalize(&state.store.root).unwrap().display().to_string());
+    }
+    #[tokio::test]async fn completed_local_sync_preserves_success_time_after_restart(){
+        let (dir,state)=setup();let share=tempfile::tempdir().unwrap();
+        sync::SyncConfig{mode:"local".into(),local_path:share.path().display().to_string(),..Default::default()}.save(&state.store).unwrap();
+        let result=state.synchronize().await.unwrap();
+        assert!(result["lastSync"].is_string());assert_eq!(result["running"],false);
+        let reopened=AppState::open(dir.path().to_path_buf()).unwrap();
+        assert_eq!(reopened.sync_status.lock().unwrap()["lastSync"],result["lastSync"]);
+        assert_eq!(reopened.sync_status.lock().unwrap()["stage"],"idle");
     }
     #[test]fn folders_reject_self_and_ancestor_cycles(){let (_dir,state)=setup();let a=state.store.event("folder",json!({"name":"a"})).unwrap();let b=state.store.event("folder",json!({"name":"b","parentId":a["id"]})).unwrap();let mut changed=a;changed["parentId"]=b["id"].clone();assert!(validate_folder(&state,&changed).is_err());}
     #[test]fn new_content_store_does_not_load_other_formats(){let dir=tempfile::tempdir().unwrap();std::fs::create_dir_all(dir.path().join("events")).unwrap();std::fs::write(dir.path().join("events/old.json"),b"unsupported older content").unwrap();let state=AppState::open(dir.path().to_path_buf()).unwrap();assert_eq!(state.store.root,dir.path().join("content-v2"));assert!(state.store.list("item","").unwrap().is_empty());}

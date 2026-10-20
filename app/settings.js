@@ -1,3 +1,5 @@
+import { renderSupport, SUPPORT_ADDRESS } from "./settings/support.js";
+import { syncStatus } from "./sync-status.js";
 import { enhanceSelects } from "./controls.js";
 import {
   renderSyncSettings,
@@ -89,7 +91,27 @@ export async function openSettings({ modal, folders, onSaved, toast }) {
     `<div class="settings-layout"><nav id="settings-nav" class="settings-nav" aria-label="${tr("设置分类")}"></nav><section id="settings-panel" class="settings-panel"></section></div>`,
     [{ label: tr("保存设置"), primary: true, run: save }],
   );
-  document.getElementById("dialog").classList.add("settings-window");
+  const dialog = document.getElementById("dialog");
+  dialog.classList.add("settings-window");
+  const updateSync = (event) => {
+    const next = event.detail;
+    const changed =
+      next.sync?.lastSync !== status.sync?.lastSync ||
+      next.conflicts !== status.conflicts;
+    Object.assign(status, next);
+    const feedback = dialog.querySelector("#sync-feedback");
+    if (feedback) feedback.textContent = syncStatus(next).full;
+    if (changed && !next.running) {
+      const root = dialog.querySelector("#sync-conflicts");
+      if (root) renderConflicts(root, { folders, onResolved: onSaved, toast });
+    }
+  };
+  dialog.addEventListener("sync-status", updateSync);
+  dialog.addEventListener(
+    "close",
+    () => dialog.removeEventListener("sync-status", updateSync),
+    { once: true },
+  );
   function draw() {
     document.getElementById("settings-nav").innerHTML =
       `<div class="settings-app">${icon("logo")}<strong>Glassmark<small>${tr("偏好设置")}</small></strong></div>` +
@@ -219,17 +241,34 @@ export async function openSettings({ modal, folders, onSaved, toast }) {
         );
     if (active === "about")
       body =
-        `<section class="about-overview"><div class="about-brand-mark">${icon("logo")}</div><h3>GlassMark</h3><p class="about-version">${tr("当前版本")} <strong id="about-current-version">0.8.18</strong></p></section>` +
+        `<section class="about-overview"><div class="about-brand-mark">${icon("logo")}</div><h3>GlassMark</h3><p class="about-version">${tr("当前版本")} <strong id="about-current-version">0.8.19</strong></p></section>` +
         section(
           tr("软件更新"),
           `<div class="about-update-row"><div><strong>${tr("检查最新版本")}</strong><p id="about-update-status" aria-live="polite">${tr("尚未检查更新")}</p></div><button type="button" id="about-check-update" class="secondary">${tr("检查更新")}</button></div><a id="about-release-link" href="https://github.com/kevinhuang001/bookmark-web/releases" target="_blank" rel="noopener noreferrer">${tr("查看所有版本")}</a>`,
         ) +
+        section("Support", renderSupport()) +
         section(
           tr("项目"),
           `<div class="about-links"><a href="https://github.com/kevinhuang001/bookmark-web" target="_blank" rel="noopener noreferrer">GitHub ${icon("arrowRight")}</a><a href="https://github.com/kevinhuang001/bookmark-web/issues" target="_blank" rel="noopener noreferrer">${tr("反馈问题")} ${icon("arrowRight")}</a></div>`,
         );
     panel.innerHTML = `<h2>${heading}</h2>${body}`;
     enhanceSelects(panel);
+    const copyAddress = panel.querySelector("#support-copy-address");
+    if (copyAddress)
+      copyAddress.onclick = async () => {
+        try {
+          await navigator.clipboard.writeText(SUPPORT_ADDRESS);
+          copyAddress.innerHTML = icon("check") + tr("已复制");
+          toast(tr("地址已复制"));
+        } catch {
+          const range = document.createRange();
+          range.selectNodeContents(panel.querySelector("#support-address"));
+          const selection = window.getSelection();
+          selection.removeAllRanges();
+          selection.addRange(range);
+          toast(tr("复制失败，请手动复制地址"));
+        }
+      };
     const checkUpdate = panel.querySelector("#about-check-update");
     if (checkUpdate) {
       const label = panel.querySelector("#about-update-status");
