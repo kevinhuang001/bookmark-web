@@ -44,6 +44,8 @@ try {
     locale: "en-US",
     viewport: { width: 1400, height: 980 },
   });
+  const errors = [];
+  page.on("pageerror", error => errors.push(error.message));
   let status = { running: false, sync: { lastSync: "2026-10-20T04:10:23Z" } };
   await page.route("**/api/status", (route) =>
     route.fulfill({ json: { connected: true, ...status } }),
@@ -94,6 +96,8 @@ try {
     );
     if (size.width === 1400)
       await page.screenshot({ path: "artifacts/settings-menu-fixed.png" });
+    await menu.locator('[data-value="en"]').click();
+    await trigger.click();
     await page.keyboard.press("Escape");
     const toggle = page.locator(".sync-toggle").first();
     for (const checked of [false, true]) {
@@ -167,6 +171,7 @@ try {
     { timeout: 6000 },
   );
   await expect(page.locator("#sync-last-time")).toHaveText(lastTime);
+  assert.deepEqual(errors, []);
   console.log(
     "PASS unclipped centered menus, switch end alignment, Support copy, live sync stages, spinner, timestamps and failure reason",
   );

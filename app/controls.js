@@ -20,6 +20,7 @@ export function enhanceSelects(root) {
     menu.hidden = true;
     let open = false;
     function close() {
+      if (!open) return;
       open = false;
       menu.hidden = true;
       trigger.setAttribute("aria-expanded", "false");
@@ -151,6 +152,6 @@ export function enhanceSelects(root) {
     wrapper.append(trigger, menu);
     select.closest("dialog")?.addEventListener("close", close, { once: true });
     update();
-    close();
+    trigger.setAttribute("aria-expanded", "false");
   }
 }
