@@ -47,9 +47,6 @@ try {
   const errors = [];
   page.on("pageerror", error => errors.push(error.message));
   let status = { running: false, sync: { lastSync: "2026-10-20T04:10:23Z" } };
-  await page.route("**/api/status", (route) =>
-    route.fulfill({ json: { connected: true, ...status } }),
-  );
   await page.addInitScript(() =>
     Object.defineProperty(navigator, "clipboard", {
       value: {
@@ -61,6 +58,10 @@ try {
   );
   await page.goto("http://localhost:1420");
   await expect(page.locator("html")).toHaveAttribute("data-app-ready", "true");
+  await page.route("**/api/status", route => route.fulfill({
+    headers: {"access-control-allow-origin":"http://localhost:1420", "access-control-allow-headers":"authorization,content-type", "access-control-allow-methods":"GET,OPTIONS"},
+    json: {connected:true,...status},
+  }));
   await page.locator("#settings").click();
   for (const size of [
     { width: 1400, height: 980 },
