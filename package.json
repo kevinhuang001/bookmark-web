@@ -8,7 +8,7 @@
     "dev": "node scripts/dev.mjs",
     "build": "node scripts/build.mjs",
     "test": "node --test tests/*.test.mjs",
-    "test:e2e": "node tests/e2e.mjs && node tests/social-navigation.e2e.mjs && node tests/zhihu-flow.e2e.mjs && node tests/reply-capture.e2e.mjs && node tests/capture-target.e2e.mjs && node tests/social-interactions.e2e.mjs && node tests/media-capture.e2e.mjs && node tests/settings-ui.e2e.mjs",
+    "test:e2e": "node tests/settings-ui.e2e.mjs && node tests/e2e.mjs && node tests/social-navigation.e2e.mjs && node tests/zhihu-flow.e2e.mjs && node tests/reply-capture.e2e.mjs && node tests/capture-target.e2e.mjs && node tests/social-interactions.e2e.mjs && node tests/media-capture.e2e.mjs",
     "test:zhihu": "node tests/zhihu-flow.e2e.mjs",
     "check": "node scripts/check.mjs",
     "tauri": "tauri",

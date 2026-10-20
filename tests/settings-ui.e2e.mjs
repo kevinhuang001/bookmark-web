@@ -181,6 +181,10 @@ try {
   await browser?.close();
   if (server) await new Promise((r) => server.close(r));
   if (bridge) await new Promise((r) => bridge.server.close(r));
-  native?.kill();
+  if (native && native.exitCode === null) {
+    const exited = new Promise(resolve => native.once("exit", resolve));
+    native.kill();
+    await exited;
+  }
   await rm(root, { recursive: true, force: true });
 }
