@@ -60,6 +60,7 @@ try {
     }),
   );
   await page.goto("http://localhost:1420");
+  await expect(page.locator("html")).toHaveAttribute("data-app-ready", "true");
   await page.locator("#settings").click();
   for (const size of [
     { width: 1400, height: 980 },
