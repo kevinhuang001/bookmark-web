@@ -142,6 +142,17 @@ test("one photo and one video stay two attachments across DOM, page metadata and
     2,
   );
   assert.equal(enrichPost(enriched, "x", data).media.length, 2);
+  const ordered = mergePost(
+    { id: "1", media: [photo] },
+    {
+      id: "1",
+      media: [{ type: "image", url: "https://pbs.twimg.com/media/later.jpg" }],
+    },
+  );
+  assert.deepEqual(
+    ordered.media.map((m) => m.url),
+    [photo.url, "https://pbs.twimg.com/media/later.jpg"],
+  );
 });
 
 test("video poster variants are never independent photos, and unrelated photo URLs survive", async () => {

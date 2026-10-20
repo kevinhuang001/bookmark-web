@@ -3,8 +3,8 @@ import { normalizeMedia } from "../../../app/media-records.js";
 export function mergePost(previous, current) {
   if (!previous) return { ...current, media: normalizeMedia(current.media) };
   const media = normalizeMedia([
-    ...(current.media || []),
     ...(previous.media || []),
+    ...(current.media || []),
   ]);
   // Virtualized social UIs may briefly drop author/relationship/time fields.
   // A later incomplete DOM pass must not destroy provenance already captured.
