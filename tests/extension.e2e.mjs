@@ -10,6 +10,7 @@ import { staticServer } from "../scripts/dev.mjs";
 const root = path.resolve(".test-data/extension");
 await rm(root, { recursive: true, force: true });
 await mkdir(root, { recursive: true });
+await mkdir("artifacts", { recursive: true });
 const file = root + "/connection.json";
 const child = spawn(path.resolve(process.env.GLASSMARK_BRIDGE_BIN), [], {
   env: {
@@ -90,6 +91,58 @@ try {
     route.fulfill({ contentType: "text/html", path: "tests/fixtures/x.html" }),
   );
   await source.goto("https://x.com/lin/status/1001");
+  await source.evaluate(() => {
+    const articles = [
+      ...document.querySelectorAll('article[data-testid="tweet"]'),
+    ];
+    articles[0].querySelector(".photo img").src =
+      "http://127.0.0.1:1420/fixtures/note-cover.svg?unmounted=1&name=orig";
+    articles[0].__reactProps$mediaTest = {
+      tweet: {
+        rest_id: "1001",
+        legacy: {
+          in_reply_to_status_id_str: null,
+          extended_entities: {
+            media: [1, 2, 3, 4].map((n) => ({
+              type: "photo",
+              id_str: "p" + n,
+              media_url_https: `http://127.0.0.1:1420/fixtures/note-cover.svg?unmounted=${n}`,
+            })),
+          },
+        },
+      },
+    };
+    const reply = articles[1],
+      id = reply
+        .querySelector('a[href*="/status/"]')
+        ?.getAttribute("href")
+        .match(/\/status\/(\d+)/)?.[1];
+    reply.__reactProps$mediaTest = {
+      tweet: {
+        rest_id: id,
+        legacy: {
+          in_reply_to_status_id_str: "1001",
+          in_reply_to_screen_name: "lin",
+          extended_entities: {
+            media: [1, 2].map((n) => ({
+              type: "video",
+              id_str: "v" + n,
+              media_url_https: `http://127.0.0.1:1420/fixtures/avatar.svg?poster=${n}`,
+              video_info: {
+                variants: [
+                  {
+                    content_type: "video/mp4",
+                    bitrate: 100,
+                    url: `http://127.0.0.1:1420/fixtures/video.webm?clip=${n}`,
+                  },
+                ],
+              },
+            })),
+          },
+        },
+      },
+    };
+  });
   await progress.goto(
     `chrome-extension://${extensionId}/capture.html?tab=${tabId}&mode=thread`,
   );
@@ -104,6 +157,26 @@ try {
   assert.equal(captured.length, 2);
   assert.equal(captured[0].posts.length, 3);
   assert.equal(captured[0].platform, "x");
+  assert.equal(captured[0].posts[0].media.length, 4);
+  assert.equal(captured[0].posts[1].parentId, "1001");
+  assert.equal(
+    captured[0].posts[1].media.filter((m) => m.type === "video").length,
+    2,
+  );
+  const mediaUrls = captured[0].posts.flatMap((post) =>
+    post.media.map((m) => m.url),
+  );
+  for (const url of mediaUrls) {
+    const resource = captured[0].resources.find((r) => r.url === url);
+    assert.equal(resource?.status, "saved", url);
+    assert.ok(
+      (
+        await readFile(
+          `${root}/content-v2/archives/${captured[0].id}/assets/${resource.name}`,
+        )
+      ).length > 0,
+    );
+  }
   await fetch(connection.base + "/api/preferences", {
     method: "PUT",
     headers: { ...auth, "Content-Type": "application/json" },
@@ -289,6 +362,7 @@ try {
           "real pairing",
           "content injection",
           "resource upload",
+          "all four images and both independent videos reach native archive files through MAIN-world metadata",
           "native persistence",
           "Zhihu question and tracked-answer selection through background, capture UI and native persistence",
           "actual source navigation is rejected",

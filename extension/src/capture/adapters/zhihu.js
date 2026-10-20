@@ -49,7 +49,7 @@ export function extractZhihu(el, doc) {
     }))
     .filter((m) => /^https?:/.test(m.url));
   for (const v of content?.querySelectorAll("video") || []) {
-    const sources = videoSources(content, doc);
+    const sources = videoSources(v, doc);
     media.push({
       type: "video",
       url: sources[0] || v.currentSrc || v.src,

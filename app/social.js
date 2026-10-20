@@ -18,11 +18,14 @@ import {
   nativeComment,
 } from "./social/comments.js";
 import { attachMediaViewer } from "./social/media-viewer.js";
+import { attachXThreadLines } from "./social/x-threads.js";
 import { commentActions } from "./social/comment-actions.js";
 let media;
 let destroyMediaViewer = () => {};
+let destroyThreadLines = () => {};
 export function releaseSocial() {
   destroyMediaViewer();
+  destroyThreadLines();
   media?.release();
   media = null;
 }
@@ -33,9 +36,9 @@ function xActions(post, item, reply = false) {
 }
 function xPost(post, item, { detail = false, reply = false } = {}) {
   const name = authorName(post);
-  return `<article class="x-post ${detail ? "x-post-detail" : ""} ${reply ? "x-reply" : ""}" ${reply ? "" : `data-open-archive="${item.id}" tabindex="0" role="link" aria-label="${tr("打开 {3} 的帖子", { 3: esc(name) })}"`}>
+  return `<article data-x-post-id="${esc(post.id || "")}" class="x-post ${detail ? "x-post-detail" : ""} ${reply ? "x-reply" : ""}" ${reply ? "" : `data-open-archive="${item.id}" tabindex="0" role="link" aria-label="${tr("打开 {3} 的帖子", { 3: esc(name) })}"`}>
  ${avatar(post, item)}<div class="x-post-content"><div class="x-author-line"><button class="author-name" data-social-action="author" data-author="${esc(name)}">${esc(name)}</button>${post.verified ? icon("verified") : ""}<span>${esc(post.authorHandle || "")}</span><span>· ${commentTime(post) || stamp(item)}</span>${menu(item)}</div>
- ${reply ? replyIndicator(post, item, "x") : ""}<div class="x-post-text">${bodyText(post.text)}</div>${mediaMarkup(post, item)}${detail ? `<div class="x-capture-time">${tr("{0} · 已收藏", { 0: new Date(item.capturedAt).toLocaleString(locale()) })}</div>` : ""}${xActions(post, item, reply)}</div></article>`;
+ ${reply ? replyIndicator(post, item, "x") : ""}<div class="x-post-text">${bodyText(post.text)}</div>${mediaMarkup(post, item, { comment: reply })}${detail ? `<div class="x-capture-time">${tr("{0} · 已收藏", { 0: new Date(item.capturedAt).toLocaleString(locale()) })}</div>` : ""}${xActions(post, item, reply)}</div></article>`;
 }
 function savedSearch(kind, query) {
   const label = {
@@ -85,13 +88,15 @@ function xShell(items, options) {
   return `<div class="x-shell">${xSidebar({ ...options, items })}<section class="x-timeline"><header class="x-feed-header ${selected ? "" : "x-feed-controls"}">${selected ? detailBack() : `<div class="x-feed-title">${tr("全部收藏")}</div>${sortControls(options.filters)}`}</header>
  ${
    selected
-     ? xPost(rootPost(selected), selected, { detail: true }) +
+     ? `<div class="x-thread-scope">` +
+       xPost(rootPost(selected), selected, { detail: true }) +
        threadComments(
          selected,
          "x",
-         (p, depth) =>
-           `<div class="x-thread-entry">${xPost(p, selected, { reply: true })}</div>`,
-       )
+         (p, depth, parent) =>
+           `<div class="x-thread-entry" data-x-parent-id="${esc(parent?.id || "")}" data-x-depth="${depth}">${xPost(p, selected, { reply: true })}</div>`,
+       ) +
+       `</div>`
      : `<div ${collectionPanel(options)}>${options.filters.author ? `<div class="feed-filter-bar">${esc(options.filters.author)}<button data-social-action="clear-filter">${tr("{1} 清除筛选", { 1: icon("close") })}</button></div>` : ""}${rows.map((item) => xPost(rootPost(item), item)).join("") || emptyCollection(options)}<div class="feed-end">${rows.length ? tr("已显示全部书签") : ""}</div></div>`
  }</section></div>`;
 }
@@ -250,6 +255,7 @@ export async function renderSocial(
       root
         .querySelector(".note-comments")
         ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  destroyThreadLines = attachXThreadLines(root);
   const viewer = attachMediaViewer(root);
   destroyMediaViewer = viewer.destroy;
   const comments = commentActions(root, {

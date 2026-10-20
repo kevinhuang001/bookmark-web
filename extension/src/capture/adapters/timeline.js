@@ -1,6 +1,7 @@
 import { videoSources } from "../video.js";
 import { adapterFor } from "../platforms.js";
 import { xPostIdentity, ownsXContent } from "../identity.js";
+import { imageSource } from "../gallery.js";
 export function extractTimeline(el, kind, doc = document) {
   const config = adapterFor(kind, doc);
   const identity = kind === "x" ? xPostIdentity(el, doc) : null;
@@ -42,7 +43,7 @@ export function extractTimeline(el, kind, doc = document) {
     author.split("@")[0].replace(/[✓✔]/g, "").trim();
   const media = [];
   for (const image of [...el.querySelectorAll("img")].filter(owned)) {
-    const url = image.currentSrc || image.src;
+    const url = imageSource(image);
     if (
       url &&
       (kind !== "x" ||

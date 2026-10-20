@@ -82,10 +82,12 @@ for (const [i, text] of [
       },
       {
         id: "reply" + i,
+        parentId: "x" + i,
+        replyToHandle: ["@lincreates", "@alexbuilds", "@mayareads"][i],
         isComment: true,
         authorName: "Noah",
         text: "This is the kind of detail that makes a tool feel considered.",
-        media: [],
+        media: [image],
         stats: { likes: "16" },
       },
     ],
@@ -168,10 +170,11 @@ for (const [i, title] of [
       },
       {
         id: "nc" + i,
+        parentId: "n" + i,
         isComment: true,
         authorName: "Maya",
         text: "Such a peaceful place to spend an afternoon.",
-        media: [],
+        media: [image],
         stats: { likes: "12" },
         depth: 1,
       },
@@ -260,6 +263,18 @@ try {
       quality: 90,
     });
   }
+  await page.locator('[data-view="x"]').click();
+  await page.locator(".x-post").first().click();
+  await page
+    .locator(".x-thread-lines path")
+    .first()
+    .waitFor({ state: "attached" });
+  await page.screenshot({
+    path: "docs/images/x-thread.jpg",
+    type: "jpeg",
+    quality: 90,
+  });
+  await page.locator('[data-view="xiaohongshu"]').click();
   await page.locator(".note-post").first().click();
   await page.locator(".note-gallery img").first().waitFor();
   await page.waitForTimeout(350);
@@ -291,9 +306,23 @@ try {
     type: "jpeg",
     quality: 90,
   });
+  await page.locator('[data-settings-category="sync"]').click();
+  await page.locator("#settings-panel").evaluate((el) => (el.scrollTop = 0));
+  await page.screenshot({
+    path: "docs/images/sync-webdav.jpg",
+    type: "jpeg",
+    quality: 90,
+  });
+  await page.locator('[data-sync-mode="local"]').click();
+  await page.locator("#sync-local-path").fill("/Users/you/Shared");
+  await page.screenshot({
+    path: "docs/images/sync-local.jpg",
+    type: "jpeg",
+    quality: 90,
+  });
   assert.deepEqual(errors, []);
   console.log(
-    "Rendered nine English product screenshots from the real application.",
+    "Rendered twelve English product screenshots from the real application.",
   );
 } finally {
   await browser.close();

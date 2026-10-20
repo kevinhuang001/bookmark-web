@@ -1,3 +1,4 @@
+import { escapeHtml as esc } from "../icons.js";
 import { t as tr } from "../i18n.js";
 import { threadComments, redditThreads, nativeComment } from "./comments.js";
 
@@ -26,6 +27,7 @@ export function commentActions(
     const existing = card.querySelector(":scope > .inline-comments");
     if (existing) {
       existing.remove();
+      card.classList.remove("x-thread-scope");
       action.setAttribute("aria-expanded", "false");
       return true;
     }
@@ -36,14 +38,15 @@ export function commentActions(
         ? threadComments(
             item,
             kind,
-            (post) =>
-              `<div class="x-thread-entry">${renderX(post, item)}</div>`,
+            (post, depth, parent) =>
+              `<div class="x-thread-entry" data-x-parent-id="${esc(parent?.id || "")}" data-x-depth="${depth}">${renderX(post, item)}</div>`,
           )
         : kind === "reddit"
           ? redditThreads(item)
           : threadComments(item, kind, (post, depth) =>
               nativeComment(post, item, kind, depth),
             )) || `<p class="note-no-comments">${tr("暂无已收藏评论")}</p>`;
+    if (kind === "x") card.classList.add("x-thread-scope");
     card.append(panel);
     action.setAttribute("aria-expanded", "true");
     void hydrate(panel, item);

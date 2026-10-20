@@ -118,7 +118,51 @@ try {
       await page.keyboard.press("Escape");
       await expect(page.locator(".inline-comments video")).toHaveCount(1);
     }
+    const thumbnail = page.locator(".comment-media .social-media").first();
+    if (kind !== "xiaohongshu") {
+      const bounds = await thumbnail.boundingBox();
+      assert.ok(
+        bounds.width <= 100 && bounds.height <= 100,
+        kind + " inline thumbnail",
+      );
+    }
     await render(item.id);
+    if (kind === "x") {
+      await expect(
+        page.locator(
+          '.x-thread-lines path[data-parent-id="root"][data-child-id="child"]',
+        ),
+      ).toHaveCount(1);
+      await expect(
+        page.locator(
+          '.x-thread-lines path[data-parent-id="child"][data-child-id="grandchild"]',
+        ),
+      ).toHaveCount(1);
+      const line = page.locator(".x-thread-lines path").first();
+      assert.equal(
+        await line.evaluate((el) => getComputedStyle(el).strokeWidth),
+        "2px",
+      );
+      await page
+        .locator(".x-thread-scope")
+        .screenshot({ path: "artifacts/glassmark-x-thread-lines.png" });
+    }
+    const commentTile = page.locator(".comment-media .social-media").first();
+    const bounds = await commentTile.boundingBox();
+    assert.ok(
+      bounds.width <= 100 && bounds.height <= 100,
+      kind + " detail thumbnail",
+    );
+    await page.locator(".comment-media video").first().click();
+    await expect(page.locator(".archive-viewer-stage video")).toHaveCount(1);
+    await page.keyboard.press("Escape");
+    assert.equal(
+      await page
+        .locator(".comment-media video")
+        .first()
+        .evaluate((el) => el.controls),
+      false,
+    );
     await expect(page.locator(".discussion-scope")).toHaveCount(0);
     if (kind === "xiaohongshu") {
       await page.locator('[data-note-slide="1"]').click();

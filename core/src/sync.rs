@@ -10,13 +10,15 @@ fn default_sync_interval()->u64{60}
 fn default_sync_mode()->String{"webdav".into()}
 #[derive(Clone,Debug,Serialize,Deserialize)]
 #[serde(rename_all="camelCase")]
-pub struct SyncConfig { pub enabled:bool,#[serde(default="default_sync_mode")]pub mode:String,#[serde(default)]pub local_path:String,pub url:String,pub username:String,#[serde(default)]pub password:String,#[serde(default="default_sync_interval")]pub interval_seconds:u64 }
-impl Default for SyncConfig {fn default()->Self{Self{enabled:false,mode:default_sync_mode(),local_path:String::new(),url:String::new(),username:String::new(),password:String::new(),interval_seconds:default_sync_interval()}}}
+pub struct SyncConfig { #[serde(default="default_sync_mode")]pub mode:String,#[serde(default)]pub local_path:String,pub url:String,pub username:String,#[serde(default)]pub password:String,#[serde(default="default_sync_interval")]pub interval_seconds:u64 }
+impl Default for SyncConfig {fn default()->Self{Self{mode:default_sync_mode(),local_path:String::new(),url:String::new(),username:String::new(),password:String::new(),interval_seconds:default_sync_interval()}}}
 impl SyncConfig {
+    pub fn configured(&self)->bool {if self.mode=="local"{!self.local_path.trim().is_empty()}else{!self.url.trim().is_empty()}}
+    pub fn poll_interval(&self)->u64 {if self.mode=="local"{5}else{self.interval_seconds.clamp(30,86400)}}
     pub fn validate(&self)->Result<()> {
-        if !(30..=86400).contains(&self.interval_seconds){return Err("同步周期应在 30 到 86400 秒之间".into());}
+        if self.mode=="webdav" && !(30..=86400).contains(&self.interval_seconds){return Err("同步周期应在 30 到 86400 秒之间".into());}
         if !["local","webdav"].contains(&self.mode.as_str()){return Err("同步方式只能选择本地或 WebDAV".into());}
-        if !self.enabled{return Ok(());}
+        if !self.configured(){return Ok(());}
         if self.mode=="local" {
             if !Path::new(self.local_path.trim()).is_absolute(){return Err("本地同步路径不能为空且必须是绝对路径".into());}
             return Ok(());
@@ -203,7 +205,7 @@ async fn run_local(store:&Store,config:&SyncConfig)->Result<usize>{
 
 pub async fn run(store:&Store,config:SyncConfig)->Result<usize>{
     config.validate()?;
-    if !config.enabled{return Ok(0);}
+    if !config.configured(){return Ok(0);}
     if config.mode=="local"{return run_local(store,&config).await;}
     run_webdav(store,config).await
 }
@@ -262,27 +264,44 @@ async fn run_webdav(store:&Store,config:SyncConfig)->Result<usize>{
 #[cfg(test)]mod tests{
 use super::*;
 #[test]fn rejects_unsafe_endpoints(){
-assert!(SyncConfig{enabled:true,url:"http://example.com".into(),..Default::default()}.validate().is_ok());
-assert!(SyncConfig{enabled:true,url:"ftp://example.com".into(),..Default::default()}.validate().is_err());
+assert!(SyncConfig{url:"http://example.com".into(),..Default::default()}.validate().is_ok());
+assert!(SyncConfig{url:"ftp://example.com".into(),..Default::default()}.validate().is_err());
 assert!(SyncConfig{interval_seconds:29,..Default::default()}.validate().is_err());
-assert!(SyncConfig{enabled:true,url:"https://user:pass@example.com".into(),..Default::default()}.validate().is_err());
+assert!(SyncConfig{url:"https://user:pass@example.com".into(),..Default::default()}.validate().is_err());
 assert!(!event_name("../secret.json"));
 }
-#[test]fn old_config_defaults_to_webdav(){
-let config:SyncConfig=serde_json::from_str(r#"{"enabled":true,"url":"https://example.com/dav/","username":"user","password":"secret","intervalSeconds":60}"#).unwrap();
+#[test]fn selected_method_defaults_to_webdav(){
+let config:SyncConfig=serde_json::from_str(r#"{"url":"https://example.com/dav/","username":"user","password":"secret","intervalSeconds":60}"#).unwrap();
 assert_eq!(config.mode,"webdav");
 assert_eq!(config.local_path,"");
 assert!(config.validate().is_ok());
 }
 #[test]fn local_mode_requires_an_absolute_path(){
-let mut config=SyncConfig{enabled:true,mode:"local".into(),..Default::default()};
-assert!(config.validate().is_err());
+let mut config=SyncConfig{mode:"local".into(),..Default::default()};
+assert!(config.validate().is_ok());
+assert!(!config.configured());
 config.local_path="/tmp/glassmark-sync".into();
 assert!(config.validate().is_ok());
 config.local_path="relative/path".into();
 assert!(config.validate().is_err());
-config.enabled=false;
+config.local_path.clear();
 assert!(config.validate().is_ok());
+}
+#[test]fn selected_method_alone_controls_configuration_and_polling(){
+let mut config=SyncConfig{mode:"local".into(),url:"https://example.com/dav".into(),interval_seconds:0,..Default::default()};
+assert!(!config.configured());
+assert!(config.validate().is_ok());
+assert_eq!(config.poll_interval(),5);
+config.local_path="/tmp/glassmark-share".into();
+assert!(config.configured());
+assert!(!serde_json::to_value(&config).unwrap().as_object().unwrap().contains_key("enabled"));
+config.mode="webdav".into();
+assert!(config.validate().is_err());
+config.interval_seconds=90;
+assert_eq!(config.poll_interval(),90);
+assert!(config.validate().is_ok());
+config.url.clear();
+assert!(!config.configured());
 }
 #[tokio::test]async fn local_sync_creates_a_dedicated_glassmark_directory(){
 let data=tempfile::tempdir().unwrap();
@@ -290,7 +309,7 @@ let share=tempfile::tempdir().unwrap();
 let store=Store::open(data.path().join("data")).unwrap();
 let folder=store.event("folder",serde_json::json!({"name":"Shared"})).unwrap();
 let path=share.path().join("shared");
-let config=SyncConfig{enabled:true,mode:"local".into(),local_path:path.display().to_string(),..Default::default()};
+let config=SyncConfig{mode:"local".into(),local_path:path.display().to_string(),..Default::default()};
 assert_eq!(run(&store,config.clone()).await.unwrap(),1);
 assert!(path.join("glassmark/events").is_dir());
 assert!(!path.join("glassmark/content-v2").exists());

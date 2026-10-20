@@ -6,6 +6,8 @@ import { videoSources } from "./video.js";
 import { platform, adapterFor } from "./platforms.js";
 import { extractPost } from "./adapters.js";
 import { xPostIdentity, noteIdentity } from "./identity.js";
+import { enrichPost } from "./page-data.js";
+import { loadGallery } from "./gallery.js";
 import { serializeElement, contentDocument, escapeHtml } from "./serialize.js";
 import {
   zhihuRoot,
@@ -21,6 +23,7 @@ export async function collect({
   includeImages = true,
   includeAvatars = true,
   includeVideos = true,
+  pageData = {},
 } = {}) {
   setLanguage(language);
   globalThis.__glassmarkCaptureCanceled = false;
@@ -181,7 +184,7 @@ export async function collect({
   };
   function accumulate(elements) {
     for (const element of elements) {
-      const captured = extractPost(element, kind);
+      const captured = enrichPost(extractPost(element, kind), kind, pageData);
       if (kind === "x") {
         if (!captured.id) continue;
         captured.isComment = captured.id !== rootId;
@@ -249,6 +252,10 @@ export async function collect({
             "未识别到当前主帖，请等待帖子详情加载完成后重试；登录或访问限制也可能导致内容不可见",
           ),
         );
+      await loadGallery(candidates()[0], kind, {
+        collect: () => accumulate(candidates()),
+        stop: () => finish || globalThis.__glassmarkCaptureCanceled,
+      });
       if (kind === "zhihu") {
         const loaded = await loadZhihuComments(selectedZhihu, {
           seconds: autoLoadSeconds,

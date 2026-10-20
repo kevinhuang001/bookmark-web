@@ -40,10 +40,10 @@ jobs:
           key: browsers-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
           restore-keys: browsers-${{ runner.os }}-
       - run: npx playwright install --with-deps chromium firefox
-      - run: npm run test:e2e
+      - run: node tests/extension.e2e.mjs
         env:
           GLASSMARK_BRIDGE_BIN: core/target/debug/glassmark-bridge
-      - run: node tests/extension.e2e.mjs
+      - run: npm run test:e2e
         env:
           GLASSMARK_BRIDGE_BIN: core/target/debug/glassmark-bridge
       - run: node tests/firefox.e2e.mjs
