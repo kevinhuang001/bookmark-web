@@ -1,3 +1,4 @@
+import { normalizeMedia } from "./media-records.js";
 import { t as tr, locale } from "./i18n.js";
 import { icon, escapeHtml as esc } from "./icons.js";
 import { rootPost, communityFromUrl, feedItems } from "./library.js";
@@ -193,6 +194,13 @@ export async function renderSocial(
   },
 ) {
   releaseSocial();
+  items = items.map((item) => ({
+    ...item,
+    posts: (item.posts || []).map((post) => ({
+      ...post,
+      media: normalizeMedia(post.media),
+    })),
+  }));
   media = new ArchiveMedia();
   root.innerHTML =
     kind === "zhihu"

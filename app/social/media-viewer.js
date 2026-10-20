@@ -40,6 +40,7 @@ export function attachMediaViewer(root) {
       };
       original.controls = true;
       stage.append(original);
+      original.play().catch(() => {});
     } else if (original) {
       const img = document.createElement("img");
       img.src = original.currentSrc || original.src;
@@ -116,14 +117,6 @@ export function attachMediaViewer(root) {
   const click = (event) => {
     const tile = event.target.closest(".social-media-grid .social-media");
     if (!tile) return;
-    // Native playback controls keep working without bubbling into a post link.
-    if (
-      event.target.closest("video")?.controls &&
-      !event.target.closest("[data-media-expand]")
-    ) {
-      event.stopImmediatePropagation();
-      return;
-    }
     event.preventDefault();
     event.stopImmediatePropagation();
     open(tile);

@@ -2,6 +2,7 @@ import { videoSources } from "../video.js";
 import { adapterFor } from "../platforms.js";
 import { xPostIdentity, ownsXContent } from "../identity.js";
 import { imageSource } from "../gallery.js";
+import { normalizeMedia } from "../../../../app/media-records.js";
 export function extractTimeline(el, kind, doc = document) {
   const config = adapterFor(kind, doc);
   const identity = kind === "x" ? xPostIdentity(el, doc) : null;
@@ -82,30 +83,13 @@ export function extractTimeline(el, kind, doc = document) {
     const hls = sources.find((u) => /\.m3u8(?:\?|$)/.test(u));
     const playable =
       hls || (/^https?:/.test(direct) ? direct : sources[0] || "");
-    const id = poster.match(
-      /(?:ext_tw_video_thumb|amplify_video_thumb|tweet_video_thumb)\/(\w+)/,
-    )?.[1];
     media.push({
       type: "video",
       url: playable,
       poster,
       alt: "视频",
       sources,
-      ...(id ? { id } : {}),
     });
-  }
-  const seenMedia = new Set();
-  for (let i = media.length - 1; i >= 0; i--) {
-    const m = media[i];
-    let key = m.id
-      ? m.type + ":" + m.id
-      : m.url || m.poster || `unresolved-${i}`;
-    try {
-      const u = new URL(m.url);
-      if (u.hostname === "pbs.twimg.com") key = u.origin + u.pathname;
-    } catch {}
-    if (seenMedia.has(key)) media.splice(i, 1);
-    else seenMedia.add(key);
   }
   const read = (selector) => find(selector)?.textContent.trim() || "";
   const stats =
@@ -211,7 +195,7 @@ export function extractTimeline(el, kind, doc = document) {
       el.getAttribute("created-timestamp") ||
       null,
     stats,
-    media,
+    media: normalizeMedia(media),
     capturedAt: new Date().toISOString(),
   };
 }

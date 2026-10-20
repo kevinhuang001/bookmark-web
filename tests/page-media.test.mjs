@@ -88,3 +88,97 @@ test("complete attachment metadata enriches only matching posts and respects cap
     media.slice(0, 2).map((m) => m.url),
   );
 });
+
+test("one photo and one video stay two attachments across DOM, page metadata and repeated capture", async () => {
+  const { mergePost } = await import("../extension/src/capture/merge.js");
+  const photo = {
+    type: "image",
+    url: "https://pbs.twimg.com/media/photo.jpg?name=small",
+  };
+  const poster = "https://pbs.twimg.com/amplify_video_thumb/7788/img/cover.jpg";
+  const original = {
+    id: "1",
+    media: [
+      photo,
+      { type: "image", url: poster + "?name=small" },
+      { type: "video", id: "7788", url: "", poster: poster + "?name=small" },
+    ],
+  };
+  const data = {
+    1: {
+      media: [
+        {
+          ...photo,
+          url: "https://pbs.twimg.com/media/photo?format=jpg&name=orig",
+        },
+        {
+          type: "video",
+          id: "media-id",
+          poster,
+          url: "https://video.twimg.com/amplify_video/7788/vid/720x720/main.mp4",
+        },
+      ],
+    },
+  };
+  const enriched = enrichPost(original, "x", data);
+  assert.deepEqual(
+    enriched.media.map((m) => m.type),
+    ["image", "video"],
+  );
+  assert.equal(enriched.media[1].url, data[1].media[1].url);
+  const later = {
+    ...original,
+    media: [
+      photo,
+      {
+        type: "video",
+        poster,
+        url: "https://video.twimg.com/amplify_video/7788/pl/master.m3u8",
+      },
+    ],
+  };
+  assert.equal(
+    mergePost(enriched, enrichPost(later, "x", data)).media.length,
+    2,
+  );
+  assert.equal(enrichPost(enriched, "x", data).media.length, 2);
+  const ordered = mergePost(
+    { id: "1", media: [photo] },
+    {
+      id: "1",
+      media: [{ type: "image", url: "https://pbs.twimg.com/media/later.jpg" }],
+    },
+  );
+  assert.deepEqual(
+    ordered.media.map((m) => m.url),
+    [photo.url, "https://pbs.twimg.com/media/later.jpg"],
+  );
+});
+
+test("video poster variants are never independent photos, and unrelated photo URLs survive", async () => {
+  const { normalizeMedia } = await import("../app/media-records.js");
+  const poster = "https://pbs.twimg.com/ext_tw_video_thumb/123/pu/img/p.jpg";
+  const media = normalizeMedia([
+    { type: "image", url: "https://pbs.twimg.com/media/real?name=small" },
+    { type: "image", url: poster + "?format=jpg&name=small" },
+    {
+      type: "video",
+      poster,
+      url: "https://video.twimg.com/ext_tw_video/123/pu/vid/a.mp4",
+    },
+    {
+      type: "video",
+      poster: poster + "?name=large",
+      url: "https://video.twimg.com/ext_tw_video/123/pu/pl/a.m3u8",
+    },
+  ]);
+  assert.equal(media.length, 2);
+  assert.equal(media[1].sources.length, 2);
+  assert.equal(
+    normalizeMedia([
+      { type: "video", url: "https://media.test/one.mp4", poster },
+      { type: "video", url: "https://media.test/two.mp4", poster },
+    ]).length,
+    2,
+  );
+});

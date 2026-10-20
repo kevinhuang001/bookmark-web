@@ -57,8 +57,8 @@ jobs:
             const notes = [
               'Tauri desktop archive with Chromium and Firefox capture extensions.',
               '',
-              '- Archive complete lazy galleries and page-exposed image/video attachments, including distinct sources for multiple videos.',
-              '- Draw X parent/reply connections and show compact comment media that expands in place.',
+              '- Keep mixed photo/video posts free of duplicate video posters and unresolved players while retaining every distinct attachment.',
+              '- Show archived video posters and let a click on any gallery video open the viewer and start playback without navigation.',
               '- Use the selected sync method directly; keep only a local path for folder sync and place interval, Sync now and conflicts inside WebDAV.',
               '- Give every settings category the same grouped-card layout.',
               '',

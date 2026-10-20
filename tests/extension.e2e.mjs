@@ -143,6 +143,44 @@ try {
       },
     };
   });
+  // A mixed post exposes a still preview plus an unresolved DOM video player.
+  // The preview belongs to that video, not a third gallery attachment.
+  await source.evaluate(() => {
+    const article = document.querySelectorAll(
+      'article[data-testid="tweet"]',
+    )[2];
+    const photo =
+      "http://127.0.0.1:1420/fixtures/note-cover.svg?mixed=1&name=orig";
+    const poster = "http://127.0.0.1:1420/fixtures/avatar.svg?mixed=1";
+    const video = "http://127.0.0.1:1420/fixtures/video.webm?mixed=1";
+    const gallery = document.createElement("div");
+    gallery.className = "photo";
+    gallery.innerHTML = `<img src="${photo}"><img src="${poster}"><div data-testid="videoComponent"><video poster="${poster}"></video></div>`;
+    article.querySelector(".body").append(gallery);
+    article.__reactProps$mixedTest = {
+      tweet: {
+        rest_id: "1003",
+        legacy: {
+          in_reply_to_status_id_str: "1002",
+          extended_entities: {
+            media: [
+              { type: "photo", id_str: "mixed-photo", media_url_https: photo },
+              {
+                type: "video",
+                id_str: "mixed-video",
+                media_url_https: poster,
+                video_info: {
+                  variants: [
+                    { content_type: "video/mp4", bitrate: 100, url: video },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      },
+    };
+  });
   await progress.goto(
     `chrome-extension://${extensionId}/capture.html?tab=${tabId}&mode=thread`,
   );
@@ -163,6 +201,11 @@ try {
     captured[0].posts[1].media.filter((m) => m.type === "video").length,
     2,
   );
+  assert.deepEqual(
+    captured[0].posts[2].media.map((m) => m.type),
+    ["image", "video"],
+  );
+  assert.equal(captured[0].posts[2].parentId, "1002");
   const mediaUrls = captured[0].posts.flatMap((post) =>
     post.media.map((m) => m.url),
   );
@@ -363,6 +406,7 @@ try {
           "content injection",
           "resource upload",
           "all four images and both independent videos reach native archive files through MAIN-world metadata",
+          "one photo plus one video stays two attachments without standalone poster or unresolved duplicate player",
           "native persistence",
           "Zhihu question and tracked-answer selection through background, capture UI and native persistence",
           "actual source navigation is rejected",
