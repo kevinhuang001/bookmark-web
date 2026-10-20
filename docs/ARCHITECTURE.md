@@ -19,6 +19,7 @@
 | `extension/src/capture/adapters/` | 各平台独立的结构化 DOM 读取器     |
 | `extension/src/capture/validate.js` | 保存前再次核验主帖与来源标签页   |
 | `app/preview.js`           | 安全呈现单份网页内容                   |
+| `app/media-records.js` | 采集、增量合并和展示共用的媒体身份去重、视频预览归属 |
 | `app/media.js`             | 本地媒体与离线 HLS 播放                |
 | `extension/src/context.js` | URL 识别与帖子范围                     |
 | `extension/src/capture/`   | 网页内容序列化、帖子结构提取与媒体发现 |

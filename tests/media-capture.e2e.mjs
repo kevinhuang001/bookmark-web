@@ -184,6 +184,54 @@ try {
   assert.equal(data["102"].media.length, 2);
   assert.ok(data["102"].media.every((m) => m.url.endsWith("/high.mp4")));
   assert.equal(new Set(data["102"].media.map((m) => m.url)).size, 2);
+  // Reproduce a photo + video with a standalone resized poster and empty player.
+  await page.evaluate(() => {
+    const article = document.querySelector("article");
+    const poster =
+      "https://pbs.twimg.com/ext_tw_video_thumb/42/pu/img/cover.jpg";
+    article.insertAdjacentHTML(
+      "beforeend",
+      `<div data-testid="tweetPhoto"><img src="${poster}?name=small"></div><div data-testid="videoComponent"><video poster="${poster}?name=large"></video></div>`,
+    );
+    article.__reactProps$test.tweet.legacy.extended_entities.media = [
+      {
+        id_str: "photo",
+        type: "photo",
+        media_url_https: "https://pbs.twimg.com/media/photo1.jpg",
+      },
+      {
+        id_str: "video-media",
+        type: "video",
+        media_url_https: poster,
+        video_info: {
+          variants: [
+            {
+              content_type: "video/mp4",
+              bitrate: 100,
+              url: "https://video.twimg.com/ext_tw_video/42/pu/vid/main.mp4",
+            },
+          ],
+        },
+      },
+    ];
+  });
+  await page.addScriptTag({ content: adapters.outputFiles[0].text });
+  const mixedDom = await page.evaluate(() =>
+    MediaAdapters.extractPost(document.querySelector("article"), "x"),
+  );
+  const mixed = enrichCapture(
+    { platform: "x", mode: "thread", posts: [mixedDom], resources: [] },
+    await page.evaluate(readPageData),
+  );
+  assert.deepEqual(
+    mixed.posts[0].media.map((m) => m.type),
+    ["image", "video"],
+  );
+  assert.ok(mixed.posts[0].media[1].url.endsWith("/main.mp4"));
+  assert.equal(
+    mixed.posts[0].media[1].poster,
+    "https://pbs.twimg.com/ext_tw_video_thumb/42/pu/img/cover.jpg",
+  );
   await page.evaluate(readPageData, "start");
   await page
     .locator("article")

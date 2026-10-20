@@ -39,6 +39,15 @@ export class ArchiveMedia {
     return this.#cache.get(key);
   }
   async hydrate(root, items) {
+    const posters = [...root.querySelectorAll("[data-archive-poster]")].map(
+      async (el) => {
+        const item = items.find((i) => i.id === el.dataset.archiveId);
+        if (!item) return;
+        const url = await this.resolve(item, el.dataset.archivePoster);
+        if (url && el.isConnected && !this.#controller.signal.aborted)
+          el.poster = url;
+      },
+    );
     const jobs = [...root.querySelectorAll("[data-archive-media]")].map(
       async (el) => {
         const item = items.find((i) => i.id === el.dataset.archiveId);
@@ -74,7 +83,7 @@ export class ArchiveMedia {
         }
       },
     );
-    await Promise.allSettled(jobs);
+    await Promise.allSettled([...jobs, ...posters]);
   }
   async hls(el, item) {
     const { default: Hls } = await import("./vendor/hls.mjs");
