@@ -1805,7 +1805,8 @@ try {
   await popup.screenshot({ path: "artifacts/glassmark-popup.png" });
   // Switch through the actual settings control and reload, preserving user content.
   await page.locator("#settings").click();
-  await page.locator('[data-pref="language"]').selectOption("en");
+  await page.locator(".app-select-trigger").first().click();
+  await page.locator('.app-select-menu [data-value="en"]').click();
   await page.getByRole("button", { name: "保存设置", exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
   await expect(page.locator("html")).toHaveAttribute("data-app-ready", "true");
@@ -1821,7 +1822,8 @@ try {
   await expect(
     page.getByRole("button", { name: "Save settings", exact: true }),
   ).toBeInViewport();
-  await page.getByLabel("Language", { exact: true }).selectOption("ja");
+  await page.locator(".app-select-trigger").first().click();
+  await page.locator('.app-select-menu [data-value="ja"]').click();
   await page
     .getByRole("button", { name: "Save settings", exact: true })
     .click();
@@ -1829,7 +1831,8 @@ try {
   await expect(page.locator("html")).toHaveAttribute("data-app-ready", "true");
   await page.locator("#settings").click();
   await expect(page.getByLabel("言語", { exact: true })).toHaveValue("ja");
-  await page.getByLabel("言語", { exact: true }).selectOption("system");
+  await page.locator(".app-select-trigger").first().click();
+  await page.locator('.app-select-menu [data-value="system"]').click();
   await page.getByRole("button", { name: "設定を保存", exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
   await expect(page.locator("html")).toHaveAttribute("data-app-ready", "true");
@@ -1842,7 +1845,8 @@ try {
   assert.equal(systemPreference.language, "system");
   assert.equal(systemPreference.resolvedLanguage, "en");
   await page.locator("#settings").click();
-  await page.getByLabel("Language", { exact: true }).selectOption("zh-CN");
+  await page.locator(".app-select-trigger").first().click();
+  await page.locator('.app-select-menu [data-value="zh-CN"]').click();
   await page
     .getByRole("button", { name: "Save settings", exact: true })
     .click();
