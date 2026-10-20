@@ -18,6 +18,7 @@ impl SyncConfig {
     pub fn validate(&self)->Result<()> {
         if self.mode=="webdav" && !(30..=86400).contains(&self.interval_seconds){return Err("同步周期应在 30 到 86400 秒之间".into());}
         if !["local","webdav"].contains(&self.mode.as_str()){return Err("同步方式只能选择本地或 WebDAV".into());}
+        if !self.local_path.trim().is_empty() && !Path::new(self.local_path.trim()).is_absolute(){return Err("本地同步路径不能为空且必须是绝对路径".into());}
         if !self.configured(){return Ok(());}
         if self.mode=="local" {
             if !Path::new(self.local_path.trim()).is_absolute(){return Err("本地同步路径不能为空且必须是绝对路径".into());}
@@ -142,7 +143,7 @@ fn copy_archive(source_root:&Path,destination_root:&Path,event:&Value)->Result<(
     }
     Ok(())
 }
-async fn run_local(store:&Store,config:&SyncConfig)->Result<usize>{
+fn run_local(store:&Store,config:&SyncConfig)->Result<usize>{
     let selected=PathBuf::from(config.local_path.trim());
     fs::create_dir_all(&selected).map_err(|e|e.to_string())?;
     let base=selected.join("glassmark");
@@ -205,9 +206,15 @@ async fn run_local(store:&Store,config:&SyncConfig)->Result<usize>{
 
 pub async fn run(store:&Store,config:SyncConfig)->Result<usize>{
     config.validate()?;
-    if !config.configured(){return Ok(0);}
-    if config.mode=="local"{return run_local(store,&config).await;}
-    run_webdav(store,config).await
+    if !config.configured() && config.local_path.trim().is_empty(){return Ok(0);}
+    // The archive is always local. A selected folder is mirrored in either mode.
+    let mut count=0;
+    if !config.local_path.trim().is_empty(){
+        let local_store=store.clone();let local_config=config.clone();
+        count=tokio::task::spawn_blocking(move||run_local(&local_store,&local_config)).await.map_err(|e|e.to_string())??;
+    }
+    if config.mode=="local"{return Ok(count);}
+    run_webdav(store,config).await.map(|remote|count+remote)
 }
 async fn run_webdav(store:&Store,config:SyncConfig)->Result<usize>{
     let mut base=url::Url::parse(&(config.url.trim_end_matches('/').to_owned()+"/")).map_err(|e|e.to_string())?;
@@ -320,4 +327,19 @@ let second=Store::open(second_data.path().join("data")).unwrap();
 assert_eq!(run(&second,config).await.unwrap(),1);
 assert_eq!(second.list("folder","").unwrap().len(),1);
 }
+#[tokio::test]async fn failed_webdav_keeps_local_archive_and_folder_mirror(){
+let data=tempfile::tempdir().unwrap();let share=tempfile::tempdir().unwrap();
+let store=Store::open(data.path().join("data")).unwrap();
+let folder=store.event("folder",serde_json::json!({"name":"Offline"})).unwrap();
+let listener=tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+let address=listener.local_addr().unwrap();
+let server=tokio::spawn(async move{use tokio::io::{AsyncReadExt,AsyncWriteExt};let(mut socket,_)=listener.accept().await.unwrap();let mut bytes=[0;4096];let _=socket.read(&mut bytes).await;socket.write_all(b"HTTP/1.1 503 Unavailable\r\nContent-Length: 0\r\nConnection: close\r\n\r\n").await.unwrap();});
+let config=SyncConfig{mode:"webdav".into(),url:format!("http://{address}/"),local_path:share.path().display().to_string(),..Default::default()};
+config.save(&store).unwrap();
+assert!(run(&store,config).await.is_err());server.await.unwrap();
+assert_eq!(SyncConfig::read(&store).mode,"webdav");
+assert_eq!(store.list("folder","").unwrap().len(),1);
+assert!(share.path().join("glassmark/events").join(format!("{}.json",folder["revision"].as_str().unwrap())).is_file());
+}
+
 }

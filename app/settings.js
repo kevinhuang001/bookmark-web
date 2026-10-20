@@ -1,3 +1,4 @@
+import { enhanceSelects } from "./controls.js";
 import {
   renderSyncSettings,
   readSyncDraft,
@@ -218,7 +219,7 @@ export async function openSettings({ modal, folders, onSaved, toast }) {
         );
     if (active === "about")
       body =
-        `<section class="about-overview"><div class="about-brand-mark">${icon("logo")}</div><h3>GlassMark</h3><p class="about-version">${tr("当前版本")} <strong id="about-current-version">0.8.17</strong></p></section>` +
+        `<section class="about-overview"><div class="about-brand-mark">${icon("logo")}</div><h3>GlassMark</h3><p class="about-version">${tr("当前版本")} <strong id="about-current-version">0.8.18</strong></p></section>` +
         section(
           tr("软件更新"),
           `<div class="about-update-row"><div><strong>${tr("检查最新版本")}</strong><p id="about-update-status" aria-live="polite">${tr("尚未检查更新")}</p></div><button type="button" id="about-check-update" class="secondary">${tr("检查更新")}</button></div><a id="about-release-link" href="https://github.com/kevinhuang001/bookmark-web/releases" target="_blank" rel="noopener noreferrer">${tr("查看所有版本")}</a>`,
@@ -228,6 +229,7 @@ export async function openSettings({ modal, folders, onSaved, toast }) {
           `<div class="about-links"><a href="https://github.com/kevinhuang001/bookmark-web" target="_blank" rel="noopener noreferrer">GitHub ${icon("arrowRight")}</a><a href="https://github.com/kevinhuang001/bookmark-web/issues" target="_blank" rel="noopener noreferrer">${tr("反馈问题")} ${icon("arrowRight")}</a></div>`,
         );
     panel.innerHTML = `<h2>${heading}</h2>${body}`;
+    enhanceSelects(panel);
     const checkUpdate = panel.querySelector("#about-check-update");
     if (checkUpdate) {
       const label = panel.querySelector("#about-update-status");
@@ -339,9 +341,9 @@ export async function openSettings({ modal, folders, onSaved, toast }) {
           collect();
           validateSyncDraft(dav);
           await mutate("/api/settings", dav, "PUT");
-          const result = await mutate("/api/sync", {});
-          document.getElementById("sync-feedback").textContent =
-            localizeError(result.error) || tr(result.running ? "正在同步…" : "同步完成");
+          await mutate("/api/sync", {});
+          const feedback = document.getElementById("sync-feedback");
+          if (feedback) feedback.textContent = tr("正在同步…");
           if (conflictRoot?.isConnected)
             await renderConflicts(conflictRoot, {
               folders,

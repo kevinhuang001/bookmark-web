@@ -104,7 +104,7 @@ Keep the desktop client running while saving. Pairing codes are valid for five m
 
 **Local media.** Images, avatars, GIFs and supported videos are stored alongside your saves. Download limits, concurrency and timeouts are configurable in Settings.
 
-**Choose your sync method.** In **Settings → Sync**, select Local folder or WebDAV, configure its destination and save. There is no extra enable switch. Local folder has only a path and syncs automatically. WebDAV keeps its automatic interval, Sync now and Sync conflicts inside its configuration card. Both methods use one `glassmark/` directory under the destination. All settings categories share the same grouped-card layout. See the [user guide](docs/USER-GUIDE.md) for details.
+**Choose your sync method.** In **Settings → Sync**, select Local folder or WebDAV, configure its destination and save. There is no extra enable switch. Local folder displays the actual default archive path. Content is always stored locally, including when WebDAV is selected. A custom local folder is mirrored before WebDAV sync. Sync runs in the background; the bottom-left status shows progress, completion or Not synced, and failures keep the WebDAV selection. WebDAV keeps its automatic interval, Sync now and Sync conflicts inside its configuration card. Both methods use one `glassmark/` directory under the destination. All settings categories share the same grouped-card layout. See the [user guide](docs/USER-GUIDE.md) for details.
 
 ![WebDAV settings](docs/images/sync-webdav.jpg)
 

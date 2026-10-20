@@ -22,10 +22,11 @@ impl AppState {
     pub fn connection(&self)->Value{json!({"base":format!("http://127.0.0.1:{PORT}"),"token":self.token})}
     pub async fn synchronize(&self)->store::Result<Value>{
         if self.syncing.swap(true,Ordering::SeqCst){return Ok(json!({"running":true}));}
-        let result=sync::run(&self.store,sync::SyncConfig::read(&self.store)).await;
-        self.syncing.store(false,Ordering::SeqCst);
-        let status=match result{Ok(count)=>json!({"running":false,"lastSync":now(),"events":count,"conflicts":self.store.conflict_count().unwrap_or(0),"error":null}),Err(error)=>json!({"running":false,"error":error})};
-        *self.sync_status.lock().unwrap()=status.clone();Ok(status)
+        let config=sync::SyncConfig::read(&self.store);
+        let local_only=!config.configured();
+        let result=tokio::time::timeout(Duration::from_secs(900),sync::run(&self.store,config)).await.unwrap_or_else(|_|Err("Sync timed out".into()));
+        let status=match result{Ok(count)=>json!({"running":false,"lastSync":now(),"localOnly":local_only,"events":count,"conflicts":self.store.conflict_count().unwrap_or(0),"error":null}),Err(error)=>json!({"running":false,"error":error})};
+        *self.sync_status.lock().unwrap()=status.clone();self.syncing.store(false,Ordering::SeqCst);Ok(status)
     }
     fn schedule_sync(&self){let state=self.clone();tokio::spawn(async move {let _=state.synchronize().await;});}
 }
@@ -141,9 +142,9 @@ async fn resolve_conflict(State(state):State<AppState>,Path(id):Path<String>,Jso
     let saved=state.store.resolve_conflict(&id,&heads,choice,value["mergeTags"]==true)?;
     state.schedule_sync();Ok(Json(saved))
 }
-async fn settings(State(state):State<AppState>)->Json<Value>{let mut value=serde_json::to_value(sync::SyncConfig::read(&state.store)).unwrap();value["hasPassword"]=json!(!value["password"].as_str().unwrap_or("").is_empty());value.as_object_mut().unwrap().remove("password");Json(value)}
+async fn settings(State(state):State<AppState>)->Json<Value>{let mut value=serde_json::to_value(sync::SyncConfig::read(&state.store)).unwrap();value["defaultLocalPath"]=json!(fs::canonicalize(&state.store.root).unwrap_or_else(|_|state.store.root.clone()).display().to_string());value["hasPassword"]=json!(!value["password"].as_str().unwrap_or("").is_empty());value.as_object_mut().unwrap().remove("password");Json(value)}
 async fn save_settings(State(state):State<AppState>,Json(mut value):Json<Value>)->Result<Json<Value>>{if value["password"].as_str().is_none_or(|s|s.is_empty()){value["password"]=json!(sync::SyncConfig::read(&state.store).password);}let config:sync::SyncConfig=serde_json::from_value(value).map_err(|e|e.to_string())?;config.save(&state.store)?;state.schedule_sync();Ok(Json(json!({"ok":true})))}
-async fn synchronize(State(state):State<AppState>)->Result<Json<Value>>{Ok(Json(state.synchronize().await?))}
+async fn synchronize(State(state):State<AppState>)->Result<Json<Value>>{state.schedule_sync();Ok(Json(json!({"running":true})))}
 pub async fn serve(state:AppState)->store::Result<()>{
     let listener=tokio::net::TcpListener::bind((std::net::Ipv4Addr::LOCALHOST,PORT)).await.map_err(|e|format!("无法监听本地端口 {PORT}：{e}"))?;
     let periodic=state.clone();tokio::spawn(async move{let mut last=Instant::now();let mut timer=tokio::time::interval(Duration::from_secs(1));loop{timer.tick().await;let config=sync::SyncConfig::read(&periodic.store);if config.configured()&&last.elapsed()>=Duration::from_secs(config.poll_interval()){last=Instant::now();let _=periodic.synchronize().await;}}});
@@ -164,6 +165,24 @@ pub async fn serve(state:AppState)->store::Result<()>{
         assert_eq!(router.clone().oneshot(request("/api/status",Some("paired"))).await.unwrap().status(),StatusCode::OK);
         assert_eq!(router.clone().oneshot(request("/api/capture-options",Some("paired"))).await.unwrap().status(),StatusCode::OK);
         for path in ["/api/items","/api/settings","/api/pairing","/api/conflicts"]{assert_eq!(router.clone().oneshot(request(path,Some("paired"))).await.unwrap().status(),StatusCode::FORBIDDEN);}
+    }
+    #[tokio::test]async fn sync_request_returns_before_remote_completion_and_reports_failure(){
+        let (_dir,state)=setup();
+        let listener=tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address=listener.local_addr().unwrap();
+        let (release_tx,release_rx)=tokio::sync::oneshot::channel::<()>();
+        let server=tokio::spawn(async move{use tokio::io::{AsyncReadExt,AsyncWriteExt};let(mut socket,_)=listener.accept().await.unwrap();let mut bytes=[0;4096];let _=socket.read(&mut bytes).await;let _=release_rx.await;socket.write_all(b"HTTP/1.1 503 Unavailable\r\nContent-Length: 0\r\nConnection: close\r\n\r\n").await.unwrap();});
+        sync::SyncConfig{url:format!("http://{address}/"),..Default::default()}.save(&state.store).unwrap();
+        let router=router(state.clone());let mut req=request("/api/sync",Some(&state.token));*req.method_mut()=Method::POST;
+        let response=tokio::time::timeout(Duration::from_secs(1),router.clone().oneshot(req)).await.unwrap().unwrap();
+        assert_eq!(response.status(),StatusCode::OK);
+        release_tx.send(()).unwrap();server.await.unwrap();
+        tokio::time::timeout(Duration::from_secs(3),async {loop{if state.sync_status.lock().unwrap()["error"].is_string(){break;}tokio::task::yield_now().await;}}).await.unwrap();
+        assert!(!state.syncing.load(Ordering::SeqCst));
+        assert_eq!(sync::SyncConfig::read(&state.store).mode,"webdav");
+        let response=router.oneshot(request("/api/settings",Some(&state.token))).await.unwrap();
+        let settings:Value=serde_json::from_slice(&to_bytes(response.into_body(),10000).await.unwrap()).unwrap();
+        assert_eq!(settings["defaultLocalPath"],fs::canonicalize(&state.store.root).unwrap().display().to_string());
     }
     #[test]fn folders_reject_self_and_ancestor_cycles(){let (_dir,state)=setup();let a=state.store.event("folder",json!({"name":"a"})).unwrap();let b=state.store.event("folder",json!({"name":"b","parentId":a["id"]})).unwrap();let mut changed=a;changed["parentId"]=b["id"].clone();assert!(validate_folder(&state,&changed).is_err());}
     #[test]fn new_content_store_does_not_load_other_formats(){let dir=tempfile::tempdir().unwrap();std::fs::create_dir_all(dir.path().join("events")).unwrap();std::fs::write(dir.path().join("events/old.json"),b"unsupported older content").unwrap();let state=AppState::open(dir.path().to_path_buf()).unwrap();assert_eq!(state.store.root,dir.path().join("content-v2"));assert!(state.store.list("item","").unwrap().is_empty());}

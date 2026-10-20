@@ -2139,3 +2139,167 @@ body,
 #dialog-title:focus {
   outline: none;
 }
+
+/* App-owned controls stay consistent across desktop webviews. */
+#dialog :where(button:not(.icon-button):not(.app-select-menu button):not(
+    .settings-nav button
+  ):not([data-sync-mode]):not(#sync-password-toggle)) {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 8px 14px;
+  border: 1px solid #dce3ed;
+  border-radius: 10px;
+  background: #fff;
+  color: #40516a;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: 0 1px 2px #25395808;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+#dialog button:hover:not(:disabled) {
+  border-color: #b7c8e1;
+}
+#dialog button.primary,
+#dialog #settings-sync-now {
+  background: #3478f6;
+  color: #fff;
+  border-color: #3478f6;
+  box-shadow: 0 3px 8px #3478f622;
+}
+#dialog button .icon {
+  width: 16px;
+  height: 16px;
+}
+#dialog input {
+  appearance: none;
+}
+#dialog input[type="number"] {
+  -moz-appearance: textfield;
+}
+#dialog input::-webkit-inner-spin-button,
+#dialog input::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}
+.app-select {
+  position: relative;
+  min-width: 140px;
+  max-width: 48%;
+}
+#dialog-body .app-select select[hidden] {
+  display: none;
+}
+#dialog .app-select-trigger {
+  width: 100%;
+  justify-content: space-between;
+  text-align: left;
+}
+.app-select-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 20;
+  min-width: 100%;
+  max-height: 220px;
+  overflow: auto;
+  padding: 5px;
+  background: #fff;
+  border: 1px solid #dce3ed;
+  border-radius: 12px;
+  box-shadow: 0 10px 32px #25395826;
+}
+.app-select-menu[hidden] {
+  display: none;
+}
+.app-select-menu button {
+  display: block;
+  width: 100%;
+  appearance: none;
+  text-align: left;
+  white-space: nowrap;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #40516a;
+  font-size: 12px;
+}
+.app-select-menu button:hover,
+.app-select-menu button:focus-visible,
+.app-select-menu button[aria-selected="true"] {
+  background: #edf3ff;
+  color: #2868d8;
+}
+#sync-conflicts {
+  border-top: 1px solid #e4eaf2;
+  margin-top: 18px;
+  padding-top: 18px;
+}
+.conflict-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: space-between;
+}
+.conflict-heading h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.conflict-count {
+  background: #edf3ff;
+  color: #3478f6;
+  border-radius: 20px;
+  padding: 3px 8px;
+  font-size: 11px;
+}
+.conflict-empty {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px;
+  margin-top: 12px;
+  border-radius: 12px;
+  background: #f1f7f5;
+  color: #538574;
+  font-size: 12px;
+}
+.conflict-empty .icon {
+  width: 20px;
+  height: 20px;
+}
+.conflict-card {
+  box-shadow: none;
+  border-color: #e4eaf2;
+  padding: 18px;
+}
+.conflict-versions article {
+  background: #f7f9fc;
+  border-radius: 12px;
+  padding: 15px;
+}
+.conflict-versions article[data-current="true"] {
+  border-color: #b9d1fa;
+  background: #f4f8ff;
+}
+#connection-status {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (max-width: 700px) {
+  .app-select {
+    max-width: 100%;
+  }
+}
+
+#dialog input[type=checkbox]:not(.sync-toggle) { width:16px; height:16px; border:1px solid #c5d1e2; border-radius:5px; background:#fff; display:inline-grid; place-items:center; vertical-align:middle; flex-shrink:0; }
+#dialog input[type=checkbox]:not(.sync-toggle):checked { background:#3478f6; border-color:#3478f6; }
+#dialog input[type=checkbox]:not(.sync-toggle):checked::after { content:""; width:4px; height:8px; border:solid white; border-width:0 2px 2px 0; transform:translateY(-1px) rotate(45deg); }

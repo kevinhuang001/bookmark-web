@@ -1,4 +1,7 @@
 export default {
+  "内容始终保存在本地；留空使用默认路径。": "Content is always saved locally. Leave blank to use the default path.",
+  "未同步": "Not synced",
+  "本地已保存": "Saved locally",
   "作者": "Author",
   "折叠讨论串": "Collapse thread",
   "展开讨论串": "Expand thread",

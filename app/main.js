@@ -1,3 +1,4 @@
+import { enhanceSelects } from "./controls.js";
 import { t as tr, localizeError, locale } from "./i18n.js";
 import { openSettings } from "./settings.js";
 import { connect, json, request, mutate } from "./api.js";
@@ -703,6 +704,7 @@ function modal(title, body, actions = []) {
   $("dialog").classList.remove("settings-window");
   $("dialog-title").textContent = title;
   $("dialog-body").innerHTML = body;
+  enhanceSelects($("dialog-body"));
   $("dialog-actions").innerHTML =
     `<button type="button" id="dialog-cancel" class="secondary">${tr("取消")}</button>`;
   $("dialog-cancel").onclick = () => $("dialog").close();
@@ -988,10 +990,8 @@ $("dialog").addEventListener("click", (e) => {
   }
 });
 $("sync-button").onclick = guarded(async () => {
-  toast(tr("正在同步…"));
-  const result = await mutate("/api/sync", {});
-  toast(result.error || tr("同步完成"));
-  await refresh();
+  await mutate("/api/sync", {});
+  await poll();
 });
 let timer;
 $("search").oninput = () => {
@@ -1044,11 +1044,26 @@ async function poll() {
     $("settings").classList.toggle("has-conflicts", Boolean(status.conflicts));
     $("connection-status").textContent = status.conflicts
       ? tr("有 {count} 项同步冲突，点击设置处理", { count: status.conflicts })
-      : status.sync?.error
-        ? tr("同步失败，点击设置查看")
-        : status.running
-          ? tr("正在同步…")
-          : tr("本地服务已连接");
+      : status.running
+        ? tr("正在同步…")
+        : status.sync?.error
+          ? tr("未同步")
+          : status.sync?.lastSync && !status.sync?.localOnly
+            ? tr("同步完成")
+            : tr("本地已保存");
+    const feedback = $("sync-feedback");
+    if (feedback)
+      feedback.textContent = status.running
+        ? tr("正在同步…")
+        : status.sync?.error
+          ? tr("未同步") + " · " + localizeError(status.sync.error)
+          : status.sync?.lastSync && !status.sync?.localOnly
+            ? tr("同步完成")
+            : tr("本地已保存");
+    const syncNow = $("settings-sync-now");
+    if (syncNow) syncNow.disabled = Boolean(status.running);
+    $("sync-button").disabled = Boolean(status.running);
+    $("connection-status").title = localizeError(status.sync?.error) || "";
     if (!$("dialog").open) await refresh();
   } catch {
     $("connection-dot").classList.remove("online");

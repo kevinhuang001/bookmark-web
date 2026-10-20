@@ -57,10 +57,9 @@ jobs:
             const notes = [
               'Tauri desktop archive with Chromium and Firefox capture extensions.',
               '',
-              '- Keep mixed photo/video posts free of duplicate video posters and unresolved players while retaining every distinct attachment.',
-              '- Show archived video posters and let a click on any gallery video open the viewer and start playback without navigation.',
-              '- Use the selected sync method directly; keep only a local path for folder sync and place interval, Sync now and conflicts inside WebDAV.',
-              '- Give every settings category the same grouped-card layout.',
+              '- Use consistent app-styled settings controls, buttons and conflict cards.',
+              '- Display the actual default local archive path and preserve local copies when WebDAV is unavailable.',
+              '- Run sync in the background and keep sidebar and settings status up to date without switching providers.',
               '',
               'Downloads: macOS universal (Apple Silicon + Intel), Windows x64, Linux x64 (DEB, RPM, Arch package and AppImage); Chromium and Firefox extension ZIPs.',
               'The macOS app is ad-hoc signed; Windows installers and Firefox ZIP are not store-signed. Firefox ZIP is for temporary loading via about:debugging. These are GitHub Releases, not browser-store listings.',

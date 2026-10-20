@@ -286,7 +286,7 @@ export async function fixtureBridge(root) {
           return send(200, { ok: true });
         }
         const { password, ...settings } = db.settings;
-        return send(200, { ...settings, hasPassword: !!password });
+        return send(200, { ...settings, defaultLocalPath: path.resolve(root, "content-v2"), hasPassword: !!password });
       }
       if (endpoint === "/api/sync")
         return send(200, {

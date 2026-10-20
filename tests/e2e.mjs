@@ -536,6 +536,10 @@ try {
   pass("tag editing updates the library and filters");
   await page.locator("#settings").click();
   await expect(page.locator("#dialog-title")).toBeFocused();
+  await page.locator('.app-select-trigger').first().click();
+  await expect(page.locator('.app-select-menu').first()).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.locator('.app-select-menu').first()).toBeHidden();
   await page.locator('[data-settings-category="sync"]').click();
   await expect(page.locator("#dav-enabled")).toHaveCount(0);
   await expect(
@@ -561,6 +565,8 @@ try {
   await expect(
     page.locator("#dav-interval,#settings-sync-now,#sync-conflicts"),
   ).toHaveCount(0);
+  const actualSettings = await get("/api/settings");
+  await expect(page.locator("#sync-local-path")).toHaveValue(actualSettings.defaultLocalPath);
   await page.locator("#sync-local-path").fill("/tmp/glassmark-sync");
   await page.locator('[data-sync-mode="webdav"]').click();
   await expect(page.locator("#dav-url")).toBeVisible();
